@@ -72,7 +72,7 @@ inductive Primitive where
   | nullableFloat32
   | float64
   | float64Supertype
-  deriving Repr, DecidableEq
+  deriving Repr, DecidableEq, Hashable
 
 /-- Each primitive and its spelling in the spec. -/
 def Primitive.spellings : List (String × Primitive) := [
@@ -106,7 +106,7 @@ inductive ArrayElement where
   | int32
   | float32
   | float64
-  deriving Repr, DecidableEq
+  deriving Repr, DecidableEq, Hashable
 
 /-- Each array element type and its spelling in the spec. -/
 def ArrayElement.spellings : List (String × ArrayElement) := [
@@ -126,7 +126,7 @@ def ArrayElement.spellings : List (String × ArrayElement) := [
 inductive PrimitiveType where
   | scalar (p : Primitive)     -- uint32
   | array  (e : ArrayElement)  -- array<uint32>
-  deriving Repr, DecidableEq
+  deriving Repr, DecidableEq, Hashable
 
 /-- The kinds of named type a reference can point at. -/
 inductive RefKind where

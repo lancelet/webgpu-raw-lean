@@ -7,3 +7,4 @@ import WebGPUGen.Common
 import WebGPUGen.Parsed
 import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
+import WebGPUGen.Resolved
