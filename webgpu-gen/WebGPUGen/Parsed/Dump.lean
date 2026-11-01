@@ -1,9 +1,9 @@
-import WebGPUGen.Spec
+import WebGPUGen.Parsed
 
 /-!
-# Dumping the spec model
+# Dumping the parsed spec
 
-Renders decoded spec entries as compact, aligned text: what the reader
+Renders parsed spec entries as compact, aligned text: what the reader
 understood, in its own words. Useful for checking the decoder by eye, and for
 debugging later stages. Each section is a heading followed by its entries:
 
@@ -18,7 +18,8 @@ Doc strings are left out unless `docs` is set; they then follow their entry,
 each line marked with `|`. Trailing whitespace in docs is not shown.
 -/
 
-namespace WebGPUGen.Spec
+namespace WebGPUGen.Parsed
+open WebGPUGen.Common
 
 structure DumpOptions where
   docs : Bool := false
@@ -27,11 +28,21 @@ structure DumpOptions where
 
 def hex (n : Nat) : String := "0x" ++ String.ofList ((Nat.toDigits 16 n).map Char.toUpper)
 
-/-- A value in decimal; `hex` for bitflags, where bits matter. -/
+end WebGPUGen.Parsed
+
+namespace WebGPUGen.Common
+
+/-- A value in decimal; `hex` for bitflags, where bits matter. Declared in
+`Common` so that `v.render` works on the common `Value64`. -/
 def Value64.render (v : Value64) (asHex : Bool := false) : String :=
   match v with
-  | .int n => if asHex then hex n.toNat else toString n
+  | .int n => if asHex then Parsed.hex n.toNat else toString n
   | v => spellingOf Value64.spellings v
+
+end WebGPUGen.Common
+
+namespace WebGPUGen.Parsed
+open WebGPUGen.Common
 
 /-- A default, labelled with its kind so that, say, the boolean `true` and an
 entry named `true` read differently. -/
@@ -207,4 +218,4 @@ def dumpObject (o : DumpOptions) (x : Object) : List String :=
 def dumpObjects (o : DumpOptions) (xs : Array Object) : List String :=
   dumpSection "objects" (xs.toList.flatMap (dumpObject o))
 
-end WebGPUGen.Spec
+end WebGPUGen.Parsed

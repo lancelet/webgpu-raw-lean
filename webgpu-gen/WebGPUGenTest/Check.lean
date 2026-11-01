@@ -1,5 +1,5 @@
 import WebGPUGen.Decode
-import WebGPUGen.Spec
+import WebGPUGen.Parsed
 
 /-!
 # Checks for decoder tests
@@ -30,17 +30,17 @@ def decodeFails {α} (decoder : Node → Decode α) (input : String) (message : 
   | .ok _ => false
   | .error actual => actual == message
 
-open WebGPUGen.Spec in
+open WebGPUGen.Common in
 /-- Write spec names in expected values as plain strings. The name is checked
 when the test runs: an invalid one prints a panic message and becomes the
 default name, so the test then fails with a mismatch. -/
 instance : Coe String Name where
   coe text := if h : isName text then ⟨text, h⟩ else panic! s!"invalid name {text.quote}"
 
-open WebGPUGen.Spec in
+open WebGPUGen.Common in
 instance : Inhabited Paragraph := ⟨⟨"x", by decide⟩⟩
 
-open WebGPUGen.Spec in
+open WebGPUGen.Common in
 /-- Write single-paragraph docs as plain strings, checked in the same way. -/
 instance : Coe String Paragraph where
   coe text :=

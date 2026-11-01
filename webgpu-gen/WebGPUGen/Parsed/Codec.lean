@@ -1,20 +1,23 @@
 import WebGPUGen.Codec
-import WebGPUGen.Spec
+import WebGPUGen.Parsed
 
 /-!
-# Codecs for the spec model
+# Codecs for the parsed spec
 
-How each type in `WebGPUGen.Spec` is written to and read from YAML, following
-the matching definition in `schema.json`. Records are assembled from the
-combinators in `WebGPUGen.Codec`, so they need no proofs of their own. The
-hand-written text formats (type strings, `callback.x`, string defaults) have
-short proofs here, done on character lists with the lemmas in `WebGPUGen.Text`.
+How each type in `WebGPUGen.Parsed`, and each common type it uses, is written to
+and read from YAML. Only the parsed spec is read from YAML, so the codecs for
+common types live here too. Each follows the matching definition in
+`schema.json`. Records are assembled from the combinators in `WebGPUGen.Codec`,
+so they need no proofs of their own. The hand-written text formats (type
+strings, `callback.x`, string defaults) have short proofs here, done on
+character lists with the lemmas in `WebGPUGen.Text`.
 
 `Spec.codec.roundTrip` is the headline result: decoding an encoded spec gives
 back exactly that spec.
 -/
 
-namespace WebGPUGen.Spec
+namespace WebGPUGen.Parsed
+open WebGPUGen.Common
 open WebGPUGen.Yaml WebGPUGen.Decode WebGPUGen.Codec WebGPUGen.Text
 
 /-! ## Names and docs -/
@@ -470,4 +473,4 @@ theorem Spec.decode_encode (s : Spec) :
     (Spec.codec.decode (Spec.codec.encode s)).run = .ok s :=
   Spec.codec.roundTrip s #[]
 
-end WebGPUGen.Spec
+end WebGPUGen.Parsed

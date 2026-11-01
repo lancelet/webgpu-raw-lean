@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Dump
+import WebGPUGen.Parsed.Dump
 import WebGPUGenTest.Check
 
 /-!
@@ -8,8 +8,8 @@ Each test renders a small model and compares it line by line with the expected
 dump, which pins the format.
 -/
 
-namespace WebGPUGenTest.Dump
-open WebGPUGen.Spec
+namespace WebGPUGenTest.Parsed.Dump
+open WebGPUGen.Common WebGPUGen.Parsed
 
 /-! ## Helpers
 
@@ -26,6 +26,17 @@ def entry (name : String) (value : Option UInt16 := none) (ns : Option Name := n
 def flag (name : String) (value : Option Value64 := none)
     (combination : Option (Array Name) := none) : BitflagEntry :=
   { name, ns := none, doc := s!"About {name}.\n", value, combination }
+
+/-- A function or callback argument with only a name and a type. -/
+def arg (name : String) (type : TypeRef) : Parameter Paragraph := {
+  name                := name,
+  doc                 := "x",
+  type                := type,
+  passedWithOwnership := none,
+  pointer             := none,
+  optional            := false,
+  default             := none
+}
 
 /-! ## Layout -/
 
@@ -263,4 +274,111 @@ def flag (name : String) (value : Option Value64 := none)
   ]
   dumpStruct {} input == expected
 
-end WebGPUGenTest.Dump
+/-! ## Callbacks, functions and objects -/
+
+/-! ## Dump -/
+
+-- Methods sit under their object, aligned as a group, with arguments under
+-- each method. An async method names its callback.
+#guard
+  let input : Object := {
+    name     := "adapter",
+    ns       := none,
+    doc      := "x",
+    extended := false,
+    methods  := #[
+      {
+        name     := "get_info",
+        ns       := none,
+        doc      := "x",
+        returns  := some {
+          doc                 := none,
+          type                := .ref .enum "status",
+          optional            := false,
+          passedWithOwnership := some false,
+          pointer             := none
+        },
+        callback := none,
+        args     := #[
+          {
+            arg "info" (.ref .struct "adapter_info") with
+            pointer := some .mutable
+          }
+        ]
+      },
+      {
+        name     := "request_device",
+        ns       := none,
+        doc      := "x",
+        returns  := some {
+          doc                 := none,
+          type                := .ref .struct "future",
+          optional            := false,
+          passedWithOwnership := none,
+          pointer             := none
+        },
+        callback := some "request_device",
+        args     := #[]
+      }
+    ]
+  }
+  let expected := [
+    "  adapter",
+    "    get_info        returns enum.status  without ownership",
+    "      info  struct.adapter_info  mutable pointer",
+    "    request_device  returns struct.future                   callback request_device",
+    "      (no arguments)"
+  ]
+  dumpObject {} input == expected
+
+#guard
+  let input : Callback := {
+    name  := "device_lost",
+    ns    := some "wgpu",
+    doc   := "x",
+    style := .callbackMode,
+    args  := #[
+      arg "device" (.ref .object "device"),
+      {
+        arg "message" (.primitive (.scalar .outString)) with
+        passedWithOwnership := some false
+      }
+    ]
+  }
+  let expected := [
+    "  device_lost  callback_mode  namespace wgpu",
+    "    device   object.device",
+    "    message  out_string     without ownership"
+  ]
+  dumpCallback {} input == expected
+
+-- With docs, a return doc follows the function's, marked `Returns:`; a
+-- leading line break in it is dropped.
+#guard
+  let input : Array Function := #[
+    {
+      name     := "get_proc_address",
+      ns       := none,
+      doc      := "Look up a procedure.\n",
+      returns  := some {
+        doc                 := some "\nThe procedure, or null.\n",
+        type                := .ref .functionType "proc",
+        optional            := true,
+        passedWithOwnership := none,
+        pointer             := none
+      },
+      callback := none,
+      args     := #[]
+    }
+  ]
+  let expected := [
+    "functions",
+    "  get_proc_address  returns function_type.proc  optional",
+    "    | Look up a procedure.",
+    "    | Returns: The procedure, or null.",
+    "    (no arguments)"
+  ]
+  dumpFunctions { docs := true } input == expected
+
+
+end WebGPUGenTest.Parsed.Dump

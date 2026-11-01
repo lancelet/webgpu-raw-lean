@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Codec
+import WebGPUGen.Parsed.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -6,8 +6,8 @@ import WebGPUGenTest.Check
 # Tests for decoding structs and their members
 -/
 
-namespace WebGPUGenTest.SpecStructs
-open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
+namespace WebGPUGenTest.Parsed.Structs
+open WebGPUGen.Decode WebGPUGen.Common WebGPUGen.Parsed WebGPUGen
 
 /-! ## Members -/
 
@@ -196,4 +196,4 @@ open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
     "
   decodeFails Struct.codec.decode input "members[1]: missing field type"
 
-end WebGPUGenTest.SpecStructs
+end WebGPUGenTest.Parsed.Structs

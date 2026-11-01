@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Codec
+import WebGPUGen.Parsed.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -6,8 +6,8 @@ import WebGPUGenTest.Check
 # Tests for decoding the spec model: names, types, values, constants, typedefs
 -/
 
-namespace WebGPUGenTest.Spec
-open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
+namespace WebGPUGenTest.Parsed.Types
+open WebGPUGen.Decode WebGPUGen.Common WebGPUGen.Parsed WebGPUGen
 
 /-! ## Helpers
 
@@ -29,31 +29,6 @@ def typeFails (text : String) (message : String) : Bool :=
 /-- Does each YAML scalar decode to the default paired with it? -/
 def defaultsDecode (cases : List (String × Default)) : Bool :=
   cases.all fun (input, expected) => decodesTo Default.codec.decode input expected
-
-/-! ## Names -/
-
-#guard
-  let input := [
-    "whole_size",
-    "a",
-    "uint32",
-    "R8Unorm",
-    "2d"
-  ]
-  input.all isName
-
--- Underscores may not start or end a name; only ASCII letters and digits.
-#guard
-  let input := [
-    "",
-    "_a",
-    "a_",
-    "a.b",
-    "a-b",
-    "a b",
-    "é"
-  ]
-  !(input.any isName)
 
 /-! ## Types -/
 
@@ -216,4 +191,4 @@ Every form of `default` that `webgpu.yml` uses. -/
     "
   decodeFails Constant.codec.decode input "missing field doc"
 
-end WebGPUGenTest.Spec
+end WebGPUGenTest.Parsed.Types

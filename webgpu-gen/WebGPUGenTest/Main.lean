@@ -1,6 +1,6 @@
 import WebGPUGen.Yaml
-import WebGPUGen.Spec.Codec
-import WebGPUGen.Spec.Dump
+import WebGPUGen.Parsed.Codec
+import WebGPUGen.Parsed.Dump
 import WebGPUGenTest
 
 /-!
@@ -13,7 +13,7 @@ Run with `lake test` (or `lake test -- --docs`) inside `webgpu-gen`; the built
 executable `webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere.
 -/
 
-open WebGPUGen.Yaml WebGPUGen.Spec
+open WebGPUGen.Yaml WebGPUGen.Common WebGPUGen.Parsed
 
 /-- The vendored spec, found from this executable's location
 (`webgpu-gen/.lake/build/bin/`), so the driver works from any directory. -/

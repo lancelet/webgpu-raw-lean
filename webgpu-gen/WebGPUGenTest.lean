@@ -3,9 +3,10 @@ import WebGPUGenTest.Check
 import WebGPUGenTest.Yaml
 import WebGPUGenTest.CoreSchema
 import WebGPUGenTest.Decode
-import WebGPUGenTest.Spec
-import WebGPUGenTest.SpecEnums
-import WebGPUGenTest.SpecStructs
-import WebGPUGenTest.SpecFunctions
-import WebGPUGenTest.SpecFile
-import WebGPUGenTest.Dump
+import WebGPUGenTest.Common
+import WebGPUGenTest.Parsed.Types
+import WebGPUGenTest.Parsed.Enums
+import WebGPUGenTest.Parsed.Structs
+import WebGPUGenTest.Parsed.Functions
+import WebGPUGenTest.Parsed.File
+import WebGPUGenTest.Parsed.Dump

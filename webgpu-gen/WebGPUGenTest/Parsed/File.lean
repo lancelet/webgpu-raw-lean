@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Codec
+import WebGPUGen.Parsed.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -6,8 +6,8 @@ import WebGPUGenTest.Check
 # Tests for the whole-file codec, and for how values are encoded
 -/
 
-namespace WebGPUGenTest.SpecFile
-open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
+namespace WebGPUGenTest.Parsed.File
+open WebGPUGen.Decode WebGPUGen.Common WebGPUGen.Parsed WebGPUGen
 
 /-! ## Helpers
 
@@ -101,4 +101,4 @@ entry named `true` reads back as an entry, not as the boolean. -/
   ]
   input.map Default.codec.encode == expected
 
-end WebGPUGenTest.SpecFile
+end WebGPUGenTest.Parsed.File

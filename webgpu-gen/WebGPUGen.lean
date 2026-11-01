@@ -3,6 +3,7 @@ import WebGPUGen.CoreSchema
 import WebGPUGen.Text
 import WebGPUGen.Decode
 import WebGPUGen.Codec
-import WebGPUGen.Spec
-import WebGPUGen.Spec.Codec
-import WebGPUGen.Spec.Dump
+import WebGPUGen.Common
+import WebGPUGen.Parsed
+import WebGPUGen.Parsed.Codec
+import WebGPUGen.Parsed.Dump

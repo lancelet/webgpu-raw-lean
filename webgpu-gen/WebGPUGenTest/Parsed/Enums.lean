@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Codec
+import WebGPUGen.Parsed.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -6,8 +6,8 @@ import WebGPUGenTest.Check
 # Tests for decoding enums and bitflags
 -/
 
-namespace WebGPUGenTest.SpecEnums
-open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
+namespace WebGPUGenTest.Parsed.Enums
+open WebGPUGen.Decode WebGPUGen.Common WebGPUGen.Parsed WebGPUGen
 
 /-! ## Enums -/
 
@@ -231,4 +231,4 @@ open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
     "
   decodeFails Bitflag.codec.decode input "entries[0].value_combination[0]: invalid name \"_red\""
 
-end WebGPUGenTest.SpecEnums
+end WebGPUGenTest.Parsed.Enums
