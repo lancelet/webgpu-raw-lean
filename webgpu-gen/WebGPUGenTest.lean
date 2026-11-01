@@ -4,3 +4,5 @@ import WebGPUGenTest.Yaml
 import WebGPUGenTest.CoreSchema
 import WebGPUGenTest.Decode
 import WebGPUGenTest.Spec
+import WebGPUGenTest.SpecEnums
+import WebGPUGenTest.Dump

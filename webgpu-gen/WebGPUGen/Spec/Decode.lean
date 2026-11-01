@@ -120,4 +120,58 @@ def Typedef.decode : Node → Decode Typedef :=
     let type ← field  "type"      PrimitiveType.decode
     return { name, ns, doc, type }
 
+/-! ## Enums and bitflags -/
+
+/-- `Value16`: an integer that fits in 16 bits. -/
+def value16 (node : Node) : Decode Nat := do
+  let n ← nat node
+  if n < 2 ^ 16 then pure n else fail s!"integer {n} does not fit in 16 bits"
+
+def EnumEntry.decode : Node → Decode EnumEntry :=
+  object do
+    let name  ← field  "name"      Name.decode
+    let ns    ← field? "namespace" Name.decode
+    let doc   ← field  "doc"       string
+    let value ← field? "value"     value16
+    return { name, ns, doc, value }
+
+def Enum.decode : Node → Decode Enum :=
+  object do
+    let name     ← field  "name"      Name.decode
+    let ns       ← field? "namespace" Name.decode
+    let doc      ← field  "doc"       string
+    let extended ← field? "extended"  bool
+    let entries  ← field? "entries"   (seq (nullable EnumEntry.decode))
+    return {
+      name,
+      ns,
+      doc,
+      extended := extended.getD false,
+      entries  := entries.getD #[]
+    }
+
+def BitflagEntry.decode : Node → Decode BitflagEntry :=
+  object do
+    let name        ← field  "name"              Name.decode
+    let ns          ← field? "namespace"         Name.decode
+    let doc         ← field  "doc"               string
+    let value       ← field? "value"             Value64.decode
+    let combination ← field? "value_combination" (seq Name.decode)
+    return { name, ns, doc, value, combination }
+
+def Bitflag.decode : Node → Decode Bitflag :=
+  object do
+    let name     ← field  "name"      Name.decode
+    let ns       ← field? "namespace" Name.decode
+    let doc      ← field  "doc"       string
+    let extended ← field? "extended"  bool
+    let entries  ← field? "entries"   (seq BitflagEntry.decode)
+    return {
+      name,
+      ns,
+      doc,
+      extended := extended.getD false,
+      entries  := entries.getD #[]
+    }
+
 end WebGPUGen.Spec

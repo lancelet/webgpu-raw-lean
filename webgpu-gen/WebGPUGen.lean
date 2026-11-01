@@ -3,3 +3,4 @@ import WebGPUGen.CoreSchema
 import WebGPUGen.Decode
 import WebGPUGen.Spec
 import WebGPUGen.Spec.Decode
+import WebGPUGen.Spec.Dump

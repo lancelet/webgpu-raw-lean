@@ -178,4 +178,48 @@ structure Typedef where
   type : PrimitiveType
   deriving Repr, BEq, Inhabited
 
+/-! ## Enums and bitflags -/
+
+/-- One named value of an enum.
+
+Left to resolution, as upstream's generator does: an entry with a `namespace`
+must have an explicit `value`. -/
+structure EnumEntry where
+  name  : Name
+  ns    : Option Name  -- the spec's `namespace`
+  doc   : String
+  value : Option Nat   -- overrides the default (the entry's index); < 2^16
+  deriving Repr, BEq, Inhabited
+
+/-- An enum. `extended` marks entries added to an enum defined elsewhere, as an
+extension file does. -/
+structure Enum where
+  name     : Name
+  ns       : Option Name                -- the spec's `namespace`
+  doc      : String
+  extended : Bool                       -- absent means false
+  entries  : Array (Option EnumEntry)   -- `none` reserves a slot; absent means empty
+  deriving Repr, BEq, Inhabited
+
+/-- One flag of a bitflag type, or a named combination of other flags.
+
+Left to resolution, as upstream's generator does: `value` and `combination`
+may not both be given, and a `value` must be an integer, not a named value. -/
+structure BitflagEntry where
+  name        : Name
+  ns          : Option Name          -- the spec's `namespace`
+  doc         : String
+  value       : Option Value64       -- an explicit value
+  combination : Option (Array Name)  -- `value_combination`: entries OR-ed together
+  deriving Repr, BEq, Inhabited
+
+/-- A bitflag type: a set of flags that can be combined. -/
+structure Bitflag where
+  name     : Name
+  ns       : Option Name          -- the spec's `namespace`
+  doc      : String
+  extended : Bool                 -- absent means false
+  entries  : Array BitflagEntry   -- absent means empty
+  deriving Repr, BEq, Inhabited
+
 end WebGPUGen.Spec
