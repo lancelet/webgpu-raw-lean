@@ -6,4 +6,5 @@ import WebGPUGenTest.Decode
 import WebGPUGenTest.Spec
 import WebGPUGenTest.SpecEnums
 import WebGPUGenTest.SpecStructs
+import WebGPUGenTest.SpecFunctions
 import WebGPUGenTest.Dump

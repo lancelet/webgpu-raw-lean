@@ -51,6 +51,9 @@ def main (args : List String) : IO Unit := do
   let enums     ← decodeSection entries "enums"     Enum.decode
   let bitflags  ← decodeSection entries "bitflags"  Bitflag.decode
   let structs   ← decodeSection entries "structs"   Struct.decode
+  let callbacks ← decodeSection entries "callbacks" Callback.decode
+  let functions ← decodeSection entries "functions" Function.decode
+  let objects   ← decodeSection entries "objects"   Object.decode
 
   let dump :=
     dumpConstants options constants
@@ -58,5 +61,8 @@ def main (args : List String) : IO Unit := do
       ++ dumpEnums options enums
       ++ dumpBitflags options bitflags
       ++ dumpStructs options structs
+      ++ dumpCallbacks options callbacks
+      ++ dumpFunctions options functions
+      ++ dumpObjects options objects
   for line in dump do
     IO.println line

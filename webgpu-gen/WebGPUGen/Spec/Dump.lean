@@ -140,20 +140,28 @@ def dumpBitflag (o : DumpOptions) (b : Bitflag) : List String :=
 def dumpBitflags (o : DumpOptions) (bs : Array Bitflag) : List String :=
   dumpSection "bitflags" (bs.toList.flatMap (dumpBitflag o))
 
-/-- The cells describing a parameter: name, type, then whatever else it states,
-in one cell so that rows mixing different attributes stay compact. -/
+/-- How a pointer is described; empty if there is none. -/
+def pointerTag : Option Pointer → String
+  | some .immutable => "immutable pointer"
+  | some .mutable => "mutable pointer"
+  | none => ""
+
+/-- How ownership is described; empty if not stated. -/
+def ownershipTag : Option Bool → String
+  | some true => "with ownership"
+  | some false => "without ownership"
+  | none => ""
+
+/-- Attributes in one cell, two spaces apart, so that rows mixing different
+attributes stay compact. -/
+def attributeCell (attributes : List String) : String :=
+  "  ".intercalate (attributes.filter (!·.isEmpty))
+
+/-- The cells describing a parameter: name, type, then whatever else it states. -/
 def Parameter.cells (p : Parameter) : List String :=
-  let pointer := match p.pointer with
-    | some .immutable => "immutable pointer"
-    | some .mutable => "mutable pointer"
-    | none => ""
-  let ownership := match p.passedWithOwnership with
-    | some true => "with ownership"
-    | some false => "without ownership"
-    | none => ""
-  let attributes := [pointer, flagTag p.optional "optional", ownership,
-    (p.default.map Default.render).getD ""]
-  [p.name.text, p.type.render, "  ".intercalate (attributes.filter (!·.isEmpty))]
+  [p.name.text, p.type.render, attributeCell [pointerTag p.pointer,
+    flagTag p.optional "optional", ownershipTag p.passedWithOwnership,
+    (p.default.map Default.render).getD ""]]
 
 def dumpStruct (o : DumpOptions) (s : Struct) : List String :=
   let extended :=
@@ -167,5 +175,50 @@ def dumpStruct (o : DumpOptions) (s : Struct) : List String :=
 
 def dumpStructs (o : DumpOptions) (ss : Array Struct) : List String :=
   dumpSection "structs" (ss.toList.flatMap (dumpStruct o))
+
+/-! ## Callbacks, functions and objects -/
+
+/-- Argument rows at `indent`, or `(no arguments)`. -/
+def argLines (o : DumpOptions) (indent : Nat) (args : Array Parameter) : List String :=
+  if args.isEmpty then ["".pushn ' ' indent ++ "(no arguments)"]
+  else entryLines o indent (args.toList.map fun a => (a.cells, a.doc))
+
+def dumpCallback (o : DumpOptions) (c : Callback) : List String :=
+  header o [c.name.text, spellingOf CallbackStyle.spellings c.style, nsTag c.ns] c.doc
+    ++ argLines o 4 c.args
+
+def dumpCallbacks (o : DumpOptions) (cs : Array Callback) : List String :=
+  dumpSection "callbacks" (cs.toList.flatMap (dumpCallback o))
+
+/-- `returns T` and the return's other attributes. -/
+def Return.render (r : Return) : String :=
+  attributeCell [s!"returns {r.type.render}", pointerTag r.pointer,
+    flagTag r.optional "optional", ownershipTag r.passedWithOwnership]
+
+/-- Functions at `indent`, their names and returns aligned as a group. Each is
+followed by its docs (with docs on, a return doc is marked `Returns:`) and its
+arguments, two spaces deeper. -/
+def dumpFunctionList (o : DumpOptions) (indent : Nat) (fs : List Function) : List String :=
+  let headers := columns indent <| fs.map fun f =>
+    [f.name.text, nsTag f.ns, (f.returns.map Return.render).getD "",
+      (f.callback.map (s!"callback {·}")).getD ""]
+  (headers.zip fs).flatMap fun (header, f) =>
+    let returnDoc := match f.returns with
+      | some r =>
+        let doc := if r.doc.startsWith "\n" then (r.doc.drop 1).toString else r.doc
+        if doc.isEmpty then [] else docLines o (indent + 2) s!"Returns: {doc}"
+      | none => []
+    header :: docLines o (indent + 2) f.doc ++ returnDoc ++ argLines o (indent + 2) f.args
+
+def dumpFunctions (o : DumpOptions) (fs : Array Function) : List String :=
+  dumpSection "functions" (dumpFunctionList o 2 fs.toList)
+
+def dumpObject (o : DumpOptions) (x : Object) : List String :=
+  header o [x.name.text, nsTag x.ns, flagTag x.extended "extended"] x.doc ++
+    (if x.methods.isEmpty then ["    (no methods)"]
+     else dumpFunctionList o 4 x.methods.toList)
+
+def dumpObjects (o : DumpOptions) (xs : Array Object) : List String :=
+  dumpSection "objects" (xs.toList.flatMap (dumpObject o))
 
 end WebGPUGen.Spec

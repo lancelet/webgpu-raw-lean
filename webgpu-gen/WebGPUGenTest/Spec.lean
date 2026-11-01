@@ -32,10 +32,28 @@ def defaultsDecode (cases : List (String × Default)) : Bool :=
 
 /-! ## Names -/
 
-#guard ["whole_size", "a", "uint32", "R8Unorm", "2d"].all isName
+#guard
+  let input := [
+    "whole_size",
+    "a",
+    "uint32",
+    "R8Unorm",
+    "2d"
+  ]
+  input.all isName
 
 -- Underscores may not start or end a name; only ASCII letters and digits.
-#guard !(["", "_a", "a_", "a.b", "a-b", "a b", "é"].any isName)
+#guard
+  let input := [
+    "",
+    "_a",
+    "a_",
+    "a.b",
+    "a-b",
+    "a b",
+    "é"
+  ]
+  !(input.any isName)
 
 /-! ## Types -/
 

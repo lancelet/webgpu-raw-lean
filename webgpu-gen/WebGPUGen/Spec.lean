@@ -281,4 +281,59 @@ structure Struct where
   members         : Array Parameter   -- absent means empty
   deriving Repr, BEq, Inhabited
 
+/-! ## Callbacks, functions and objects -/
+
+/-- How a callback is delivered. -/
+inductive CallbackStyle where
+  | callbackMode  -- registered with a mode saying when it may be called
+  | immediate     -- called before the function that takes it returns
+  deriving Repr, BEq, Inhabited
+
+def CallbackStyle.spellings : List (String × CallbackStyle) := [
+  ("callback_mode", .callbackMode),
+  ("immediate",     .immediate)
+]
+
+/-- A callback type: the arguments it is called with. -/
+structure Callback where
+  name  : Name
+  ns    : Option Name       -- the spec's `namespace`
+  doc   : String
+  style : CallbackStyle
+  args  : Array Parameter   -- absent means empty
+  deriving Repr, BEq, Inhabited
+
+/-- What a function returns. Its doc may be empty. -/
+structure Return where
+  doc                 : String
+  type                : TypeRef
+  optional            : Bool            -- absent means false
+  passedWithOwnership : Option Bool     -- absent is not the same as false
+  pointer             : Option Pointer
+  deriving Repr, BEq, Inhabited
+
+/-- A function or method. `callback` names the callback type of an asynchronous
+function (the spec writes `callback.name`).
+
+An asynchronous function implicitly returns a future and takes the callback's
+info struct as a final argument; the spec states neither, so neither is here.
+Upstream's generator adds both when writing C. -/
+structure Function where
+  name     : Name
+  ns       : Option Name       -- the spec's `namespace`
+  doc      : String
+  returns  : Option Return     -- absent means it returns nothing
+  callback : Option Name
+  args     : Array Parameter   -- absent means empty
+  deriving Repr, BEq, Inhabited
+
+/-- An object type and its methods. -/
+structure Object where
+  name     : Name
+  ns       : Option Name      -- the spec's `namespace`
+  doc      : String
+  extended : Bool             -- absent means false
+  methods  : Array Function   -- absent means empty
+  deriving Repr, BEq, Inhabited
+
 end WebGPUGen.Spec

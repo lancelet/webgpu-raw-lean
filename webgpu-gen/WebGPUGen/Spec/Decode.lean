@@ -54,6 +54,10 @@ def PrimitiveType.ofString (s : String) : Decode PrimitiveType :=
   | some e => .array <$> spelled "array element type" ArrayElement.spellings e
   | none => .scalar <$> spelled "primitive type" Primitive.spellings s
 
+/-- The name in `callback.name`, if `s` has that form. -/
+def callbackRef? (s : String) : Option String :=
+  if s.startsWith "callback." then some ((s.drop 9).toString) else none
+
 /-- Parse a `type:` string. A string that is not a reference or a callback must
 be a primitive type. -/
 def TypeRef.ofString (s : String) : Decode TypeRef := do
@@ -61,8 +65,8 @@ def TypeRef.ofString (s : String) : Decode TypeRef := do
     if let some reference := parseRef? inner then
       let (kind, name) ← reference
       return .refArray kind name
-  if s.startsWith "callback." then
-    return .callback (← Name.ofString ((s.drop 9).toString))
+  if let some name := callbackRef? s then
+    return .callback (← Name.ofString name)
   if let some reference := parseRef? s then
     let (kind, name) ← reference
     return .ref kind name
@@ -218,6 +222,103 @@ def Struct.decode : Node → Decode Struct :=
       extendedStructs := extendedStructs.getD #[],
       freeMembers     := freeMembers.getD false,
       members         := members.getD #[]
+    }
+
+/-! ## Callbacks, functions and objects -/
+
+/-- Does `doc` match `^\n?.+(\n.+)*\n?$`: one or more non-empty lines, with at
+most one line break before and after? The schema requires this of argument and
+return docs, which Doxygen cannot show as several paragraphs. -/
+def isSingleParagraph (doc : String) : Bool :=
+  let body := if doc.startsWith "\n" then (doc.drop 1).toString else doc
+  let body := if body.endsWith "\n" then (body.dropEnd 1).toString else body
+  !body.isEmpty && (body.splitOn "\n").all (!·.isEmpty)
+
+/-- A single-paragraph doc; `allowEmpty` also accepts `""`. -/
+def paragraph (allowEmpty : Bool) (node : Node) : Decode String := do
+  let doc ← string node
+  if (allowEmpty && doc.isEmpty) || isSingleParagraph doc then pure doc
+  else fail "expected a single-paragraph doc"
+
+/-- A function or callback argument (`FunctionParameterType`): a `Parameter`
+whose doc is a single paragraph. -/
+def FunctionParameter.decode (node : Node) : Decode Parameter := do
+  let p ← Parameter.decode node
+  if isSingleParagraph p.doc then pure p
+  else within "doc" (fail "expected a single-paragraph doc")
+
+def CallbackStyle.decode (node : Node) : Decode CallbackStyle :=
+  string node >>= spelled "callback style" CallbackStyle.spellings
+
+/-- `callback.name`, as a function's `callback` field writes it. -/
+def callbackName (node : Node) : Decode Name := do
+  let s ← string node
+  match callbackRef? s with
+  | some name => Name.ofString name
+  | none => fail s!"expected callback.<name>, found {s.quote}"
+
+def Callback.decode : Node → Decode Callback :=
+  object do
+    let name  ← field  "name"      Name.decode
+    let ns    ← field? "namespace" Name.decode
+    let doc   ← field  "doc"       string
+    let style ← field  "style"     CallbackStyle.decode
+    let args  ← field? "args"      (seq FunctionParameter.decode)
+    return {
+      name,
+      ns,
+      doc,
+      style,
+      args := args.getD #[]
+    }
+
+def Return.decode : Node → Decode Return :=
+  object do
+    let doc                 ← field  "doc"                   (paragraph (allowEmpty := true))
+    let type                ← field  "type"                  TypeRef.decode
+    let optional            ← field? "optional"              bool
+    let passedWithOwnership ← field? "passed_with_ownership" bool
+    let pointer             ← field? "pointer"               Pointer.decode
+    return {
+      doc,
+      type,
+      optional := optional.getD false,
+      passedWithOwnership,
+      pointer
+    }
+
+def Function.decode : Node → Decode Function :=
+  object do
+    let name     ← field  "name"      Name.decode
+    let ns       ← field? "namespace" Name.decode
+    let doc      ← field  "doc"       string
+    let returns  ← field? "returns"   Return.decode
+    let callback ← field? "callback"  callbackName
+    let args     ← field? "args"      (seq FunctionParameter.decode)
+    return {
+      name,
+      ns,
+      doc,
+      returns,
+      callback,
+      args := args.getD #[]
+    }
+
+/-- The schema lists no required fields for objects; like upstream's generator,
+this requires `name` and `doc`, as for every other entry. -/
+def Object.decode : Node → Decode Object :=
+  object do
+    let name     ← field  "name"      Name.decode
+    let ns       ← field? "namespace" Name.decode
+    let doc      ← field  "doc"       string
+    let extended ← field? "extended"  bool
+    let methods  ← field? "methods"   (seq Function.decode)
+    return {
+      name,
+      ns,
+      doc,
+      extended := extended.getD false,
+      methods  := methods.getD #[]
     }
 
 end WebGPUGen.Spec
