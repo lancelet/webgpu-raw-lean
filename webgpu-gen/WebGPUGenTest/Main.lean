@@ -38,7 +38,8 @@ def main (args : List String) : IO Unit := do
   | .ok again => unless again == spec do failWith "re-encoded spec decoded differently"
   | .error e => failWith s!"re-encoded spec failed to decode: {e}"
 
-  -- Every reference must resolve.
+  -- Every reference must resolve; warnings are printed but do not fail.
+  for w in WebGPUGen.Resolved.warnings spec do IO.eprintln s!"warning: {w}"
   match WebGPUGen.Resolved.resolve spec with
   | .ok _ => pure ()
   | .error problems =>

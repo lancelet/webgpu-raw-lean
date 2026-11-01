@@ -435,4 +435,153 @@ def twoStructs : String := dedent "
     "bitflags[0].entries[2].value_combination[0]: unknown flag \"z\""
   ]
 
+/-! ## Rules for parameters -/
+
+-- `passed_with_ownership`: struct members may not set it, function arguments
+-- and returns only to `true`; callback arguments may use either.
+#guard
+  let input := spec
+    (structs := dedent "
+      - name: s
+        doc: x
+        type: standalone
+        members:
+          - name: m
+            doc: x
+            type: uint32
+            passed_with_ownership: true
+      ")
+    (callbacks := dedent "
+      - name: done
+        doc: x
+        style: callback_mode
+        args:
+          - name: message
+            doc: x
+            type: out_string
+            passed_with_ownership: false
+      ")
+    (functions := dedent "
+      - name: f
+        doc: x
+        returns:
+          doc: x
+          type: out_string
+          passed_with_ownership: false
+        args:
+          - name: a
+            doc: x
+            type: out_string
+            passed_with_ownership: false
+      ")
+  problems input [
+    "structs[0].members[0].passed_with_ownership: struct members cannot set passed_with_ownership",
+    "functions[0].returns.passed_with_ownership: a return value cannot be passed without ownership",
+    "functions[0].args[0].passed_with_ownership: a function argument cannot be passed without ownership"
+  ]
+
+-- Defaults suit their member's type, as upstream's generator requires.
+#guard
+  let input := spec (structs := dedent "
+    - name: s
+      doc: x
+      type: standalone
+      members:
+        - name: a
+          doc: x
+          type: bool
+          default: 1
+        - name: b
+          doc: x
+          type: int16
+          default: 1
+        - name: c
+          doc: x
+          type: uint32
+          default: zero
+        - name: d
+          doc: x
+          type: nullable_string
+          default: false
+        - name: e
+          doc: x
+          type: c_void
+          pointer: mutable
+          default: zero
+    ")
+  problems input [
+    "structs[0].members[0].default: default integer 1 does not suit a member of type bool",
+    "structs[0].members[1].default: default integer 1 does not suit a member of type int16",
+    "structs[0].members[2].default: default zero does not suit a member of type uint32",
+    "structs[0].members[3].default: default boolean false does not suit a member of type nullable_string",
+    "structs[0].members[4].default: a pointer member cannot have a default"
+  ]
+
+-- Each kind of default that suits its type, as `webgpu.yml` uses them.
+#guard
+  let input := spec
+    (constants := dedent "
+      - name: whole_size
+        value: uint64_max
+        doc: x
+      ")
+    (structs := twoStructs ++ dedent "
+      - name: s
+        doc: x
+        type: standalone
+        members:
+          - name: a
+            doc: x
+            type: bool
+            default: false
+          - name: b
+            doc: x
+            type: uint64
+            default: constant.whole_size
+          - name: c
+            doc: x
+            type: float32
+            default: 1
+          - name: d
+            doc: x
+            type: float64
+            default: 32.0
+          - name: e
+            doc: x
+            type: struct.a
+            default: zero
+      ")
+  resolvesTo input fun _ => true
+
+-- Only struct members have defaults: they exist for the C `INIT` macros.
+#guard
+  let input := spec (functions := dedent "
+    - name: f
+      doc: x
+      args:
+        - name: a
+          doc: x
+          type: uint32
+          default: 0
+    ")
+  problems input [
+    "functions[0].args[0].default: only struct members can have defaults"
+  ]
+
+/-! ## Warnings -/
+
+-- An extension that extends nothing is allowed, as upstream allows it, but
+-- reported.
+#guard
+  let input := spec (structs := dedent "
+    - name: lonely
+      doc: x
+      type: extension
+    ")
+  match decodeText Parsed.Spec.codec.decode input with
+  | .ok parsed =>
+    (warnings parsed).map toString == ["structs[0]: an extension struct that extends nothing"]
+      && check parsed == []
+  | .error _ => false
+
 end WebGPUGenTest.Resolved.Resolve

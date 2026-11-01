@@ -124,10 +124,90 @@ def checkDefault (s : Parsed.Spec) (path : Array String) (type : Parsed.TypeRef)
         s!"entry default {n.text.quote} needs an enum or bitflag member, not {type.render}"
   | _ => []
 
-def checkParameter {Doc} (s : Parsed.Spec) (path : Array String) (p : Parsed.Parameter Doc) :
-    List Problem :=
+/-! ### Parameters
+
+The rules upstream's generator applies, which depend on where a parameter
+appears. Defaults exist for the C `INIT` macros, so only struct members have
+them. -/
+
+/-- Where a parameter appears. -/
+inductive Role where
+  | member            -- a struct member
+  | argument          -- a function argument
+  | callbackArgument  -- a callback argument
+  deriving DecidableEq
+
+/-- How a default is named in problems. -/
+def describeDefault : Parsed.Default → String
+  | .bool b     => s!"boolean {b}"
+  | .int n      => s!"integer {n}"
+  | .float t _  => s!"float {t}"
+  | .constant n => s!"constant.{n}"
+  | .entry n _  => s!"entry {n.text.quote}"
+  | .zero       => "zero"
+
+/-- The primitive types upstream gives integer defaults: not `int16`. -/
+def takesInteger : Primitive → Bool
+  | .uint16 | .uint32 | .uint64 | .usize | .int32 => true
+  | _                                             => false
+
+/-- The primitive types upstream gives float defaults. -/
+def takesFloat : Primitive → Bool
+  | .float32 | .nullableFloat32 | .float64 | .float64Supertype => true
+  | _                                                          => false
+
+/-- Does a default other than an entry suit a member of this type? Entry
+defaults are checked against the member's enum or bitflag by `checkDefault`. -/
+def defaultSuits : Parsed.TypeRef → Parsed.Default → Bool
+  | .ref .struct _,             .zero       => true
+  | .primitive (.scalar .bool), .bool _     => true
+  | .primitive (.scalar .bool), .constant _ => true
+  | .primitive (.scalar p),     .int _      => takesInteger p || takesFloat p
+  | .primitive (.scalar p),     .float ..   => takesFloat p
+  | .primitive (.scalar p),     .constant _ => takesInteger p || takesFloat p
+  | _,                          _           => false
+
+/-- `passed_with_ownership`: struct members may not set it; function arguments
+and returns may only set it to `true`. -/
+def checkOwnership (role : Role) (path : Array String) : Option Bool → List Problem
+  | none       => []
+  | some owned =>
+    let path := path.push "passed_with_ownership"
+    match role, owned with
+    | .member,   _     => problem path "struct members cannot set passed_with_ownership"
+    | .argument, false => problem path "a function argument cannot be passed without ownership"
+    | _,         _     => []
+
+/-- A default may only be on a struct member that is not a pointer, and must
+suit the member's type. -/
+def checkDefaultUse {Doc} (role : Role) (path : Array String) (p : Parsed.Parameter Doc)
+    (d : Parsed.Default) : List Problem :=
+  let path := path.push "default"
+  if role != .member then problem path "only struct members can have defaults"
+  else if p.pointer.isSome then problem path "a pointer member cannot have a default"
+  else match d with
+    | .entry .. => []  -- `checkDefault` checks entries
+    | d =>
+      if defaultSuits p.type d then []
+      else
+        problem path
+          s!"default {describeDefault d} does not suit a member of type {p.type.render}"
+
+def checkParameter {Doc} (s : Parsed.Spec) (role : Role) (path : Array String)
+    (p : Parsed.Parameter Doc) : List Problem :=
   checkTypeRef s (path.push "type") p.type
-    ++ (p.default.map (checkDefault s (path.push "default") p.type)).getD []
+    ++ checkOwnership role path p.passedWithOwnership
+    ++ match p.default with
+      | none   => []
+      | some d => checkDefaultUse role path p d ++ checkDefault s (path.push "default") p.type d
+
+def checkReturn (s : Parsed.Spec) (path : Array String) (r : Parsed.Return) : List Problem :=
+  checkTypeRef s (path.push "type") r.type
+    ++ match r.passedWithOwnership with
+      | some false =>
+        problem (path.push "passed_with_ownership")
+          "a return value cannot be passed without ownership"
+      | _ => []
 
 def checkFlag (b : Parsed.Bitflag) (path : Array String) (e : Parsed.BitflagEntry) :
     List Problem :=
@@ -148,19 +228,19 @@ def checkBitflag (path : Array String) (b : Parsed.Bitflag) : List Problem :=
 def checkStruct (s : Parsed.Spec) (path : Array String) (st : Parsed.Struct) : List Problem :=
   eachAt path "extends" st.extendedStructs (fun path n => checkRef s path .struct n)
     ++ duplicates path "members" (st.members.toList.map (some ·.name))
-    ++ eachAt path "members" st.members (checkParameter s)
+    ++ eachAt path "members" st.members (checkParameter s .member)
 
 def checkCallback (s : Parsed.Spec) (path : Array String) (c : Parsed.Callback) :
     List Problem :=
   duplicates path "args" (c.args.toList.map (some ·.name))
-    ++ eachAt path "args" c.args (checkParameter s)
+    ++ eachAt path "args" c.args (checkParameter s .callbackArgument)
 
 def checkFunction (s : Parsed.Spec) (path : Array String) (f : Parsed.Function) :
     List Problem :=
-  (f.returns.map fun r => checkTypeRef s ((path.push "returns").push "type") r.type).getD []
+  (f.returns.map (checkReturn s (path.push "returns"))).getD []
     ++ (f.callback.map (checkCallbackName s (path.push "callback"))).getD []
     ++ duplicates path "args" (f.args.toList.map (some ·.name))
-    ++ eachAt path "args" f.args (checkParameter s)
+    ++ eachAt path "args" f.args (checkParameter s .argument)
 
 def checkObject (s : Parsed.Spec) (path : Array String) (o : Parsed.Object) : List Problem :=
   duplicates path "methods" (o.methods.toList.map (some ·.name))
@@ -173,9 +253,22 @@ def checkSection {α} (key : String) (xs : Array α) (name : α → Name)
     (check : Array String → α → List Problem) : List Problem :=
   duplicates #[] key (xs.toList.map (some ∘ name)) ++ eachAt #[] key xs check
 
-/-- An enum's entries have distinct names. -/
-def checkEnum (path : Array String) (e : Enum) : List Problem :=
+/-- An enum's entries have distinct names. A namespaced entry, as upstream's
+generator requires, has an explicit value, is only in the core spec (enum
+prefix 0), and uses a namespace with its own block of enum values. -/
+def checkEnum (s : Parsed.Spec) (path : Array String) (e : Enum) : List Problem :=
   duplicates path "entries" (e.entries.toList.map slotName)
+    ++ eachAt path "entries" e.entries fun path slot =>
+      match slot with
+      | some { ns := some ns, value, .. } =>
+        let path := path.push "namespace"
+        if s.enumPrefix.val != 0 then
+          problem path "namespaced entries are only allowed in the core spec"
+        else if ns.text != "compatibility_mode" then
+          problem path s!"unknown namespace {ns.text.quote}"
+        else if value.isNone then problem path "a namespaced entry needs an explicit value"
+        else []
+      | _ => []
 
 /-- Nothing to check beyond names. -/
 def noChecks {α} (_ : Array String) (_ : α) : List Problem := []
@@ -185,7 +278,7 @@ def checkConstants (s : Parsed.Spec) : List Problem :=
 def checkTypedefs  (s : Parsed.Spec) : List Problem :=
   checkSection "typedefs"  s.typedefs  (·.name) noChecks
 def checkEnums     (s : Parsed.Spec) : List Problem :=
-  checkSection "enums"     s.enums     (·.name) checkEnum
+  checkSection "enums"     s.enums     (·.name) (checkEnum s)
 def checkBitflags  (s : Parsed.Spec) : List Problem :=
   checkSection "bitflags"  s.bitflags  (·.name) checkBitflag
 def checkStructs   (s : Parsed.Spec) : List Problem :=
@@ -196,6 +289,14 @@ def checkFunctions (s : Parsed.Spec) : List Problem :=
   checkSection "functions" s.functions (·.name) (checkFunction s)
 def checkObjects   (s : Parsed.Spec) : List Problem :=
   checkSection "objects"   s.objects   (·.name) (checkObject s)
+
+/-- Things upstream's generator accepts but that look like mistakes. They do not
+stop resolution. -/
+def warnings (s : Parsed.Spec) : List Problem :=
+  eachAt #[] "structs" s.structs fun path st =>
+    if st.kind == .extension && st.extendedStructs.isEmpty then
+      problem path "an extension struct that extends nothing"
+    else []
 
 /-- Every problem that stops `s` being resolved. -/
 def check (s : Parsed.Spec) : List Problem :=

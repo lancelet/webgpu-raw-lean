@@ -105,8 +105,9 @@ structure Bitflag where
 /-- A struct member, function argument or return value (`ParameterType` in the
 schema).
 
-Left to resolution, as upstream's generator does: struct members may not set
-`passed_with_ownership`, and a pointer may not have a default.
+Resolution checks the rules upstream's generator applies: struct members may not
+set `passed_with_ownership`, function arguments may only set it to `true`; only
+struct members have defaults, not pointers, and of a kind that suits the type.
 
 `Doc` is the type of its doc: `String` for struct members, `Paragraph` for
 function and callback arguments (`FunctionParameterType`), whose docs must be
