@@ -10,3 +10,4 @@ import WebGPUGenTest.Parsed.Structs
 import WebGPUGenTest.Parsed.Functions
 import WebGPUGenTest.Parsed.File
 import WebGPUGenTest.Parsed.Dump
+import WebGPUGenTest.Resolved.Resolve

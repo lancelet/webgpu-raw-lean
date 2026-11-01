@@ -20,38 +20,22 @@ open WebGPUGen.Common
 
 /-! ## IDs -/
 
-/-- A constant: an index into `Spec.constants`. -/
-structure ConstantId where
-  idx : Nat
+/-- The kinds of entry that can be referred to, each listed in its own section of
+the spec. -/
+inductive Kind where
+  | constant
+  | typedef
+  | enum
+  | bitflag
+  | struct
+  | callback
+  | object
   deriving Repr, DecidableEq, Hashable
 
-/-- A typedef: an index into `Spec.typedefs`. -/
-structure TypedefId where
-  idx : Nat
-  deriving Repr, DecidableEq, Hashable
-
-/-- An enum: an index into `Spec.enums`. -/
-structure EnumId where
-  idx : Nat
-  deriving Repr, DecidableEq, Hashable
-
-/-- A bitflag type: an index into `Spec.bitflags`. -/
-structure BitflagId where
-  idx : Nat
-  deriving Repr, DecidableEq, Hashable
-
-/-- A struct: an index into `Spec.structs`. -/
-structure StructId where
-  idx : Nat
-  deriving Repr, DecidableEq, Hashable
-
-/-- A callback type: an index into `Spec.callbacks`. -/
-structure CallbackId where
-  idx : Nat
-  deriving Repr, DecidableEq, Hashable
-
-/-- An object type: an index into `Spec.objects`. -/
-structure ObjectId where
+/-- An entry of kind `k`: an index into that kind's array in `Spec`, so
+`Id .struct` indexes `Spec.structs`. IDs of different kinds are different
+types: an `Id .struct` cannot be used where an `Id .enum` is expected. -/
+structure Id (k : Kind) where
   idx : Nat
   deriving Repr, DecidableEq, Hashable
 
@@ -67,27 +51,27 @@ structure EntryIndex where
 counterpart: nothing in the spec defines function types, so resolution rejects
 it. -/
 inductive Named where
-  | typedef (id : TypedefId)
-  | enum    (id : EnumId)
-  | bitflag (id : BitflagId)
-  | struct  (id : StructId)
-  | object  (id : ObjectId)
+  | typedef (id : Id .typedef)
+  | enum    (id : Id .enum)
+  | bitflag (id : Id .bitflag)
+  | struct  (id : Id .struct)
+  | object  (id : Id .object)
   deriving Repr, DecidableEq, Hashable
 
 /-- A `type:`, resolved. -/
 inductive TypeRef where
-  | primitive (p : PrimitiveType)  -- uint32, array<uint32>
-  | named     (t : Named)          -- struct.foo
-  | arrayOf   (t : Named)          -- array<struct.foo>
-  | callback  (id : CallbackId)    -- callback.foo
+  | primitive (p : PrimitiveType)    -- uint32, array<uint32>
+  | named     (t : Named)            -- struct.foo
+  | arrayOf   (t : Named)            -- array<struct.foo>
+  | callback  (id : Id .callback)    -- callback.foo
   deriving Repr, DecidableEq, Hashable
 
 /-! ## Defaults -/
 
 /-- The entry a default names, and the enum or bitflag it belongs to. -/
 inductive EntryRef where
-  | enumEntry (enum : EnumId) (entry : EntryIndex)
-  | flag      (bitflag : BitflagId) (entry : EntryIndex)
+  | enumEntry (enum    : Id .enum)    (entry : EntryIndex)
+  | flag      (bitflag : Id .bitflag) (entry : EntryIndex)
   deriving Repr, DecidableEq, Hashable
 
 /-- A member's default, resolved. A `float` keeps the parsed spec's proof that
@@ -98,7 +82,7 @@ inductive Default where
   | bool     (b : Bool)
   | int      (n : Int)
   | float    (text : String) (valid : Yaml.Scalar.value { text } = .float text)
-  | constant (id : ConstantId)
+  | constant (id : Id .constant)
   | entry    (target : EntryRef)
   | zero
   deriving Repr, DecidableEq
@@ -153,7 +137,7 @@ structure Struct where
   ns              : Option Name                -- the spec's `namespace`
   doc             : String
   kind            : StructKind                 -- the spec's `type`
-  extendedStructs : Array StructId             -- the spec's `extends`
+  extendedStructs : Array (Id .struct)          -- the spec's `extends`
   freeMembers     : Bool                       -- `free_members`
   members         : Array (Parameter String)
   deriving Repr, DecidableEq
@@ -185,7 +169,7 @@ structure Function where
   ns       : Option Name                    -- the spec's `namespace`
   doc      : String
   returns  : Option Return                  -- absent means it returns nothing
-  callback : Option CallbackId
+  callback : Option (Id .callback)
   args     : Array (Parameter Paragraph)
   deriving Repr, DecidableEq
 

@@ -1,6 +1,7 @@
 import WebGPUGen.Yaml
 import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
+import WebGPUGen.Resolved.Resolve
 import WebGPUGenTest
 
 /-!
@@ -36,6 +37,13 @@ def main (args : List String) : IO Unit := do
   match (Spec.codec.decode (Spec.codec.encode spec)).run with
   | .ok again => unless again == spec do failWith "re-encoded spec decoded differently"
   | .error e => failWith s!"re-encoded spec failed to decode: {e}"
+
+  -- Every reference must resolve.
+  match WebGPUGen.Resolved.resolve spec with
+  | .ok _ => pure ()
+  | .error problems =>
+    for p in problems do IO.eprintln p
+    failWith s!"{problems.length} problems resolving the spec"
 
   let dump :=
     dumpConstants options spec.constants

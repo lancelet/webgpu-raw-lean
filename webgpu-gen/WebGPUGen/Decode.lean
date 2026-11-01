@@ -22,10 +22,13 @@ structure DecodeError where
   message : String
   deriving Repr, BEq
 
-/-- The path written as `structs[12].name`. -/
-def DecodeError.location (e : DecodeError) : String :=
-  e.path.foldl (init := "") fun acc seg =>
+/-- A path written as `structs[12].name`. -/
+def pathText (path : Array String) : String :=
+  path.foldl (init := "") fun acc seg =>
     if acc.isEmpty || seg.startsWith "[" then acc ++ seg else acc ++ "." ++ seg
+
+/-- Where the error happened, written as `structs[12].name`. -/
+def DecodeError.location (e : DecodeError) : String := pathText e.path
 
 instance : ToString DecodeError where
   toString e := if e.path.isEmpty then e.message else s!"{e.location}: {e.message}"
