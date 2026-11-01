@@ -9,3 +9,5 @@ import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved
 import WebGPUGen.Resolved.Resolve
+import WebGPUGen.Resolved.Rules
+import WebGPUGen.Resolved.WellFormed

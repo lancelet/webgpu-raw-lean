@@ -1,6 +1,7 @@
 import WebGPUGen.Decode
 import WebGPUGen.Parsed
 import WebGPUGen.Resolved
+import WebGPUGen.Resolved.Rules
 
 /-!
 # Resolution
@@ -126,16 +127,23 @@ def checkDefault (s : Parsed.Spec) (path : Array String) (type : Parsed.TypeRef)
 
 /-! ### Parameters
 
-The rules upstream's generator applies, which depend on where a parameter
-appears. Defaults exist for the C `INIT` macros, so only struct members have
-them. -/
+The rules themselves are in `WebGPUGen.Resolved.Rules`, shared with `WellFormed`;
+these report where a parsed spec breaks them. -/
 
-/-- Where a parameter appears. -/
-inductive Role where
-  | member            -- a struct member
-  | argument          -- a function argument
-  | callbackArgument  -- a callback argument
-  deriving DecidableEq
+/-- A parsed member type, as the default rules see it. -/
+def memberShape : Parsed.TypeRef → MemberShape
+  | .ref .struct _         => .struct
+  | .primitive (.scalar p) => .scalar p
+  | _                      => .other
+
+/-- A parsed default, as the default rules see it. -/
+def defaultKind : Parsed.Default → DefaultKind
+  | .bool _     => .bool
+  | .int _      => .int
+  | .float ..   => .float
+  | .constant _ => .constant
+  | .entry ..   => .entry
+  | .zero       => .zero
 
 /-- How a default is named in problems. -/
 def describeDefault : Parsed.Default → String
@@ -146,37 +154,14 @@ def describeDefault : Parsed.Default → String
   | .entry n _  => s!"entry {n.text.quote}"
   | .zero       => "zero"
 
-/-- The primitive types upstream gives integer defaults: not `int16`. -/
-def takesInteger : Primitive → Bool
-  | .uint16 | .uint32 | .uint64 | .usize | .int32 => true
-  | _                                             => false
-
-/-- The primitive types upstream gives float defaults. -/
-def takesFloat : Primitive → Bool
-  | .float32 | .nullableFloat32 | .float64 | .float64Supertype => true
-  | _                                                          => false
-
-/-- Does a default other than an entry suit a member of this type? Entry
-defaults are checked against the member's enum or bitflag by `checkDefault`. -/
-def defaultSuits : Parsed.TypeRef → Parsed.Default → Bool
-  | .ref .struct _,             .zero       => true
-  | .primitive (.scalar .bool), .bool _     => true
-  | .primitive (.scalar .bool), .constant _ => true
-  | .primitive (.scalar p),     .int _      => takesInteger p || takesFloat p
-  | .primitive (.scalar p),     .float ..   => takesFloat p
-  | .primitive (.scalar p),     .constant _ => takesInteger p || takesFloat p
-  | _,                          _           => false
-
-/-- `passed_with_ownership`: struct members may not set it; function arguments
-and returns may only set it to `true`. -/
-def checkOwnership (role : Role) (path : Array String) : Option Bool → List Problem
-  | none       => []
-  | some owned =>
-    let path := path.push "passed_with_ownership"
-    match role, owned with
-    | .member,   _     => problem path "struct members cannot set passed_with_ownership"
-    | .argument, false => problem path "a function argument cannot be passed without ownership"
-    | _,         _     => []
+/-- Report a `passed_with_ownership` that `ownershipOk` rejects. -/
+def checkOwnership (role : Role) (path : Array String) (owned : Option Bool) : List Problem :=
+  if ownershipOk role owned then [] else
+  let path := path.push "passed_with_ownership"
+  match role with
+  | .member           => problem path "struct members cannot set passed_with_ownership"
+  | .argument         => problem path "a function argument cannot be passed without ownership"
+  | .callbackArgument => []  -- never reached: `ownershipOk` allows any value here
 
 /-- A default may only be on a struct member that is not a pointer, and must
 suit the member's type. -/
@@ -188,7 +173,7 @@ def checkDefaultUse {Doc} (role : Role) (path : Array String) (p : Parsed.Parame
   else match d with
     | .entry .. => []  -- `checkDefault` checks entries
     | d =>
-      if defaultSuits p.type d then []
+      if defaultSuits (memberShape p.type) (defaultKind d) then []
       else
         problem path
           s!"default {describeDefault d} does not suit a member of type {p.type.render}"
@@ -203,11 +188,9 @@ def checkParameter {Doc} (s : Parsed.Spec) (role : Role) (path : Array String)
 
 def checkReturn (s : Parsed.Spec) (path : Array String) (r : Parsed.Return) : List Problem :=
   checkTypeRef s (path.push "type") r.type
-    ++ match r.passedWithOwnership with
-      | some false =>
-        problem (path.push "passed_with_ownership")
-          "a return value cannot be passed without ownership"
-      | _ => []
+    ++ if returnOwnershipOk r.passedWithOwnership then [] else
+      problem (path.push "passed_with_ownership")
+        "a return value cannot be passed without ownership"
 
 def checkFlag (b : Parsed.Bitflag) (path : Array String) (e : Parsed.BitflagEntry) :
     List Problem :=
@@ -264,7 +247,7 @@ def checkEnum (s : Parsed.Spec) (path : Array String) (e : Enum) : List Problem 
         let path := path.push "namespace"
         if s.enumPrefix.val != 0 then
           problem path "namespaced entries are only allowed in the core spec"
-        else if ns.text != "compatibility_mode" then
+        else if (namespaceBlock? ns).isNone then
           problem path s!"unknown namespace {ns.text.quote}"
         else if value.isNone then problem path "a namespaced entry needs an explicit value"
         else []
