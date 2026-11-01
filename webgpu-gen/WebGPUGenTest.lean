@@ -7,4 +7,5 @@ import WebGPUGenTest.Spec
 import WebGPUGenTest.SpecEnums
 import WebGPUGenTest.SpecStructs
 import WebGPUGenTest.SpecFunctions
+import WebGPUGenTest.SpecFile
 import WebGPUGenTest.Dump

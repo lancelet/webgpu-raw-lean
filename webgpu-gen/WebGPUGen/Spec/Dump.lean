@@ -25,37 +25,22 @@ structure DumpOptions where
 
 /-! ## Rendering values -/
 
-/-- The spelling of `x` in a spelling table. -/
-def spellingOf {α} [BEq α] (table : List (String × α)) (x : α) : String :=
-  ((table.find? (·.2 == x)).map (·.1)).getD "?"
-
-def PrimitiveType.render : PrimitiveType → String
-  | .scalar p => spellingOf Primitive.spellings p
-  | .array e => s!"array<{spellingOf ArrayElement.spellings e}>"
-
 def hex (n : Nat) : String := "0x" ++ String.ofList ((Nat.toDigits 16 n).map Char.toUpper)
 
 /-- A value in decimal; `hex` for bitflags, where bits matter. -/
 def Value64.render (v : Value64) (asHex : Bool := false) : String :=
   match v with
-  | .int n => if asHex then hex n else toString n
+  | .int n => if asHex then hex n.toNat else toString n
   | v => spellingOf Value64.spellings v
-
-/-- A type as the spec writes it, e.g. `array<struct.limits>`. -/
-def TypeRef.render : TypeRef → String
-  | .primitive p => p.render
-  | .ref kind name => s!"{spellingOf RefKind.spellings kind}.{name}"
-  | .refArray kind name => s!"array<{spellingOf RefKind.spellings kind}.{name}>"
-  | .callback name => s!"callback.{name}"
 
 /-- A default, labelled with its kind so that, say, the boolean `true` and an
 entry named `true` read differently. -/
 def Default.render : Default → String
   | .bool b => s!"default {b}"
   | .int n => s!"default {n}"
-  | .float text => s!"default {text}"
+  | .float text _ => s!"default {text}"
   | .constant name => s!"default constant.{name}"
-  | .entry name => s!"default entry {name}"
+  | .entry name _ => s!"default entry {name}"
   | .zero => "default zero-init"
 
 /-! ## Layout -/
@@ -158,7 +143,7 @@ def attributeCell (attributes : List String) : String :=
   "  ".intercalate (attributes.filter (!·.isEmpty))
 
 /-- The cells describing a parameter: name, type, then whatever else it states. -/
-def Parameter.cells (p : Parameter) : List String :=
+def Parameter.cells {Doc} (p : Parameter Doc) : List String :=
   [p.name.text, p.type.render, attributeCell [pointerTag p.pointer,
     flagTag p.optional "optional", ownershipTag p.passedWithOwnership,
     (p.default.map Default.render).getD ""]]
@@ -179,9 +164,10 @@ def dumpStructs (o : DumpOptions) (ss : Array Struct) : List String :=
 /-! ## Callbacks, functions and objects -/
 
 /-- Argument rows at `indent`, or `(no arguments)`. -/
-def argLines (o : DumpOptions) (indent : Nat) (args : Array Parameter) : List String :=
+def argLines (o : DumpOptions) (indent : Nat) (args : Array (Parameter Paragraph)) :
+    List String :=
   if args.isEmpty then ["".pushn ' ' indent ++ "(no arguments)"]
-  else entryLines o indent (args.toList.map fun a => (a.cells, a.doc))
+  else entryLines o indent (args.toList.map fun a => (a.cells, a.doc.text))
 
 def dumpCallback (o : DumpOptions) (c : Callback) : List String :=
   header o [c.name.text, spellingOf CallbackStyle.spellings c.style, nsTag c.ns] c.doc
@@ -204,10 +190,10 @@ def dumpFunctionList (o : DumpOptions) (indent : Nat) (fs : List Function) : Lis
       (f.callback.map (s!"callback {·}")).getD ""]
   (headers.zip fs).flatMap fun (header, f) =>
     let returnDoc := match f.returns with
-      | some r =>
-        let doc := if r.doc.startsWith "\n" then (r.doc.drop 1).toString else r.doc
-        if doc.isEmpty then [] else docLines o (indent + 2) s!"Returns: {doc}"
-      | none => []
+      | some { doc := some d, .. } =>
+        let doc := if d.text.startsWith "\n" then (d.text.drop 1).toString else d.text
+        docLines o (indent + 2) s!"Returns: {doc}"
+      | _ => []
     header :: docLines o (indent + 2) f.doc ++ returnDoc ++ argLines o (indent + 2) f.args
 
 def dumpFunctions (o : DumpOptions) (fs : Array Function) : List String :=

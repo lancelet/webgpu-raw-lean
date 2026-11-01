@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Decode
+import WebGPUGen.Spec.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -7,7 +7,7 @@ import WebGPUGenTest.Check
 -/
 
 namespace WebGPUGenTest.SpecEnums
-open WebGPUGen.Decode WebGPUGen.Spec
+open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
 
 /-! ## Enums -/
 
@@ -36,7 +36,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Enum.decode input expected
+  decodesTo Enum.codec.decode input expected
 
 -- An extension: `extended`, a namespace and an explicit value. Upstream's
 -- extension example writes `True`, which the core schema accepts.
@@ -65,7 +65,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Enum.decode input expected
+  decodesTo Enum.codec.decode input expected
 
 -- A namespace on the enum itself.
 #guard
@@ -83,7 +83,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     extended := false,
     entries  := #[none]
   }
-  decodesTo Enum.decode input expected
+  decodesTo Enum.codec.decode input expected
 
 -- `entries` may be absent.
 #guard
@@ -98,7 +98,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     extended := false,
     entries  := #[]
   }
-  decodesTo Enum.decode input expected
+  decodesTo Enum.codec.decode input expected
 
 -- Entry values are 16-bit.
 #guard
@@ -110,7 +110,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
         doc: x
         value: 65536
     "
-  decodeFails Enum.decode input "entries[0].value: integer 65536 does not fit in 16 bits"
+  decodeFails Enum.codec.decode input "entries[0].value: integer 65536 does not fit in 16 bits"
 
 /-! ## Bitflags -/
 
@@ -150,7 +150,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Bitflag.decode input expected
+  decodesTo Bitflag.codec.decode input expected
 
 -- An explicit value may be any `Value64`.
 #guard
@@ -177,7 +177,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Bitflag.decode input expected
+  decodesTo Bitflag.codec.decode input expected
 
 -- `value` and `value_combination` together still decode: the conflict is
 -- rejected at resolution, as upstream's generator does.
@@ -207,7 +207,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Bitflag.decode input expected
+  decodesTo Bitflag.codec.decode input expected
 
 -- Unlike enums, bitflags have no reserved slots.
 #guard
@@ -217,7 +217,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     entries:
       - null
     "
-  decodeFails Bitflag.decode input "entries[0]: expected a mapping, found null"
+  decodeFails Bitflag.codec.decode input "entries[0]: expected a mapping, found null"
 
 #guard
   let input := dedent "
@@ -229,6 +229,6 @@ open WebGPUGen.Decode WebGPUGen.Spec
         value_combination:
           - _red
     "
-  decodeFails Bitflag.decode input "entries[0].value_combination[0]: invalid name \"_red\""
+  decodeFails Bitflag.codec.decode input "entries[0].value_combination[0]: invalid name \"_red\""
 
 end WebGPUGenTest.SpecEnums

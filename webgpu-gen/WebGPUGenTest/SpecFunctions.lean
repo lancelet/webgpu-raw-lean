@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Decode
+import WebGPUGen.Spec.Codec
 import WebGPUGen.Spec.Dump
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
@@ -8,14 +8,14 @@ import WebGPUGenTest.Check
 -/
 
 namespace WebGPUGenTest.SpecFunctions
-open WebGPUGen.Decode WebGPUGen.Spec
+open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
 
 /-! ## Helpers
 
 Scaffolding for the tests below; these are not tests themselves. -/
 
 /-- An argument with only a name and a type. -/
-def arg (name : String) (type : TypeRef) : Parameter := {
+def arg (name : String) (type : TypeRef) : Parameter Paragraph := {
   name                := name,
   doc                 := "x",
   type                := type,
@@ -73,7 +73,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
       }
     ]
   }
-  decodesTo Callback.decode input expected
+  decodesTo Callback.codec.decode input expected
 
 -- Argument docs must be a single paragraph.
 #guard
@@ -89,7 +89,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
           Second.
         type: uint32
     "
-  decodeFails Callback.decode input "args[0].doc: expected a single-paragraph doc"
+  decodeFails Callback.codec.decode input "args[0].doc: expected a single-paragraph doc"
 
 /-! ## Functions -/
 
@@ -114,7 +114,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     ns       := none,
     doc      := "Create a WGPUInstance",
     returns  := some {
-      doc                 := "The instance.",
+      doc                 := some "The instance.",
       type                := .ref .object "instance",
       optional            := false,
       passedWithOwnership := some true,
@@ -129,7 +129,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
       }
     ]
   }
-  decodesTo Function.decode input expected
+  decodesTo Function.codec.decode input expected
 
 -- An asynchronous method names its callback; a return doc may be empty.
 #guard
@@ -146,7 +146,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     ns       := none,
     doc      := "x",
     returns  := some {
-      doc                 := "",
+      doc                 := none,
       type                := .ref .struct "future",
       optional            := false,
       passedWithOwnership := none,
@@ -155,7 +155,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     callback := some "request_device",
     args     := #[]
   }
-  decodesTo Function.decode input expected
+  decodesTo Function.codec.decode input expected
 
 #guard
   let input := dedent "
@@ -163,7 +163,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     doc: x
     callback: request_device
     "
-  decodeFails Function.decode input
+  decodeFails Function.codec.decode input
     "callback: expected callback.<name>, found \"request_device\""
 
 #guard
@@ -177,7 +177,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
         Second.
       type: bool
     "
-  decodeFails Function.decode input "returns.doc: expected a single-paragraph doc"
+  decodeFails Function.codec.decode input "returns.doc: expected a single-paragraph doc"
 
 -- A return's optional fields.
 #guard
@@ -195,7 +195,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     ns       := none,
     doc      := "x",
     returns  := some {
-      doc                 := "The procedure.",
+      doc                 := some "The procedure.",
       type                := .ref .functionType "proc",
       optional            := true,
       passedWithOwnership := none,
@@ -204,7 +204,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     callback := none,
     args     := #[]
   }
-  decodesTo Function.decode input expected
+  decodesTo Function.codec.decode input expected
 
 -- A return has no name or default.
 #guard
@@ -216,7 +216,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
       type: bool
       default: false
     "
-  decodeFails Function.decode input "returns: unknown field default"
+  decodeFails Function.codec.decode input "returns: unknown field default"
 
 -- A namespaced callback.
 #guard
@@ -233,7 +233,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     style := .immediate,
     args  := #[]
   }
-  decodesTo Callback.decode input expected
+  decodesTo Callback.codec.decode input expected
 
 /-! ## Objects -/
 
@@ -267,7 +267,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
       }
     ]
   }
-  decodesTo Object.decode input expected
+  decodesTo Object.codec.decode input expected
 
 -- Errors inside methods name the method and argument.
 #guard
@@ -282,7 +282,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
             doc: x
             type: struct.
     "
-  decodeFails Object.decode input "methods[0].args[0].type: invalid name \"\""
+  decodeFails Object.codec.decode input "methods[0].args[0].type: invalid name \"\""
 
 -- An extension adding methods to an existing object.
 #guard
@@ -299,7 +299,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
     extended := true,
     methods  := #[]
   }
-  decodesTo Object.decode input expected
+  decodesTo Object.codec.decode input expected
 
 /-! ## Dump -/
 
@@ -317,7 +317,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
         ns       := none,
         doc      := "x",
         returns  := some {
-          doc                 := "",
+          doc                 := none,
           type                := .ref .enum "status",
           optional            := false,
           passedWithOwnership := some false,
@@ -336,7 +336,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
         ns       := none,
         doc      := "x",
         returns  := some {
-          doc                 := "",
+          doc                 := none,
           type                := .ref .struct "future",
           optional            := false,
           passedWithOwnership := none,
@@ -386,7 +386,7 @@ def arg (name : String) (type : TypeRef) : Parameter := {
       ns       := none,
       doc      := "Look up a procedure.\n",
       returns  := some {
-        doc                 := "\nThe procedure, or null.\n",
+        doc                 := some "\nThe procedure, or null.\n",
         type                := .ref .functionType "proc",
         optional            := true,
         passedWithOwnership := none,

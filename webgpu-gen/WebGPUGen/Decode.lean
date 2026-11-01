@@ -74,6 +74,12 @@ def nat (node : Node) : Decode Nat := do
     if n < 0 then fail s!"expected a non-negative integer, found {n}" else pure n.toNat
   | v => fail s!"expected an integer, found {v.describe}"
 
+/-- Look `s` up in a table of spellings; `what` names the table in errors. -/
+def spelled {α} (what : String) (table : List (String × α)) (s : String) : Decode α :=
+  match table.lookup s with
+  | some a => pure a
+  | none => fail s!"unknown {what} {s.quote}"
+
 /-- `none` for a null scalar, otherwise `decode`. For entries such as enum
 slots that the spec reserves with a bare `null`. -/
 def nullable {α} (decode : Node → Decode α) (node : Node) : Decode (Option α) :=
@@ -83,20 +89,26 @@ def nullable {α} (decode : Node → Decode α) (node : Node) : Decode (Option �
 
 /-! ## Collections -/
 
+/-- Decode a list of items, numbering paths `[start]`, `[start+1]`, …. -/
+def items {α} (item : Node → Decode α) : Nat → List Node → Decode (List α)
+  | _, [] => pure []
+  | i, n :: ns => do
+    let a ← within s!"[{i}]" (item n)
+    let as ← items item (i + 1) ns
+    pure (a :: as)
+
 /-- A sequence, decoding each item with `item`. Paths gain `[i]`. -/
 def seq {α} (item : Node → Decode α) : Node → Decode (Array α)
-  | .seq items => items.mapIdxM fun i n => within s!"[{i}]" (item n)
+  | .seq ns => List.toArray <$> items item 0 ns.toList
   | node => fail s!"expected a sequence, found {describe node}"
 
 /-- Reads the fields of one mapping. The state holds the entries not yet read;
 each field read removes its entry. -/
-abbrev Fields := StateT (Array (String × Node)) Decode
+abbrev Fields := StateT (List (String × Node)) Decode
 
 /-- Remove and return the entry for `key`, if present. Keys are unique. -/
-private def take? (key : String) : Fields (Option Node) := do
-  let entries ← get
-  set (entries.filter (·.1 != key))
-  pure ((entries.find? (·.1 == key)).map (·.2))
+def take? (key : String) : Fields (Option Node) := fun entries =>
+  pure ((entries.find? (·.1 == key)).map (·.2), entries.filter (·.1 != key))
 
 /-- A required field. -/
 def field {α} (key : String) (decode : Node → Decode α) : Fields α := do
@@ -113,8 +125,8 @@ def field? {α} (key : String) (decode : Node → Decode α) : Fields (Option α
 /-- Decode a mapping with `fields`, failing on any key it did not read. -/
 def object {α} (fields : Fields α) : Node → Decode α
   | .map entries => do
-    let (result, unread) ← fields.run entries
-    if let some (key, _) := unread[0]? then
+    let (result, unread) ← fields.run entries.toList
+    if let (key, _) :: _ := unread then
       fail s!"unknown field {key}"
     pure result
   | node => fail s!"expected a mapping, found {describe node}"

@@ -19,7 +19,7 @@ inductive Value where
   /-- A float, kept exactly as written so no precision is lost. -/
   | float (text : String)
   | str (s : String)
-  deriving Repr, BEq, Inhabited
+  deriving Repr, DecidableEq, Inhabited
 
 /-- How a value is named in error messages. -/
 def Value.describe : Value → String
@@ -80,12 +80,17 @@ def isFloat (text : String) : Bool :=
       (e == 'e' || e == 'E') && !digits.isEmpty && digits.all Char.isDigit
   mantissaOk && exponentOk
 
+/-- The plain spellings of null, true and false in the core schema. -/
+def nullSpellings  : List String := ["", "~", "null", "Null", "NULL"]
+def trueSpellings  : List String := ["true", "True", "TRUE"]
+def falseSpellings : List String := ["false", "False", "FALSE"]
+
 /-- Interpret a scalar under the core schema. -/
 def Scalar.value (s : Scalar) : Value :=
   if !s.plain then .str s.text
-  else if s.text ∈ ["", "~", "null", "Null", "NULL"] then .null
-  else if s.text ∈ ["true", "True", "TRUE"] then .bool true
-  else if s.text ∈ ["false", "False", "FALSE"] then .bool false
+  else if s.text ∈ nullSpellings then .null
+  else if s.text ∈ trueSpellings then .bool true
+  else if s.text ∈ falseSpellings then .bool false
   else if let some n := parseInt? s.text then .int n
   else if isFloat s.text then .float s.text
   else .str s.text

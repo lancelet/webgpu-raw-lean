@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Decode
+import WebGPUGen.Spec.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -7,7 +7,7 @@ import WebGPUGenTest.Check
 -/
 
 namespace WebGPUGenTest.SpecStructs
-open WebGPUGen.Decode WebGPUGen.Spec
+open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
 
 /-! ## Members -/
 
@@ -18,7 +18,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     doc: A label.
     type: string_with_default_empty
     "
-  let expected : Parameter := {
+  let expected : Parameter String := {
     name                := "label",
     doc                 := "A label.",
     type                := .primitive (.scalar .stringWithDefaultEmpty),
@@ -27,7 +27,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     optional            := false,
     default             := none
   }
-  decodesTo Parameter.decode input expected
+  decodesTo (Parameter.codec Codec.string).decode input expected
 
 -- Every field, as a member or argument may give them.
 #guard
@@ -40,7 +40,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     optional: true
     default: zero
     "
-  let expected : Parameter := {
+  let expected : Parameter String := {
     name                := "entries",
     doc                 := "The entries.",
     type                := .refArray .struct "bind_group_entry",
@@ -49,7 +49,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     optional            := true,
     default             := some .zero
   }
-  decodesTo Parameter.decode input expected
+  decodesTo (Parameter.codec Codec.string).decode input expected
 
 -- A mutable pointer passed with ownership, as callback arguments may be.
 #guard
@@ -60,7 +60,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     pointer: mutable
     passed_with_ownership: true
     "
-  let expected : Parameter := {
+  let expected : Parameter String := {
     name                := "data",
     doc                 := "x",
     type                := .primitive (.scalar .cVoid),
@@ -69,7 +69,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     optional            := false,
     default             := none
   }
-  decodesTo Parameter.decode input expected
+  decodesTo (Parameter.codec Codec.string).decode input expected
 
 #guard
   let input := dedent "
@@ -78,7 +78,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     type: c_void
     pointer: const
     "
-  decodeFails Parameter.decode input "pointer: unknown pointer \"const\""
+  decodeFails (Parameter.codec Codec.string).decode input "pointer: unknown pointer \"const\""
 
 /-! ## Structs -/
 
@@ -115,7 +115,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
       }
     ]
   }
-  decodesTo Struct.decode input expected
+  decodesTo Struct.codec.decode input expected
 
 -- `free_members`, and a struct with no members listed.
 #guard
@@ -134,7 +134,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     freeMembers     := true,
     members         := #[]
   }
-  decodesTo Struct.decode input expected
+  decodesTo Struct.codec.decode input expected
 
 -- Every struct kind is accepted.
 #guard
@@ -158,7 +158,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     .extension,
     .standalone
   ]
-  match decodeText (seq Struct.decode) input with
+  match decodeText (Codec.seq Struct.codec).decode input with
   | .ok structs => structs.map (·.kind) == expected
   | .error _ => false
 
@@ -168,7 +168,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     doc: x
     type: chained
     "
-  decodeFails Struct.decode input "type: unknown struct type \"chained\""
+  decodeFails Struct.codec.decode input "type: unknown struct type \"chained\""
 
 -- `extends` holds struct names.
 #guard
@@ -179,7 +179,7 @@ open WebGPUGen.Decode WebGPUGen.Spec
     extends:
       - struct.limits
     "
-  decodeFails Struct.decode input "extends[0]: invalid name \"struct.limits\""
+  decodeFails Struct.codec.decode input "extends[0]: invalid name \"struct.limits\""
 
 -- Errors in members name the member.
 #guard
@@ -194,6 +194,6 @@ open WebGPUGen.Decode WebGPUGen.Spec
       - name: b
         doc: x
     "
-  decodeFails Struct.decode input "members[1]: missing field type"
+  decodeFails Struct.codec.decode input "members[1]: missing field type"
 
 end WebGPUGenTest.SpecStructs

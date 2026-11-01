@@ -1,4 +1,4 @@
-import WebGPUGen.Spec.Decode
+import WebGPUGen.Spec.Codec
 import WebGPUGenTest.Literal
 import WebGPUGenTest.Check
 
@@ -7,7 +7,7 @@ import WebGPUGenTest.Check
 -/
 
 namespace WebGPUGenTest.Spec
-open WebGPUGen.Decode WebGPUGen.Spec
+open WebGPUGen.Decode WebGPUGen.Spec WebGPUGen
 
 /-! ## Helpers
 
@@ -16,19 +16,19 @@ Scaffolding for the tests below; these are not tests themselves. -/
 /-- Does each string parse as the type paired with it? -/
 def typesParse (cases : List (String × TypeRef)) : Bool :=
   cases.all fun (text, expected) =>
-    match (TypeRef.ofString text).run with
+    match (TypeRef.parse text).run with
     | .ok actual => actual == expected
     | .error _ => false
 
 /-- Does parsing `text` as a type fail with exactly `message`? -/
 def typeFails (text : String) (message : String) : Bool :=
-  match (TypeRef.ofString text).run with
+  match (TypeRef.parse text).run with
   | .ok _ => false
   | .error e => toString e == message
 
 /-- Does each YAML scalar decode to the default paired with it? -/
 def defaultsDecode (cases : List (String × Default)) : Bool :=
-  cases.all fun (input, expected) => decodesTo Default.decode input expected
+  cases.all fun (input, expected) => decodesTo Default.codec.decode input expected
 
 /-! ## Names -/
 
@@ -112,19 +112,19 @@ def defaultsDecode (cases : List (String × Default)) : Bool :=
     .uint64Max,
     .nan
   ]
-  decodesTo (seq Value64.decode) input expected
+  decodesTo (Codec.seq Value64.codec).decode input expected
 
 #guard
   let input := dedent "
     18446744073709551616
     "
-  decodeFails Value64.decode input "integer 18446744073709551616 does not fit in 64 bits"
+  decodeFails Value64.codec.decode input "integer 18446744073709551616 does not fit in 64 bits"
 
 #guard
   let input := dedent "
     infinity
     "
-  decodeFails Value64.decode input "unknown constant value \"infinity\""
+  decodeFails Value64.codec.decode input "unknown constant value \"infinity\""
 
 /-! ## Defaults
 
@@ -135,24 +135,24 @@ Every form of `default` that `webgpu.yml` uses. -/
   ("0",                            .int 0),
   ("50000000",                     .int 50000000),
   ("\"0xFFFFFFFF\"",               .int 4294967295),
-  ("32.0",                         .float "32.0"),
+  ("32.0",                         .float "32.0" (by decide)),
   ("constant.limit_u32_undefined", .constant "limit_u32_undefined"),
   ("zero",                         .zero),
-  ("none",                         .entry "none"),
-  ("render_attachment",            .entry "render_attachment")
+  ("none",                         .entry "none" (by decide)),
+  ("render_attachment",            .entry "render_attachment" (by decide))
 ]
 
 #guard
   let input := dedent "
     null
     "
-  decodeFails Default.decode input "expected a default value, found null"
+  decodeFails Default.codec.decode input "expected a default value, found null"
 
 #guard
   let input := dedent "
     \"1.5\"
     "
-  decodeFails Default.decode input "invalid name \"1.5\""
+  decodeFails Default.codec.decode input "invalid name \"1.5\""
 
 /-! ## Constants and typedefs -/
 
@@ -169,7 +169,7 @@ Every form of `default` that `webgpu.yml` uses. -/
     value := .uint64Max,
     doc   := "Whole size.\n"
   }
-  decodesTo Constant.decode input expected
+  decodesTo Constant.codec.decode input expected
 
 #guard
   let input := dedent "
@@ -184,7 +184,7 @@ Every form of `default` that `webgpu.yml` uses. -/
     value := .int 3,
     doc   := "x"
   }
-  decodesTo Constant.decode input expected
+  decodesTo Constant.codec.decode input expected
 
 #guard
   let input := dedent "
@@ -198,7 +198,7 @@ Every form of `default` that `webgpu.yml` uses. -/
     doc  := "x",
     type := .array .uint32
   }
-  decodesTo Typedef.decode input expected
+  decodesTo Typedef.codec.decode input expected
 
 -- A typedef aliases a primitive type, never a reference.
 #guard
@@ -207,13 +207,13 @@ Every form of `default` that `webgpu.yml` uses. -/
     doc: x
     type: struct.limits
     "
-  decodeFails Typedef.decode input "type: unknown primitive type \"struct.limits\""
+  decodeFails Typedef.codec.decode input "type: unknown primitive type \"struct.limits\""
 
 #guard
   let input := dedent "
     name: whole_size
     value: 3
     "
-  decodeFails Constant.decode input "missing field doc"
+  decodeFails Constant.codec.decode input "missing field doc"
 
 end WebGPUGenTest.Spec

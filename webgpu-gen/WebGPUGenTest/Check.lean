@@ -30,8 +30,21 @@ def decodeFails {α} (decoder : Node → Decode α) (input : String) (message : 
   | .ok _ => false
   | .error actual => actual == message
 
-/-- Write spec names in expected values as plain strings. Tests only: the
-decoder validates names, this does not. -/
-instance : Coe String WebGPUGen.Spec.Name := ⟨fun text => { text }⟩
+open WebGPUGen.Spec in
+/-- Write spec names in expected values as plain strings. The name is checked
+when the test runs: an invalid one prints a panic message and becomes the
+default name, so the test then fails with a mismatch. -/
+instance : Coe String Name where
+  coe text := if h : isName text then ⟨text, h⟩ else panic! s!"invalid name {text.quote}"
+
+open WebGPUGen.Spec in
+instance : Inhabited Paragraph := ⟨⟨"x", by decide⟩⟩
+
+open WebGPUGen.Spec in
+/-- Write single-paragraph docs as plain strings, checked in the same way. -/
+instance : Coe String Paragraph where
+  coe text :=
+    if h : isSingleParagraph text then ⟨text, h⟩
+    else panic! s!"not a single paragraph: {text.quote}"
 
 end WebGPUGenTest

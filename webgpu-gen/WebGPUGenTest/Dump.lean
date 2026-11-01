@@ -18,7 +18,7 @@ Scaffolding for the tests below; these are not tests themselves. -/
 def withDocs : DumpOptions := { docs := true }
 
 /-- An enum entry with a generated doc. -/
-def entry (name : String) (value : Option Nat := none) (ns : Option Name := none) :
+def entry (name : String) (value : Option UInt16 := none) (ns : Option Name := none) :
     EnumEntry :=
   { name, ns, doc := s!"About {name}.\n", value }
 
@@ -182,9 +182,9 @@ def flag (name : String) (value : Option Value64 := none)
 #guard
   let input : List Default := [
     .bool true,
-    .entry "true",
+    .entry "true" (by decide),
     .int 50000000,
-    .float "32.0",
+    .float "32.0" (by decide),
     .constant "whole_size",
     .zero
   ]
@@ -226,7 +226,7 @@ def flag (name : String) (value : Option Value64 := none)
         passedWithOwnership := none,
         pointer             := none,
         optional            := false,
-        default             := some (.entry "true")
+        default             := some (.entry "true" (by decide))
       },
       {
         name                := "on",
