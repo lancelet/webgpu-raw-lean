@@ -41,6 +41,23 @@ def Value64.render (v : Value64) (asHex : Bool := false) : String :=
   | .int n => if asHex then hex n else toString n
   | v => spellingOf Value64.spellings v
 
+/-- A type as the spec writes it, e.g. `array<struct.limits>`. -/
+def TypeRef.render : TypeRef → String
+  | .primitive p => p.render
+  | .ref kind name => s!"{spellingOf RefKind.spellings kind}.{name}"
+  | .refArray kind name => s!"array<{spellingOf RefKind.spellings kind}.{name}>"
+  | .callback name => s!"callback.{name}"
+
+/-- A default, labelled with its kind so that, say, the boolean `true` and an
+entry named `true` read differently. -/
+def Default.render : Default → String
+  | .bool b => s!"default {b}"
+  | .int n => s!"default {n}"
+  | .float text => s!"default {text}"
+  | .constant name => s!"default constant.{name}"
+  | .entry name => s!"default entry {name}"
+  | .zero => "default zero-init"
+
 /-! ## Layout -/
 
 /-- Pad `s` with spaces to `width`. -/
@@ -89,10 +106,12 @@ def dumpTypedefs (o : DumpOptions) (ts : Array Typedef) : List String :=
   dumpSection "typedefs" <| entryLines o 2 <| ts.toList.map fun t =>
     ([t.name.text, t.type.render, nsTag t.ns], t.doc)
 
-/-- The line naming an enum or bitflag, with its doc lines. -/
-def typeHeader (o : DumpOptions) (name : Name) (ns : Option Name) (extended : Bool)
-    (doc : String) : List String :=
-  entryLines o 2 [([name.text, nsTag ns, if extended then "extended" else ""], doc)]
+/-- The line naming an enum, bitflag or struct, with its doc lines. -/
+def header (o : DumpOptions) (cells : List String) (doc : String) : List String :=
+  entryLines o 2 [(cells, doc)]
+
+/-- `text` if `flag` is set, otherwise an empty cell. -/
+def flagTag (flag : Bool) (text : String) : String := if flag then text else ""
 
 def dumpEnum (o : DumpOptions) (e : Enum) : List String :=
   let rows := e.entries.toList.zipIdx.map fun (entry, i) =>
@@ -101,7 +120,7 @@ def dumpEnum (o : DumpOptions) (e : Enum) : List String :=
     | some x =>
       let value := (x.value.map (s!"value {·}")).getD ""
       ([s!"[{i}]", x.name.text, value, nsTag x.ns], x.doc)
-  typeHeader o e.name e.ns e.extended e.doc ++ 
+  header o [e.name.text, nsTag e.ns, flagTag e.extended "extended"] e.doc ++
     (if rows.isEmpty then ["    (no entries)"] else entryLines o 4 rows)
 
 def dumpEnums (o : DumpOptions) (es : Array Enum) : List String :=
@@ -115,10 +134,38 @@ def dumpBitflag (o : DumpOptions) (b : Bitflag) : List String :=
     -- Normally one or the other; both are shown if both are given.
     let definition := " ".intercalate ([value, combination].filter (!·.isEmpty))
     ([x.name.text, definition, nsTag x.ns], x.doc)
-  typeHeader o b.name b.ns b.extended b.doc ++ 
+  header o [b.name.text, nsTag b.ns, flagTag b.extended "extended"] b.doc ++
     (if rows.isEmpty then ["    (no entries)"] else entryLines o 4 rows)
 
 def dumpBitflags (o : DumpOptions) (bs : Array Bitflag) : List String :=
   dumpSection "bitflags" (bs.toList.flatMap (dumpBitflag o))
+
+/-- The cells describing a parameter: name, type, then whatever else it states,
+in one cell so that rows mixing different attributes stay compact. -/
+def Parameter.cells (p : Parameter) : List String :=
+  let pointer := match p.pointer with
+    | some .immutable => "immutable pointer"
+    | some .mutable => "mutable pointer"
+    | none => ""
+  let ownership := match p.passedWithOwnership with
+    | some true => "with ownership"
+    | some false => "without ownership"
+    | none => ""
+  let attributes := [pointer, flagTag p.optional "optional", ownership,
+    (p.default.map Default.render).getD ""]
+  [p.name.text, p.type.render, "  ".intercalate (attributes.filter (!·.isEmpty))]
+
+def dumpStruct (o : DumpOptions) (s : Struct) : List String :=
+  let extended :=
+    if s.extendedStructs.isEmpty then ""
+    else "extends " ++ ", ".intercalate (s.extendedStructs.toList.map (·.text))
+  let cells := [s.name.text, spellingOf StructKind.spellings s.kind, nsTag s.ns, extended,
+    flagTag s.freeMembers "free_members"]
+  let rows := s.members.toList.map fun m => (m.cells, m.doc)
+  header o cells s.doc ++
+    (if rows.isEmpty then ["    (no members)"] else entryLines o 4 rows)
+
+def dumpStructs (o : DumpOptions) (ss : Array Struct) : List String :=
+  dumpSection "structs" (ss.toList.flatMap (dumpStruct o))
 
 end WebGPUGen.Spec

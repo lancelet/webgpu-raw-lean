@@ -222,4 +222,63 @@ structure Bitflag where
   entries  : Array BitflagEntry   -- absent means empty
   deriving Repr, BEq, Inhabited
 
+/-! ## Structs -/
+
+/-- Whether a pointer may be written through. -/
+inductive Pointer where
+  | immutable
+  | mutable
+  deriving Repr, BEq, Inhabited
+
+def Pointer.spellings : List (String × Pointer) := [
+  ("immutable", .immutable),
+  ("mutable",   .mutable)
+]
+
+/-- How a struct takes part in chaining (the spec's struct `type`). -/
+inductive StructKind where
+  | extensible             -- starts with a chain pointer; extensions attach to it
+  | extensibleCallbackArg  -- the same, for structs passed to callbacks
+  | extension              -- attaches to the chain of the structs it `extends`
+  | standalone             -- takes no part in chaining
+  deriving Repr, BEq, Inhabited
+
+def StructKind.spellings : List (String × StructKind) := [
+  ("extensible",              .extensible),
+  ("extensible_callback_arg", .extensibleCallbackArg),
+  ("extension",               .extension),
+  ("standalone",              .standalone)
+]
+
+/-- A struct member, function argument or return value (`ParameterType` in the
+schema).
+
+Left to resolution, as upstream's generator does: struct members may not set
+`passed_with_ownership`, and a pointer may not have a default.
+
+Function and callback arguments (`FunctionParameterType`) also require a
+single-paragraph doc; their decoder will check that. -/
+structure Parameter where
+  name                : Name
+  doc                 : String
+  type                : TypeRef
+  passedWithOwnership : Option Bool     -- absent is not the same as false
+  pointer             : Option Pointer
+  optional            : Bool            -- absent means false
+  default             : Option Default
+  deriving Repr, BEq, Inhabited
+
+/-- A struct. `extendedStructs` is the spec's `extends`: the structs an
+extension attaches to. The schema allows any string there; every use is a
+struct name, so the decoder requires one. -/
+structure Struct where
+  name            : Name
+  ns              : Option Name       -- the spec's `namespace`
+  doc             : String
+  kind            : StructKind        -- the spec's `type`
+  extendedStructs : Array Name        -- the spec's `extends`; absent means empty
+  freeMembers     : Bool              -- `free_members`; absent means false
+  members         : Array Parameter   -- absent means empty
+  deriving Repr, BEq, Inhabited
+
 end WebGPUGen.Spec

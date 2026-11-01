@@ -175,4 +175,92 @@ def flag (name : String) (value : Option Value64 := none)
   ]
   dumpBitflag {} input == expected
 
+/-! ## Defaults -/
+
+-- Each kind of default is labelled, so an entry named `true` differs from the
+-- boolean `true`.
+#guard
+  let input : List Default := [
+    .bool true,
+    .entry "true",
+    .int 50000000,
+    .float "32.0",
+    .constant "whole_size",
+    .zero
+  ]
+  let expected := [
+    "default true",
+    "default entry true",
+    "default 50000000",
+    "default 32.0",
+    "default constant.whole_size",
+    "default zero-init"
+  ]
+  input.map Default.render == expected
+
+/-! ## Structs -/
+
+-- Members show their type, then everything else they state in one column.
+#guard
+  let input : Struct := {
+    name            := "texture_binding",
+    ns              := none,
+    doc             := "x",
+    kind            := .extension,
+    extendedStructs := #["bind_group_entry", "bind_group_layout_entry"],
+    freeMembers     := true,
+    members         := #[
+      {
+        name                := "views",
+        doc                 := "x",
+        type                := .refArray .object "texture_view",
+        passedWithOwnership := some true,
+        pointer             := some .immutable,
+        optional            := true,
+        default             := none
+      },
+      {
+        name                := "flag",
+        doc                 := "x",
+        type                := .ref .enum "optional_bool",
+        passedWithOwnership := none,
+        pointer             := none,
+        optional            := false,
+        default             := some (.entry "true")
+      },
+      {
+        name                := "on",
+        doc                 := "x",
+        type                := .primitive (.scalar .bool),
+        passedWithOwnership := none,
+        pointer             := none,
+        optional            := false,
+        default             := some (.bool true)
+      }
+    ]
+  }
+  let expected := [
+    "  texture_binding  extension  extends bind_group_entry, bind_group_layout_entry  free_members",
+    "    views  array<object.texture_view>  immutable pointer  optional  with ownership",
+    "    flag   enum.optional_bool          default entry true",
+    "    on     bool                        default true"
+  ]
+  dumpStruct {} input == expected
+
+#guard
+  let input : Struct := {
+    name            := "empty",
+    ns              := none,
+    doc             := "x",
+    kind            := .standalone,
+    extendedStructs := #[],
+    freeMembers     := false,
+    members         := #[]
+  }
+  let expected := [
+    "  empty  standalone",
+    "    (no members)"
+  ]
+  dumpStruct {} input == expected
+
 end WebGPUGenTest.Dump

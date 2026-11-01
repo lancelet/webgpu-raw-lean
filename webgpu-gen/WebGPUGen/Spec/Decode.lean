@@ -174,4 +174,50 @@ def Bitflag.decode : Node → Decode Bitflag :=
       entries  := entries.getD #[]
     }
 
+/-! ## Structs -/
+
+def Pointer.decode (node : Node) : Decode Pointer :=
+  string node >>= spelled "pointer" Pointer.spellings
+
+def StructKind.decode (node : Node) : Decode StructKind :=
+  string node >>= spelled "struct type" StructKind.spellings
+
+def Parameter.decode : Node → Decode Parameter :=
+  object do
+    let name                ← field  "name"                  Name.decode
+    let doc                 ← field  "doc"                   string
+    let type                ← field  "type"                  TypeRef.decode
+    let passedWithOwnership ← field? "passed_with_ownership" bool
+    let pointer             ← field? "pointer"               Pointer.decode
+    let optional            ← field? "optional"              bool
+    let default             ← field? "default"               Default.decode
+    return {
+      name,
+      doc,
+      type,
+      passedWithOwnership,
+      pointer,
+      optional := optional.getD false,
+      default
+    }
+
+def Struct.decode : Node → Decode Struct :=
+  object do
+    let name            ← field  "name"         Name.decode
+    let ns              ← field? "namespace"    Name.decode
+    let doc             ← field  "doc"          string
+    let kind            ← field  "type"         StructKind.decode
+    let extendedStructs ← field? "extends"      (seq Name.decode)
+    let freeMembers     ← field? "free_members" bool
+    let members         ← field? "members"      (seq Parameter.decode)
+    return {
+      name,
+      ns,
+      doc,
+      kind,
+      extendedStructs := extendedStructs.getD #[],
+      freeMembers     := freeMembers.getD false,
+      members         := members.getD #[]
+    }
+
 end WebGPUGen.Spec

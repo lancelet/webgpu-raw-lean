@@ -50,11 +50,13 @@ def main (args : List String) : IO Unit := do
   let typedefs  ← decodeSection entries "typedefs"  Typedef.decode
   let enums     ← decodeSection entries "enums"     Enum.decode
   let bitflags  ← decodeSection entries "bitflags"  Bitflag.decode
+  let structs   ← decodeSection entries "structs"   Struct.decode
 
   let dump :=
     dumpConstants options constants
       ++ dumpTypedefs options typedefs
       ++ dumpEnums options enums
       ++ dumpBitflags options bitflags
+      ++ dumpStructs options structs
   for line in dump do
     IO.println line
