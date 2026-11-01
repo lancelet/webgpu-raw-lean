@@ -1,5 +1,6 @@
 import WebGPUGen.Decode
 import WebGPUGenTest.Literal
+import WebGPUGenTest.Check
 
 /-!
 # Tests for the decoding toolkit
@@ -17,39 +18,21 @@ Scaffolding for the tests below; these are not tests themselves. -/
 
 /-- A record shaped like a spec entry: required, optional and list fields. -/
 structure Entry where
-  name : String
+  name  : String
   value : Option Nat
   flags : Array Bool
   deriving BEq
 
 def entry : Node → Decode Entry :=
   object do
-    let name ← field "name" string
+    let name  ← field  "name"  string
     let value ← field? "value" nat
-    let flags ← field "flags" (seq bool)
+    let flags ← field  "flags" (seq bool)
     return { name, value, flags }
 
 /-- A list of entries under `entries`, to exercise nested paths. -/
 def entries : Node → Decode (Array Entry) :=
   object (field "entries" (seq entry))
-
-/-- Parse `input` and decode it with `decoder`. Errors become their message. -/
-def run {α} (decoder : Node → Decode α) (input : String) : Except String α :=
-  match parse input with
-  | .error e => .error s!"parse error: {e}"
-  | .ok node => ((decoder node).run).mapError toString
-
-/-- Does `input` decode to exactly `expected`? -/
-def decodesTo {α} [BEq α] (decoder : Node → Decode α) (input : String) (expected : α) : Bool :=
-  match run decoder input with
-  | .ok actual => actual == expected
-  | .error _ => false
-
-/-- Does decoding `input` fail with exactly `message` (path included)? -/
-def failsWith {α} (decoder : Node → Decode α) (input : String) (message : String) : Bool :=
-  match run decoder input with
-  | .ok _ => false
-  | .error actual => actual == message
 
 /-! ## Successful decoding -/
 
@@ -86,7 +69,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
   let input := dedent "
     name: a
     "
-  failsWith entry input "missing field flags"
+  decodeFails entry input "missing field flags"
 
 -- Unknown keys are rejected, mirroring `additionalProperties: false`.
 #guard
@@ -95,7 +78,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     flags: []
     extra: 1
     "
-  failsWith entry input "unknown field extra"
+  decodeFails entry input "unknown field extra"
 
 -- A quoted value is a string even when its text looks like a number.
 #guard
@@ -104,7 +87,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     value: \"3\"
     flags: []
     "
-  failsWith entry input "value: expected an integer, found string \"3\""
+  decodeFails entry input "value: expected an integer, found string \"3\""
 
 -- A plain keyword is not a string.
 #guard
@@ -112,7 +95,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     name: null
     flags: []
     "
-  failsWith entry input "name: expected a string, found null"
+  decodeFails entry input "name: expected a string, found null"
 
 #guard
   let input := dedent "
@@ -120,7 +103,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     value: -1
     flags: []
     "
-  failsWith entry input "value: expected a non-negative integer, found -1"
+  decodeFails entry input "value: expected a non-negative integer, found -1"
 
 -- Errors deep in the tree name the full path, with indices.
 #guard
@@ -131,14 +114,14 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
       - name: b
         flags: [true, 0]
     "
-  failsWith entries input "entries[1].flags[1]: expected a boolean, found integer 0"
+  decodeFails entries input "entries[1].flags[1]: expected a boolean, found integer 0"
 
 #guard
   let input := dedent "
     entries:
       name: a
     "
-  failsWith entries input "entries: expected a sequence, found a mapping"
+  decodeFails entries input "entries: expected a sequence, found a mapping"
 
 -- A scalar where a mapping is expected.
 #guard
@@ -146,7 +129,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     entries:
       - just a string
     "
-  failsWith entries input "entries[0]: expected a mapping, found string \"just a string\""
+  decodeFails entries input "entries[0]: expected a mapping, found string \"just a string\""
 
 -- A collection where a scalar is expected.
 #guard
@@ -154,7 +137,7 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     name: [a]
     flags: []
     "
-  failsWith entry input "name: expected a scalar, found a sequence"
+  decodeFails entry input "name: expected a scalar, found a sequence"
 
 #guard
   let input := dedent "
@@ -162,14 +145,14 @@ def failsWith {α} (decoder : Node → Decode α) (input : String) (message : St
     value: 1.5
     flags: []
     "
-  failsWith entry input "value: expected an integer, found float 1.5"
+  decodeFails entry input "value: expected an integer, found float 1.5"
 
 -- A decoder that reads no fields still rejects every key.
 #guard
   let input := dedent "
     a: 1
     "
-  failsWith (object (pure ())) input "unknown field a"
+  decodeFails (object (pure ())) input "unknown field a"
 
 /-! ## Nullable entries -/
 
