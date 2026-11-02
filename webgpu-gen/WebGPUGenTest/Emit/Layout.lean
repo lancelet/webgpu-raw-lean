@@ -121,6 +121,8 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     source       := "vendor/webgpu-headers/webgpu.yml"
     sourceRepo   := "https://github.com/webgpu-native/webgpu-headers"
     sourceCommit := "673658bc2bd70ec39fc55ebe6bb0173cf6d0a603"
+    sourceDate   := "2026-05-07"
+    pinnedBy     := "wgpu-native v29.0.1.1"
   }
   let expected := dedent "
     /-
@@ -133,6 +135,8 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
       Source:           vendor/webgpu-headers/webgpu.yml
       Source repo:      https://github.com/webgpu-native/webgpu-headers
       Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
+      Source date:      2026-05-07
+      Source pinned by: wgpu-native v29.0.1.1
     ================================================================================
     -/
     "

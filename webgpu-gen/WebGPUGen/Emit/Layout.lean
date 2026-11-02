@@ -152,6 +152,10 @@ structure Provenance where
   sourceRepo   : String
   /-- The commit of that repository the spec file was fetched at. -/
   sourceCommit : String
+  /-- That commit's date. -/
+  sourceDate   : String
+  /-- The implementation release that pins that commit. -/
+  pinnedBy     : String
   deriving Repr, DecidableEq
 
 /--
@@ -166,7 +170,9 @@ def banner (p : Provenance) : List String :=
     ["  Generated:",        p.time],
     ["  Source:",           p.source],
     ["  Source repo:",      p.sourceRepo],
-    ["  Source commit:",    p.sourceCommit]
+    ["  Source commit:",    p.sourceCommit],
+    ["  Source date:",      p.sourceDate],
+    ["  Source pinned by:", p.pinnedBy]
   ]
   ["/-", rule, "  GENERATED FILE: DO NOT EDIT BY HAND", ""] ++ fields ++ [rule, "-/"]
 

@@ -50,6 +50,8 @@ def provenance (root : System.FilePath) : IO Emit.Provenance := do
     source       := "vendor/webgpu-headers/webgpu.yml"
     sourceRepo   := source.repo
     sourceCommit := source.commit
+    sourceDate   := source.date
+    pinnedBy     := source.pinnedBy
   }
 
 /-- Decode, resolve and lower the vendored spec, or report every problem. -/

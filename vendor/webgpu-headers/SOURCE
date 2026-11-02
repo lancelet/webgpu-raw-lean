@@ -1,2 +1,4 @@
 repo: https://github.com/webgpu-native/webgpu-headers
 commit: 673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
+date: 2026-05-07
+pinned-by: wgpu-native v29.0.1.1
