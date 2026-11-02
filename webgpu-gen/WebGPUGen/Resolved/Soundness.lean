@@ -23,14 +23,17 @@ open WebGPUGen.Common
 `build` maps each array, so statements about the built arrays come back to
 statements about the parsed ones. -/
 
-/-- Every item of a mapped array has a property exactly when every item of the
-array does once mapped. -/
+/--
+Every item of a mapped array has a property exactly when every item of the array
+does once mapped.
+-/
 theorem forall_mem_map {α β} {xs : Array α} {g : α → β} {P : β → Prop} :
     (∀ y ∈ (xs.map g).toList, P y) ↔ ∀ x ∈ xs.toList, P (g x) := by
   simp
 
-/-- Building keeps names, so built names are distinct when the parsed ones
-are. -/
+/--
+Building keeps names, so built names are distinct when the parsed ones are.
+-/
 theorem nodup_map_map {α β} {xs : Array α} {g : α → β} {name : β → Name}
     {name' : α → Name} (h : ∀ x, name (g x) = name' x) :
     ((xs.map g).toList.map name).Nodup ↔ (xs.toList.map name').Nodup := by
@@ -64,8 +67,9 @@ theorem callbackId_inRange {s : Parsed.Spec} {n : Name}
 
 /-! ## Types and defaults -/
 
-/-- A type whose names all name entries builds a type whose IDs are in
-range. -/
+/--
+A type whose names all name entries builds a type whose IDs are in range.
+-/
 theorem buildTypeRef_inRange {s : Parsed.Spec} {t : Parsed.TypeRef}
     (h : TypeRefOk s t) : (buildTypeRef s t).InRange (build s) := by
   cases t with
@@ -85,8 +89,10 @@ theorem defaultKind'_buildDefault {s : Parsed.Spec} {t : Parsed.TypeRef} {d : Pa
     defaultKind' (buildDefault s t d) = defaultKind d := by
   cases d <;> rfl
 
-/-- An entry default's member type is the enum or bitflag its built reference
-points into. -/
+/--
+An entry default's member type is the enum or bitflag its built reference points
+into.
+-/
 theorem buildTypeRef_eq_owner {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
     {v : Parsed.defaultText n.text = .entry}
     (ht : TypeRefOk s t) (hd : DefaultOk s t (.entry n v)) :
@@ -102,8 +108,10 @@ theorem buildTypeRef_eq_owner {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
     simp [buildEntryRef, buildTypeRef, buildNamed, EntryRef.owner, hi, bitflagId, indexOf]
   | _ => exact hd.elim
 
-/-- An entry default that names an existing entry builds a reference to an
-entry with that name. -/
+/--
+An entry default that names an existing entry builds a reference to an entry
+with that name.
+-/
 theorem buildEntryRef_name? {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
     {v : Parsed.defaultText n.text = .entry}
     (ht : TypeRefOk s t) (hd : DefaultOk s t (.entry n v)) :
@@ -127,8 +135,10 @@ theorem buildEntryRef_name? {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
     exact ⟨_, Array.getElem?_eq_getElem lt, hj⟩
   | _ => exact hd.elim
 
-/-- A default that names what exists, and suits its member's type, builds a
-well-formed default. -/
+/--
+A default that names what exists, and suits its member's type, builds a
+well-formed default.
+-/
 theorem buildDefault_wellFormed {s : Parsed.Spec} {t : Parsed.TypeRef} {d : Parsed.Default}
     (ht : TypeRefOk s t) (hd : DefaultOk s t d)
     (hs : defaultKind d ≠ .entry → defaultSuits (memberShape t) (defaultKind d) = true) :
@@ -172,8 +182,10 @@ theorem buildReturn_wellFormed {s : Parsed.Spec} {path : Array String} {r : Pars
 
 /-! ## Entries -/
 
-/-- Building leaves enums as they are, and `checkEnum` checks exactly what
-`Enum.WellFormed` requires. -/
+/--
+Building leaves enums as they are, and `checkEnum` checks exactly what
+`Enum.WellFormed` requires.
+-/
 theorem enum_wellFormed {s : Parsed.Spec} {path : Array String} {e : Enum}
     (h : checkEnum s path e = []) : Enum.WellFormed (build s) e := by
   obtain ⟨distinct, namespaced⟩ := checkEnum_eq_nil.mp h

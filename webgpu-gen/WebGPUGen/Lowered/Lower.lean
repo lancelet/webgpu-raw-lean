@@ -20,8 +20,10 @@ def bothNames (c lean : Name → String) (n : Name) : Names :=
 
 /-! ## Enums and bitflags -/
 
-/-- An enum, with the value of each entry. The entry at position `i` keeps the
-value position `i` gives it, though reserved slots are left out. -/
+/--
+An enum, with the value of each entry. The entry at position `i` keeps the value
+position `i` gives it, though reserved slots are left out.
+-/
 def lowerEnum (r : Resolved.Spec) (e : Common.Enum) : Lowered.Enum where
   names    := bothNames typeName leanTypeName e.name
   doc      := e.doc

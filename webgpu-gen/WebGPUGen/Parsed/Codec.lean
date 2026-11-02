@@ -98,8 +98,10 @@ def arrayInner? (cs : List Char) : Option (List Char) :=
   | some rest => stripSuffix? '>' rest
   | none => none
 
-/-- A reference `kind.name`: the kind, and the characters of the name. Exactly
-one dot: `struct.a.b` is not a reference. -/
+/--
+A reference `kind.name`: the kind, and the characters of the name. Exactly one
+dot: `struct.a.b` is not a reference.
+-/
 def splitRef? (cs : List Char) : Option (RefKind × List Char) :=
   match splitAt? '.' cs with
   | some (kind, rest) =>
@@ -121,8 +123,10 @@ def PrimitiveType.parse (s : String) : Decode PrimitiveType :=
   | some e => .array <$> spelled "array element type" ArrayElement.spellings (String.ofList e)
   | none => .scalar <$> spelled "primitive type" Primitive.spellings s
 
-/-- Parse a `type:` string. A dot outside `array<…>` means a reference was
-intended, so a string with one that is not a known reference says so. -/
+/--
+Parse a `type:` string. A dot outside `array<…>` means a reference was
+intended, so a string with one that is not a known reference says so.
+-/
 def TypeRef.parse (s : String) : Decode TypeRef :=
   match arrayInner? s.toList with
   | some inner =>
@@ -140,8 +144,10 @@ def TypeRef.parse (s : String) : Decode TypeRef :=
         if '.' ∈ s.toList then fail s!"invalid type reference {s.quote}"
         else (.primitive ∘ .scalar) <$> spelled "primitive type" Primitive.spellings s
 
-/-- Facts about each reference kind's spelling, checked by `decide`: it does not
-look like `array<` or `callback.`, has no dot, and the table maps it back. -/
+/--
+Facts about each reference kind's spelling, checked by `decide`: it does not
+look like `array<` or `callback.`, has no dot, and the table maps it back.
+-/
 theorem RefKind.spelling_facts (k : RefKind) :
     diverges "array<".toList (spellingOf RefKind.spellings k).toList = true ∧
     diverges "callback.".toList (spellingOf RefKind.spellings k).toList = true ∧
@@ -373,8 +379,10 @@ def Bitflag.codec : Codec Bitflag :=
     (fun b => (b.name, b.ns, b.doc, b.extended, b.entries))
     (fun (name, ns, doc, extended, entries) => { name, ns, doc, extended, entries })
 
-/-- A parameter, with `doc` for its doc: `string` for struct members,
-`Paragraph.codec` for function and callback arguments. -/
+/--
+A parameter, with `doc` for its doc: `string` for struct members,
+`Paragraph.codec` for function and callback arguments.
+-/
 def Parameter.codec {Doc} (doc : Codec Doc) : Codec (Parameter Doc) :=
   record
     (field  "name"                  Name.codec ⊗
@@ -433,8 +441,10 @@ def Function.codec : Codec Function :=
     (fun f => (f.name, f.ns, f.doc, f.returns, f.callback, f.args))
     (fun (name, ns, doc, returns, callback, args) => { name, ns, doc, returns, callback, args })
 
-/-- The schema lists no required fields for objects; like upstream's generator,
-this requires `name` and `doc`, as for every other entry. -/
+/--
+The schema lists no required fields for objects; like upstream's generator, this
+requires `name` and `doc`, as for every other entry.
+-/
 def Object.codec : Codec Object :=
   record
     (field  "name"      Name.codec ⊗

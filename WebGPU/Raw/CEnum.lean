@@ -12,8 +12,10 @@ public section
 
 namespace WebGPU.Raw
 
-/-- An enum with C codes: each value has a code, and a code decodes to the value
-it came from. -/
+/--
+An enum with C codes: each value has a code, and a code decodes to the value it
+came from.
+-/
 class CEnum (α : Type) where
   /-- The value's code in `webgpu.h`. -/
   toC     : α → UInt32

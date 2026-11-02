@@ -38,14 +38,16 @@ theorem checkTypeRef_eq_nil {s : Parsed.Spec} {path : Array String} {t : Parsed.
     checkTypeRef s path t = [] ↔ TypeRefOk s t := by
   cases t <;> simp [checkTypeRef, TypeRefOk, checkRef_eq_nil, checkCallbackName_eq_nil]
 
-/-- What a default on a member of type `type` requires of the spec. A constant
-must exist. An entry needs an enum or bitflag member and, if that enum or
-bitflag exists, must be one of its entries; if it does not exist, the member's
-type is at fault instead.
+/--
+What a default on a member of type `type` requires of the spec. A constant must
+exist. An entry needs an enum or bitflag member and, if that enum or bitflag
+exists, must be one of its entries; if it does not exist, the member's type is
+at fault instead.
 
 The entry is looked for in the *first* enum or bitflag with the member type's
 name. Going back from a resolved spec, where the member type is an ID, needs the
-names to be distinct to know it is the first. -/
+names to be distinct to know it is the first.
+-/
 def DefaultOk (s : Parsed.Spec) (type : Parsed.TypeRef) : Parsed.Default → Prop
   | .constant n => ∃ c ∈ s.constants, c.name = n
   | .entry n _  =>
@@ -96,9 +98,11 @@ theorem checkOwnership_eq_nil {role : Role} {path : Array String} {owned : Optio
   unfold checkOwnership
   cases role <;> rcases owned with _ | _ | _ <;> simp [ownershipOk, problem]
 
-/-- A default's use passes exactly when it is on a struct member that is not a
+/--
+A default's use passes exactly when it is on a struct member that is not a
 pointer, and, unless it is an entry (which `checkDefault` checks), suits the
-member's type. -/
+member's type.
+-/
 theorem checkDefaultUse_eq_nil {Doc} {role : Role} {path : Array String}
     {p : Parsed.Parameter Doc} {d : Parsed.Default} :
     checkDefaultUse role path p d = [] ↔
@@ -107,8 +111,10 @@ theorem checkDefaultUse_eq_nil {Doc} {role : Role} {path : Array String}
   unfold checkDefaultUse
   cases role <;> cases hp : p.pointer <;> cases d <;> simp_all [problem, defaultKind]
 
-/-- A parameter passes exactly when its type passes, its ownership is allowed, and
-a default, if it has one, is allowed where it is and names what exists. -/
+/--
+A parameter passes exactly when its type passes, its ownership is allowed, and a
+default, if it has one, is allowed where it is and names what exists.
+-/
 theorem checkParameter_eq_nil {Doc} {s : Parsed.Spec} {role : Role} {path : Array String}
     {p : Parsed.Parameter Doc} :
     checkParameter s role path p = [] ↔
@@ -122,8 +128,9 @@ theorem checkParameter_eq_nil {Doc} {s : Parsed.Spec} {role : Role} {path : Arra
   cases p.default <;>
     simp [List.append_eq_nil_iff, checkDefaultUse_eq_nil, checkDefault_eq_nil, and_assoc]
 
-/-- A return value passes exactly when its type passes and its ownership is
-allowed. -/
+/--
+A return value passes exactly when its type passes and its ownership is allowed.
+-/
 theorem checkReturn_eq_nil {s : Parsed.Spec} {path : Array String} {r : Parsed.Return} :
     checkReturn s path r = [] ↔
       TypeRefOk s r.type ∧ returnOwnershipOk r.passedWithOwnership = true := by
@@ -133,8 +140,10 @@ theorem checkReturn_eq_nil {s : Parsed.Spec} {path : Array String} {r : Parsed.R
 
 /-! ## Bitflags and enums -/
 
-/-- A flag passes exactly when it does not give both a value and a combination,
-a value is an integer, and a combination names flags of the same type. -/
+/--
+A flag passes exactly when it does not give both a value and a combination, a
+value is an integer, and a combination names flags of the same type.
+-/
 theorem checkFlag_eq_nil {b : Parsed.Bitflag} {path : Array String} {e : Parsed.BitflagEntry} :
     checkFlag b path e = [] ↔
       (e.value = none ∨ e.combination = none) ∧
@@ -165,8 +174,10 @@ theorem checkFlag_eq_nil {b : Parsed.Bitflag} {path : Array String} {e : Parsed.
       split <;> simp [problem]
   · simp_all
 
-/-- A bitflag passes exactly when its flags' names are distinct and each flag
-passes. -/
+/--
+A bitflag passes exactly when its flags' names are distinct and each flag
+passes.
+-/
 theorem checkBitflag_eq_nil {path : Array String} {b : Parsed.Bitflag} :
     checkBitflag path b = [] ↔
       (b.entries.toList.map (·.name)).Nodup ∧
@@ -176,9 +187,11 @@ theorem checkBitflag_eq_nil {path : Array String} {b : Parsed.Bitflag} :
     eachAt_eq_nil_iff_mem (f := checkFlag b) fun _ _ _ h =>
       checkFlag_eq_nil.mpr (checkFlag_eq_nil.mp h)]
 
-/-- An enum passes exactly when its entries' names are distinct, and every
+/--
+An enum passes exactly when its entries' names are distinct, and every
 namespaced entry is in the core spec, in a known namespace, with an explicit
-value. -/
+value.
+-/
 theorem checkEnum_eq_nil {s : Parsed.Spec} {path : Array String} {e : Enum} :
     checkEnum s path e = [] ↔
       (e.entries.toList.filterMap (·.map (·.name))).Nodup ∧
@@ -207,8 +220,10 @@ theorem checkEnum_eq_nil {s : Parsed.Spec} {path : Array String} {e : Enum} :
 
 /-! ## Structs, callbacks, functions and objects -/
 
-/-- A struct passes exactly when every struct it extends exists, its members'
-names are distinct, and each member passes. -/
+/--
+A struct passes exactly when every struct it extends exists, its members' names
+are distinct, and each member passes.
+-/
 theorem checkStruct_eq_nil {s : Parsed.Spec} {path : Array String} {st : Parsed.Struct} :
     checkStruct s path st = [] ↔
       (∀ n ∈ st.extendedStructs.toList, ∃ x ∈ s.structs, x.name = n) ∧
@@ -223,8 +238,10 @@ theorem checkStruct_eq_nil {s : Parsed.Spec} {path : Array String} {st : Parsed.
       checkParameter_eq_nil.mpr (checkParameter_eq_nil.mp h)]
   simp [checkRef_eq_nil, RefOk]
 
-/-- A callback passes exactly when its arguments' names are distinct and each
-argument passes. -/
+/--
+A callback passes exactly when its arguments' names are distinct and each
+argument passes.
+-/
 theorem checkCallback_eq_nil {s : Parsed.Spec} {path : Array String} {c : Parsed.Callback} :
     checkCallback s path c = [] ↔
       (c.args.toList.map (·.name)).Nodup ∧
@@ -234,9 +251,11 @@ theorem checkCallback_eq_nil {s : Parsed.Spec} {path : Array String} {c : Parsed
     eachAt_eq_nil_iff_mem (f := checkParameter s .callbackArgument) fun _ _ _ h =>
       checkParameter_eq_nil.mpr (checkParameter_eq_nil.mp h)]
 
-/-- A function passes exactly when its return value (if any) passes, its
-callback type (if any) exists, its arguments' names are distinct, and each
-argument passes. -/
+/--
+A function passes exactly when its return value (if any) passes, its callback
+type (if any) exists, its arguments' names are distinct, and each argument
+passes.
+-/
 theorem checkFunction_eq_nil {s : Parsed.Spec} {path : Array String} {f : Parsed.Function} :
     checkFunction s path f = [] ↔
       (∀ r, f.returns = some r → ∀ path, checkReturn s path r = []) ∧
@@ -252,8 +271,10 @@ theorem checkFunction_eq_nil {s : Parsed.Spec} {path : Array String} {f : Parsed
   · cases f.returns <;> simp [checkReturn_eq_nil]
   · cases f.callback <;> simp [checkCallbackName_eq_nil]
 
-/-- An object passes exactly when its methods' names are distinct and each method
-passes. -/
+/--
+An object passes exactly when its methods' names are distinct and each method
+passes.
+-/
 theorem checkObject_eq_nil {s : Parsed.Spec} {path : Array String} {o : Parsed.Object} :
     checkObject s path o = [] ↔
       (o.methods.toList.map (·.name)).Nodup ∧
@@ -265,8 +286,10 @@ theorem checkObject_eq_nil {s : Parsed.Spec} {path : Array String} {o : Parsed.O
 
 /-! ## Sections -/
 
-/-- A section passes exactly when its names are distinct and each entry passes
-its check at every path. -/
+/--
+A section passes exactly when its names are distinct and each entry passes its
+check at every path.
+-/
 theorem checkSection_eq_nil_iff_mem {α} {key : String} {xs : Array α} {name : α → Name}
     {f : Array String → α → List Problem} (hf : ∀ p q x, f p x = [] → f q x = []) :
     checkSection key xs name f = [] ↔

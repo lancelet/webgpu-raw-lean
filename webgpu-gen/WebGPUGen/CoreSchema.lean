@@ -39,8 +39,10 @@ private def hexValue (c : Char) : Nat :=
   else if 'a' ≤ c && c ≤ 'f' then c.toNat - 'a'.toNat + 10
   else c.toNat - 'A'.toNat + 10
 
-/-- The number written by `digits` in `base`, if all are valid and there is at
-least one. -/
+/--
+The number written by `digits` in `base`, if all are valid and there is at least
+one.
+-/
 private def digitsValue? (base : Nat) (valid : Char → Bool) (digits : List Char) : Option Nat :=
   if digits.isEmpty || !digits.all valid then none
   else some (digits.foldl (fun n c => n * base + hexValue c) 0)
@@ -61,8 +63,10 @@ def parseInt? (text : String) : Option Int :=
     let (s, digits) := sign cs
     (s * Int.ofNat ·) <$> digitsValue? 10 Char.isDigit digits
 
-/-- Core schema floats: `[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`,
-infinities and NaN. Integers also match the first form, so check those first. -/
+/--
+Core schema floats: `[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?`,
+infinities and NaN. Integers also match the first form, so check those first.
+-/
 def isFloat (text : String) : Bool :=
   if text ∈ [".nan", ".NaN", ".NAN"] then true else
   let cs := (sign text.toList).2
@@ -127,8 +131,10 @@ private theorem mem_toDigits {b n : Nat} (hb : 1 < b) {c : Char} (h : c ∈ Nat.
       · exact ih (n / b) (Nat.div_lt_self (by omega) hb) h
       · exact ⟨n % b, Nat.mod_lt _ (by omega), h⟩
 
-/-- Summing the printed digits back up gives the number. (`b ≤ 16` because
-`hexValue` only knows digits up to `f`.) -/
+/--
+Summing the printed digits back up gives the number. (`b ≤ 16` because
+`hexValue` only knows digits up to `f`.)
+-/
 private theorem foldl_toDigits {b n : Nat} (hb : 1 < b) (hb16 : b ≤ 16) :
     (Nat.toDigits b n).foldl (fun n c => n * b + hexValue c) 0 = n := by
   induction n using Nat.strongRecOn with
@@ -156,8 +162,10 @@ private theorem sign_of_digit {c : Char} {rest : List Char} (hc : c.isDigit = tr
   unfold sign
   split <;> simp_all [Char.isDigit]
 
-/-- A string of decimal digits takes the decimal branch: it cannot start with
-`0o`, `0x` or a sign. -/
+/--
+A string of decimal digits takes the decimal branch: it cannot start with `0o`,
+`0x` or a sign.
+-/
 private theorem parseInt?_digits (cs : List Char) (h : cs.all Char.isDigit = true) :
     parseInt? (String.ofList cs) = Int.ofNat <$> digitsValue? 10 Char.isDigit cs := by
   simp only [parseInt?, String.toList_ofList]
@@ -203,8 +211,10 @@ theorem parseInt?_octal (n : Nat) :
 The converse: `parseInt?` succeeds only on the three core schema forms, so text
 such as `1_000`, `0b1` or `uint32_max` is never read as a number. -/
 
-/-- The text forms of a core schema integer: `[-+]?[0-9]+`, `0o[0-7]+`, or
-`0x[0-9a-fA-F]+`. -/
+/--
+The text forms of a core schema integer: `[-+]?[0-9]+`, `0o[0-7]+`, or
+`0x[0-9a-fA-F]+`.
+-/
 def IsCoreInt (cs : List Char) : Prop :=
   (∃ ds, cs = '0' :: 'o' :: ds ∧ ds ≠ [] ∧ ds.all isOctal) ∨
   (∃ ds, cs = '0' :: 'x' :: ds ∧ ds ≠ [] ∧ ds.all isHex) ∨

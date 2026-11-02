@@ -18,8 +18,10 @@ open WebGPUGen.Common
 
 /-! ## Namespaces -/
 
-/-- The block of enum values a namespace's entries use, for the namespaces
-upstream knows. Entries in another namespace cannot be numbered. -/
+/--
+The block of enum values a namespace's entries use, for the namespaces upstream
+knows. Entries in another namespace cannot be numbered.
+-/
 def namespaceBlock? (ns : Name) : Option UInt16 :=
   if ns.text == "compatibility_mode" then some 0x2000 else none
 
@@ -32,9 +34,11 @@ inductive Role where
   | callbackArgument  -- a callback argument
   deriving Repr, DecidableEq
 
-/-- May a parameter in this role set `passed_with_ownership` to this? Struct
-members may not set it; function arguments may only set it to `true`;
-callback arguments may set it either way. -/
+/--
+May a parameter in this role set `passed_with_ownership` to this? Struct members
+may not set it; function arguments may only set it to `true`; callback arguments
+may set it either way.
+-/
 def ownershipOk : Role → Option Bool → Bool
   | _,         none       => true
   | .member,   some _     => false
@@ -78,8 +82,10 @@ def takesFloat : Primitive → Bool
   | .float32 | .nullableFloat32 | .float64 | .float64Supertype => true
   | _                                                          => false
 
-/-- Does a default of this kind suit a member of this shape? Entry defaults are
-matched against the member's own enum or bitflag instead. -/
+/--
+Does a default of this kind suit a member of this shape? Entry defaults are
+matched against the member's own enum or bitflag instead.
+-/
 def defaultSuits : MemberShape → DefaultKind → Bool
   | .struct,       .zero     => true
   | .scalar .bool, .bool     => true

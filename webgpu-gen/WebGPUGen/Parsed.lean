@@ -29,8 +29,10 @@ inductive TypeRef where
   | callback  (name : Name)                  -- callback.foo
   deriving Repr, DecidableEq
 
-/-- A type as the spec writes it, e.g. `array<struct.limits>`. The encoder writes
-this, and the decoder parses it back. -/
+/--
+A type as the spec writes it, e.g. `array<struct.limits>`. The encoder writes
+this, and the decoder parses it back.
+-/
 def TypeRef.render : TypeRef → String
   | .primitive p => p.render
   | .ref kind name => spellingOf RefKind.spellings kind ++ "." ++ name.text
@@ -39,8 +41,10 @@ def TypeRef.render : TypeRef → String
 
 /-! ## Defaults -/
 
-/-- What a string default says, before its name is checked. Shared by the
-decoder and by `Default.entry`'s invariant. -/
+/--
+What a string default says, before its name is checked. Shared by the decoder
+and by `Default.entry`'s invariant.
+-/
 inductive DefaultText where
   | zero
   | constant (rest : String)  -- the text after `constant.`
@@ -57,7 +61,8 @@ def defaultText (s : String) : DefaultText :=
       | some n => .int n
       | none => .entry
 
-/-- A member's default, used by the C `INIT` macros. In the spec it is a string,
+/--
+A member's default, used by the C `INIT` macros. In the spec it is a string,
 number or boolean; the strings name a constant (`constant.x`), an enum or
 bitflag entry (`none`, `all`), or `zero` for zero-initialising a struct. A
 quoted number such as `"0xFFFFFFFF"` is an integer: it is quoted only so YAML
@@ -66,8 +71,9 @@ reads it as written.
 The proofs keep the model honest: a `float` is text YAML reads as a float, and
 an `entry` is a name not read as anything else (not `zero`, say, or `123`).
 
-The decoder does not check a default against its member's type (an `.entry` on
-a `uint32`, say); that belongs to the later resolution step. -/
+The decoder does not check a default against its member's type (an `.entry` on a
+`uint32`, say); that belongs to the later resolution step.
+-/
 inductive Default where
   | bool     (b : Bool)
   | int      (n : Int)
@@ -79,10 +85,12 @@ inductive Default where
 
 /-! ## Bitflags -/
 
-/-- One flag of a bitflag type, or a named combination of other flags.
+/--
+One flag of a bitflag type, or a named combination of other flags.
 
-Left to resolution, as upstream's generator does: `value` and `combination`
-may not both be given, and a `value` must be an integer, not a named value. -/
+Left to resolution, as upstream's generator does: `value` and `combination` may
+not both be given, and a `value` must be an integer, not a named value.
+-/
 structure BitflagEntry where
   name        : Name
   ns          : Option Name          -- the spec's `namespace`
@@ -102,7 +110,8 @@ structure Bitflag where
 
 /-! ## Structs -/
 
-/-- A struct member, function argument or return value (`ParameterType` in the
+/--
+A struct member, function argument or return value (`ParameterType` in the
 schema).
 
 Resolution checks the rules upstream's generator applies: struct members may not
@@ -110,8 +119,9 @@ set `passed_with_ownership`, function arguments may only set it to `true`; only
 struct members have defaults, not pointers, and of a kind that suits the type.
 
 `Doc` is the type of its doc: `String` for struct members, `Paragraph` for
-function and callback arguments (`FunctionParameterType`), whose docs must be
-a single paragraph. -/
+function and callback arguments (`FunctionParameterType`), whose docs must be a
+single paragraph.
+-/
 structure Parameter (Doc : Type) where
   name                : Name
   doc                 : Doc
@@ -122,9 +132,11 @@ structure Parameter (Doc : Type) where
   default             : Option Default
   deriving Repr, DecidableEq
 
-/-- A struct. `extendedStructs` is the spec's `extends`: the structs an
-extension attaches to. The schema allows any string there; every use is a
-struct name, so the decoder requires one. -/
+/--
+A struct. `extendedStructs` is the spec's `extends`: the structs an extension
+attaches to. The schema allows any string there; every use is a struct name, so
+the decoder requires one.
+-/
 structure Struct where
   name            : Name
   ns              : Option Name       -- the spec's `namespace`
@@ -146,8 +158,10 @@ structure Callback where
   args  : Array (Parameter Paragraph)  -- absent means empty
   deriving Repr, DecidableEq
 
-/-- What a function returns. Its doc may be empty (written `""`), which is `none`
-here; otherwise it is a single paragraph. -/
+/--
+What a function returns. Its doc may be empty (written `""`), which is `none`
+here; otherwise it is a single paragraph.
+-/
 structure Return where
   doc                 : Option Paragraph
   type                : TypeRef
@@ -156,12 +170,14 @@ structure Return where
   pointer             : Option Pointer
   deriving Repr, DecidableEq
 
-/-- A function or method. `callback` names the callback type of an asynchronous
+/--
+A function or method. `callback` names the callback type of an asynchronous
 function (the spec writes `callback.name`).
 
 An asynchronous function implicitly returns a future and takes the callback's
 info struct as a final argument; the spec states neither, so neither is here.
-Upstream's generator adds both when writing C. -/
+Upstream's generator adds both when writing C.
+-/
 structure Function where
   name     : Name
   ns       : Option Name       -- the spec's `namespace`

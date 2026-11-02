@@ -13,8 +13,10 @@ Lean names is the code generator's job.
 
 namespace WebGPUGen.Common
 
-/-- Does `s` match `^[a-zA-Z0-9]([a-zA-Z0-9_]*[a-zA-Z0-9])?$`: ASCII letters, digits
-and underscores, not starting or ending with an underscore? -/
+/--
+Does `s` match `^[a-zA-Z0-9]([a-zA-Z0-9_]*[a-zA-Z0-9])?$`: ASCII letters, digits
+and underscores, not starting or ending with an underscore?
+-/
 def isName (s : String) : Bool :=
   let cs := s.toList
   !cs.isEmpty
@@ -32,9 +34,11 @@ instance : Inhabited Name := ⟨⟨"a", by decide⟩⟩
 
 instance : ToString Name := ⟨Name.text⟩
 
-/-- Does `doc` match `^\n?.+(\n.+)*\n?$`: one or more non-empty lines, with at
-most one line break before and after? The schema requires this of argument and
-return docs, which Doxygen cannot show as several paragraphs. -/
+/--
+Does `doc` match `^\n?.+(\n.+)*\n?$`: one or more non-empty lines, with at most
+one line break before and after? The schema requires this of argument and return
+docs, which Doxygen cannot show as several paragraphs.
+-/
 def isSingleParagraph (doc : String) : Bool :=
   let cs := doc.toList
   let cs := match cs with
@@ -93,8 +97,10 @@ def Primitive.spellings : List (String × Primitive) := [
   ("float64_supertype",         .float64Supertype)
 ]
 
-/-- An element type allowed in a primitive array, `array<…>`. This is its own
-list: it includes `string`, which is not a primitive on its own. -/
+/--
+An element type allowed in a primitive array, `array<…>`. This is its own
+list: it includes `string`, which is not a primitive on its own.
+-/
 inductive ArrayElement where
   | bool
   | string
@@ -155,8 +161,10 @@ def PrimitiveType.render : PrimitiveType → String
 
 /-! ## Values -/
 
-/-- A constant's value (`Value64`): a 64-bit unsigned integer, or one of the
-named values the C header defines. -/
+/--
+A constant's value (`Value64`): a 64-bit unsigned integer, or one of the named
+values the C header defines.
+-/
 inductive Value64 where
   | int (n : UInt64)
   | usizeMax
@@ -193,10 +201,12 @@ structure Typedef where
 
 /-! ## Enums -/
 
-/-- One named value of an enum.
+/--
+One named value of an enum.
 
 Left to resolution, as upstream's generator does: an entry with a `namespace`
-must have an explicit `value`. -/
+must have an explicit `value`.
+-/
 structure EnumEntry where
   name  : Name
   ns    : Option Name  -- the spec's `namespace`
@@ -204,8 +214,10 @@ structure EnumEntry where
   value : Option UInt16  -- overrides the default (the entry's index)
   deriving Repr, DecidableEq
 
-/-- An enum. `extended` marks entries added to an enum defined elsewhere, as an
-extension file does. -/
+/--
+An enum. `extended` marks entries added to an enum defined elsewhere, as an
+extension file does.
+-/
 structure Enum where
   name     : Name
   ns       : Option Name                -- the spec's `namespace`

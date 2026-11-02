@@ -14,8 +14,10 @@ open WebGPUGen.Common
 
 /-! ## `indexOf?` -/
 
-/-- If `indexOf?` finds position `i`, the item there has key `k`, and no
-earlier item does. -/
+/--
+If `indexOf?` finds position `i`, the item there has key `k`, and no earlier
+item does.
+-/
 theorem indexOf?_some {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array α} {k : β}
     {i : Fin xs.size} (h : indexOf? key xs k = some i) :
     key xs[i] = k ∧ ∀ j : Fin xs.size, j < i → key xs[j] ≠ k := by
@@ -37,8 +39,10 @@ theorem indexOf?_isSome {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : 
   rw [← Option.ne_none_iff_isSome, ne_eq, indexOf?_none]
   simp
 
-/-- When some item has key `k`, `indexOf` gives a position in range whose item
-has key `k`. -/
+/--
+When some item has key `k`, `indexOf` gives a position in range whose item has
+key `k`.
+-/
 theorem indexOf_spec {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array α} {k : β}
     (h : ∃ x ∈ xs, key x = k) :
     ∃ lt : indexOf key xs k < xs.size, key xs[indexOf key xs k] = k := by
@@ -63,8 +67,10 @@ theorem indexOf_lt {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array
 
 /-! ## `eachAt` -/
 
-/-- `eachAt` reports nothing exactly when the check reports nothing for each
-item, at that item's path (`path`, then `key`, then `[i]`). -/
+/--
+`eachAt` reports nothing exactly when the check reports nothing for each item,
+at that item's path (`path`, then `key`, then `[i]`).
+-/
 theorem eachAt_eq_nil {α} {path : Array String} {key : String} {xs : Array α}
     {f : Array String → α → List Problem} :
     eachAt path key xs f = [] ↔
@@ -86,8 +92,10 @@ theorem eachAt_eq_nil_of_forall {α} {path : Array String} {key : String} {xs : 
     eachAt path key xs f = [] :=
   eachAt_eq_nil.mpr fun _ _ => H _ _
 
-/-- If `eachAt` reports nothing, the check reports nothing for each item, at
-some path. Later proofs never look at the path, and work by membership. -/
+/--
+If `eachAt` reports nothing, the check reports nothing for each item, at some
+path. Later proofs never look at the path, and work by membership.
+-/
 theorem eachAt_eq_nil_mem {α} {path : Array String} {key : String} {xs : Array α}
     {f : Array String → α → List Problem} (H : eachAt path key xs f = []) :
     ∀ x ∈ xs.toList, ∃ p, f p x = [] := by
@@ -95,9 +103,11 @@ theorem eachAt_eq_nil_mem {α} {path : Array String} {key : String} {xs : Array 
   obtain ⟨i, h, rfl⟩ := List.getElem_of_mem hx
   exact ⟨_, eachAt_eq_nil.mp H i h⟩
 
-/-- For a check whose verdict does not depend on the path (the path only
-labels problems), `eachAt` reports nothing exactly when each item passes the
-check at every path. -/
+/--
+For a check whose verdict does not depend on the path (the path only labels
+problems), `eachAt` reports nothing exactly when each item passes the check at
+every path.
+-/
 theorem eachAt_eq_nil_iff_mem {α} {path : Array String} {key : String} {xs : Array α}
     {f : Array String → α → List Problem} (hf : ∀ p q x, f p x = [] → f q x = []) :
     eachAt path key xs f = [] ↔ ∀ x ∈ xs.toList, ∀ p, f p x = [] := by
@@ -110,9 +120,10 @@ theorem eachAt_eq_nil_iff_mem {α} {path : Array String} {key : String} {xs : Ar
 
 /-! ## `duplicates` -/
 
-/-- `duplicates` reports nothing exactly when no name occurs earlier in the
-list than at any position where it appears. Unnamed slots (`none`) are
-ignored. -/
+/--
+`duplicates` reports nothing exactly when no name occurs earlier in the list
+than at any position where it appears. Unnamed slots (`none`) are ignored.
+-/
 theorem duplicates_eq_nil {path : Array String} {key : String} {names : List (Option Name)} :
     duplicates path key names = [] ↔
       ∀ i (h : i < names.length) n, names[i] = some n → some n ∉ names.take i := by
@@ -132,8 +143,10 @@ theorem duplicates_eq_nil {path : Array String} {key : String} {names : List (Op
       have := H i h n hx
       simp_all
 
-/-- The names (unnamed slots aside) are distinct exactly when none occurs
-earlier than at a position where it appears. -/
+/--
+The names (unnamed slots aside) are distinct exactly when none occurs earlier
+than at a position where it appears.
+-/
 theorem nodup_filterMap_id_iff {l : List (Option Name)} :
     (l.filterMap id).Nodup ↔
       ∀ j (h : j < l.length) n, l[j] = some n → some n ∉ l.take j := by
@@ -149,23 +162,29 @@ theorem nodup_filterMap_id_iff {l : List (Option Name)} :
     rw [List.mem_take_iff_getElem]
     exact ⟨i, by omega, hx⟩
 
-/-- `duplicates` reports nothing exactly when the names, unnamed slots aside,
-are distinct. -/
+/--
+`duplicates` reports nothing exactly when the names, unnamed slots aside, are
+distinct.
+-/
 theorem duplicates_eq_nil_iff_nodup {path : Array String} {key : String}
     {names : List (Option Name)} :
     duplicates path key names = [] ↔ (names.filterMap id).Nodup := by
   rw [duplicates_eq_nil, nodup_filterMap_id_iff]
 
-/-- For a section, where every entry is named: `duplicates` reports nothing
-exactly when the names are distinct. -/
+/--
+For a section, where every entry is named: `duplicates` reports nothing exactly
+when the names are distinct.
+-/
 theorem duplicates_map_some_eq_nil {α} {path : Array String} {key : String} {xs : List α}
     {name : α → Name} :
     duplicates path key (xs.map fun x => some (name x)) = [] ↔ (xs.map name).Nodup := by
   rw [duplicates_eq_nil_iff_nodup, List.filterMap_map]
   simp
 
-/-- For an enum's entries, where reserved slots are unnamed: `duplicates`
-reports nothing exactly when the entries' names are distinct. -/
+/--
+For an enum's entries, where reserved slots are unnamed: `duplicates` reports
+nothing exactly when the entries' names are distinct.
+-/
 theorem duplicates_slotName_eq_nil {path : Array String} {key : String}
     {slots : List (Option EnumEntry)} :
     duplicates path key (slots.map slotName) = [] ↔
@@ -175,8 +194,10 @@ theorem duplicates_slotName_eq_nil {path : Array String} {key : String}
 
 /-! ## References -/
 
-/-- A reference of kind `kind` to `n` is found exactly when that kind has a
-list of names and `n` is in it. -/
+/--
+A reference of kind `kind` to `n` is found exactly when that kind has a list of
+names and `n` is in it.
+-/
 theorem refIndex?_isSome {s : Parsed.Spec} {kind : RefKind} {n : Name} :
     (refIndex? s kind n).isSome ↔ ∃ names, namesOf s kind = some names ∧ n ∈ names := by
   unfold refIndex?
@@ -201,15 +222,18 @@ theorem refIndex?_isSome_iff_refOk {s : Parsed.Spec} {kind : RefKind} {n : Name}
     (refIndex? s kind n).isSome ↔ RefOk s kind n := by
   cases kind <;> simp [refIndex?_isSome, namesOf, RefOk]
 
-/-- `checkRef` reports nothing exactly when the reference names an entry of its
-kind. -/
+/--
+`checkRef` reports nothing exactly when the reference names an entry of its
+kind.
+-/
 theorem checkRef_eq_nil {s : Parsed.Spec} {path : Array String} {kind : RefKind} {n : Name} :
     checkRef s path kind n = [] ↔ RefOk s kind n := by
   unfold checkRef
   cases kind <;> simp [problem, refIndex?_isSome_iff_refOk, RefOk]
 
-/-- `checkCallbackName` reports nothing exactly when a callback named `n`
-exists. -/
+/--
+`checkCallbackName` reports nothing exactly when a callback named `n` exists.
+-/
 theorem checkCallbackName_eq_nil {s : Parsed.Spec} {path : Array String} {n : Name} :
     checkCallbackName s path n = [] ↔ ∃ c ∈ s.callbacks, c.name = n := by
   unfold checkCallbackName
@@ -218,8 +242,10 @@ theorem checkCallbackName_eq_nil {s : Parsed.Spec} {path : Array String} {n : Na
 
 /-! ## Sections and `check` -/
 
-/-- A section passes exactly when its names are distinct and each entry passes
-its own check. -/
+/--
+A section passes exactly when its names are distinct and each entry passes its
+own check.
+-/
 theorem checkSection_eq_nil {α} {key : String} {xs : Array α} {name : α → Name}
     {f : Array String → α → List Problem} :
     checkSection key xs name f = [] ↔

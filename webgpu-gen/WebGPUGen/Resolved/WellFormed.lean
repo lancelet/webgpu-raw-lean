@@ -71,17 +71,20 @@ def EntryRef.owner : EntryRef → Named
   | .enumEntry e _ => .enum e
   | .flag      b _ => .bitflag b
 
-/-- The name of the entry an entry reference points at, if it points at one:
-the enum or bitflag and the entry are in range, and an enum's slot is not
-reserved. -/
+/--
+The name of the entry an entry reference points at, if it points at one: the
+enum or bitflag and the entry are in range, and an enum's slot is not reserved.
+-/
 def EntryRef.name? (r : Spec) : EntryRef → Option Name
   | .enumEntry e i => (r.enums[e.idx]?.bind (·.entries[i.idx]?)).bind (·.map (·.name))
   | .flag      b i => (r.bitflags[b.idx]?.bind (·.entries[i.idx]?)).map (·.name)
 
-/-- A default on a member of type `type` is well formed. An entry default names
-an entry of the member's own enum or bitflag, whose name the parsed spec could
-write as an entry default. A constant default names a real constant. Every
-other default suits the member's type. -/
+/--
+A default on a member of type `type` is well formed. An entry default names an
+entry of the member's own enum or bitflag, whose name the parsed spec could
+write as an entry default. A constant default names a real constant. Every other
+default suits the member's type.
+-/
 def Default.WellFormed (r : Spec) (type : TypeRef) : Default → Prop
   | .entry ref =>
     type = .named ref.owner
@@ -116,9 +119,11 @@ structure Return.WellFormed (r : Spec) (ret : Return) : Prop where
 
 /-! ## Entries -/
 
-/-- An enum is well formed: the names of its entries are distinct (reserved
-slots have none), and every namespaced entry is in the core spec, in a known
-namespace, with an explicit value. -/
+/--
+An enum is well formed: the names of its entries are distinct (reserved slots
+have none), and every namespaced entry is in the core spec, in a known
+namespace, with an explicit value.
+-/
 structure Enum.WellFormed (r : Spec) (e : Enum) : Prop where
   distinct   : (e.entries.toList.filterMap (·.map (·.name))).Nodup
   namespaced : ∀ entry, some entry ∈ e.entries.toList → ∀ ns, entry.ns = some ns →
@@ -129,43 +134,55 @@ def FlagValue.WellFormed (b : Bitflag) : FlagValue → Prop
   | .combination flags => ∀ i ∈ flags.toList, i.idx < b.entries.size
   | _                  => True
 
-/-- A bitflag type is well formed: its flag names are distinct and its
-combinations name its own flags. -/
+/--
+A bitflag type is well formed: its flag names are distinct and its combinations
+name its own flags.
+-/
 structure Bitflag.WellFormed (b : Bitflag) : Prop where
   distinct : (b.entries.toList.map (·.name)).Nodup
   values   : ∀ e ∈ b.entries.toList, e.value.WellFormed b
 
-/-- A struct is well formed: it extends real structs, its member names are
-distinct, and its members are well formed. -/
+/--
+A struct is well formed: it extends real structs, its member names are distinct,
+and its members are well formed.
+-/
 structure Struct.WellFormed (r : Spec) (st : Struct) : Prop where
   extends_ : ∀ id ∈ st.extendedStructs.toList, id.InRange r
   distinct : (st.members.toList.map (·.name)).Nodup
   members  : ∀ p ∈ st.members.toList, p.WellFormed r .member
 
-/-- A callback is well formed: its argument names are distinct and its
-arguments are well formed. -/
+/--
+A callback is well formed: its argument names are distinct and its arguments are
+well formed.
+-/
 structure Callback.WellFormed (r : Spec) (c : Callback) : Prop where
   distinct : (c.args.toList.map (·.name)).Nodup
   args     : ∀ p ∈ c.args.toList, p.WellFormed r .callbackArgument
 
-/-- A function is well formed: its return value is, its callback type is real,
-its argument names are distinct, and its arguments are well formed. -/
+/--
+A function is well formed: its return value is, its callback type is real, its
+argument names are distinct, and its arguments are well formed.
+-/
 structure Function.WellFormed (r : Spec) (f : Function) : Prop where
   returns  : ∀ ret, f.returns = some ret → ret.WellFormed r
   callback : ∀ id, f.callback = some id → id.InRange r
   distinct : (f.args.toList.map (·.name)).Nodup
   args     : ∀ p ∈ f.args.toList, p.WellFormed r .argument
 
-/-- An object is well formed: its method names are distinct and its methods
-are well formed. -/
+/--
+An object is well formed: its method names are distinct and its methods are well
+formed.
+-/
 structure Object.WellFormed (r : Spec) (o : Object) : Prop where
   distinct : (o.methods.toList.map (·.name)).Nodup
   methods  : ∀ f ∈ o.methods.toList, f.WellFormed r
 
 /-! ## The whole spec -/
 
-/-- A resolved spec is well formed: in every section the names are distinct
-and each entry is well formed. -/
+/--
+A resolved spec is well formed: in every section the names are distinct and each
+entry is well formed.
+-/
 structure WellFormed (r : Spec) : Prop where
   constantNames : (r.constants.toList.map (·.name)).Nodup
   typedefNames  : (r.typedefs.toList.map  (·.name)).Nodup

@@ -12,7 +12,8 @@ Two helpers so tests read like the data they describe:
 namespace WebGPUGenTest
 open WebGPUGen.Yaml
 
-/-- Remove the indentation common to all non-blank lines, and the line break
+/--
+Remove the indentation common to all non-blank lines, and the line break
 that opens the literal. This lets YAML be indented along with the code:
 
     dedent "
@@ -21,7 +22,8 @@ that opens the literal. This lets YAML be indented along with the code:
       "  -- = "a: 1\nb: 2\n"
 
 Indentation means spaces only (YAML forbids tabs there). The closing quote's
-line contributes the final newline. -/
+line contributes the final newline.
+-/
 def dedent (s : String) : String :=
   let blank (l : String) := l.all (· == ' ')
   let ls := match s.splitOn "\n" with

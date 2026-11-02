@@ -11,8 +11,10 @@ require L4YAML from git
 
 lean_lib WebGPUGen
 
-/-- Tests. `#guard` checks run while this library builds; the driver then runs
-the checks that need IO. Run with `lake test` from this directory. -/
+/--
+Tests. `#guard` checks run while this library builds; the driver then runs the
+checks that need IO. Run with `lake test` from this directory.
+-/
 lean_lib WebGPUGenTest
 
 @[test_driver]

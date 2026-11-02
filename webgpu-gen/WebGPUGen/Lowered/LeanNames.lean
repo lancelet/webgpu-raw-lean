@@ -22,10 +22,12 @@ open WebGPUGen.Common
 
 /-! ## Quoting -/
 
-/-- The words Lean's syntax reserves: its identifier-like tokens, with all of
-`Lean` imported. The bindings import less, and quoting a word that needs no
-quoting is harmless, so this errs on the safe side. Copied from Lean's own token
-table; a test checks they still agree. -/
+/--
+The words Lean's syntax reserves: its identifier-like tokens, with all of `Lean`
+imported. The bindings import less, and quoting a word that needs no quoting is
+harmless, so this errs on the safe side. Copied from Lean's own token table; a
+test checks they still agree.
+-/
 def leanKeywords : List String := [
   "Prop", "Sort", "StateRefT", "Type", "abbrev", "add_decl_doc",
   "assert_not_exists", "assert_not_imported", "at", "attribute", "aux_def",
@@ -75,8 +77,10 @@ def leanKeywords : List String := [
   "without_expected_type"
 ]
 
-/-- `s` as a Lean identifier: quoted with `«»` if it starts with a digit or is
-a keyword, and as it is otherwise. -/
+/--
+`s` as a Lean identifier: quoted with `«»` if it starts with a digit or is a
+keyword, and as it is otherwise.
+-/
 def quoteIdent (s : String) : String :=
   if s.front.isDigit || leanKeywords.contains s then "«" ++ s ++ "»" else s
 
@@ -90,8 +94,10 @@ def lowerFirstWord (s : String) : String :=
 /-- A type: `texture_format` is `TextureFormat`. -/
 def leanTypeName (n : Name) : String := quoteIdent (pascalCase n.text)
 
-/-- Anything that is not a type (an enum entry, flag, constant, member,
-argument, function or method): `BC1_RGBA_unorm` is `bc1RGBAUnorm`. -/
+/--
+Anything that is not a type (an enum entry, flag, constant, member, argument,
+function or method): `BC1_RGBA_unorm` is `bc1RGBAUnorm`.
+-/
 def leanName (n : Name) : String := quoteIdent (camelCase (lowerFirstWord n.text))
 
 end WebGPUGen.Lowered

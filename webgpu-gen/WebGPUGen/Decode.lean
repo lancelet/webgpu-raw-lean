@@ -83,8 +83,10 @@ def spelled {α} (what : String) (table : List (String × α)) (s : String) : De
   | some a => pure a
   | none => fail s!"unknown {what} {s.quote}"
 
-/-- `none` for a null scalar, otherwise `decode`. For entries such as enum
-slots that the spec reserves with a bare `null`. -/
+/--
+`none` for a null scalar, otherwise `decode`. For entries such as enum slots
+that the spec reserves with a bare `null`.
+-/
 def nullable {α} (decode : Node → Decode α) (node : Node) : Decode (Option α) :=
   match node with
   | .scalar s => if s.value == .null then pure none else some <$> decode node
@@ -105,8 +107,10 @@ def seq {α} (item : Node → Decode α) : Node → Decode (Array α)
   | .seq ns => List.toArray <$> items item 0 ns.toList
   | node => fail s!"expected a sequence, found {describe node}"
 
-/-- Reads the fields of one mapping. The state holds the entries not yet read;
-each field read removes its entry. -/
+/--
+Reads the fields of one mapping. The state holds the entries not yet read; each
+field read removes its entry.
+-/
 abbrev Fields := StateT (List (String × Node)) Decode
 
 /-- Remove and return the entry for `key`, if present. Keys are unique. -/

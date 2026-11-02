@@ -144,8 +144,10 @@ def fin (bound : Nat) (what : String) : Codec (Fin bound) where
     rw [bind_ok h]
     simp [i.isLt]; rfl
 
-/-- A value named by one of the spellings in `table`. `spell` gives each value
-its spelling; `lookup_spell` says the table maps it back. -/
+/--
+A value named by one of the spellings in `table`. `spell` gives each value its
+spelling; `lookup_spell` says the table maps it back.
+-/
 def spelled {α} (what : String) (table : List (String × α)) (spell : α → String)
     (lookup_spell : ∀ a, table.lookup (spell a) = some a) : Codec α where
   encode a := string.encode (spell a)
@@ -165,9 +167,11 @@ def iso {α β} (c : Codec β) (to : α → β) (of : β → α)
 
 /-! ## Records -/
 
-/-- The fields of a record: which keys they use, how they are written, and how
-they are read back. Reading the written entries, followed by any entries with
-other keys, gives back the value and leaves the other entries. -/
+/--
+The fields of a record: which keys they use, how they are written, and how they
+are read back. Reading the written entries, followed by any entries with other
+keys, gives back the value and leaves the other entries.
+-/
 structure Fields (α : Type) where
   keys        : List String
   encode      : α → List (String × Node)
@@ -281,8 +285,10 @@ def seq {α} (c : Codec α) : Codec (Array α) where
     show (List.toArray <$> items c.decode 0 (xs.map c.encode).toList) path = _
     rw [Array.toList_map, map_ok (items_ok c xs.toList 0 path)]
 
-/-- Does `node` read as null? A codec used with `nullable` must never encode a
-value that way. -/
+/--
+Does `node` read as null? A codec used with `nullable` must never encode a value
+that way.
+-/
 def isNull : Node → Bool
   | .scalar s => s.value == .null
   | _ => false

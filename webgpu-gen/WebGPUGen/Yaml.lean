@@ -15,16 +15,20 @@ is the spec decoder's job, not this module's.
 
 namespace WebGPUGen.Yaml
 
-/-- A YAML scalar: its text, and whether it was written plain (unquoted, not a
+/--
+A YAML scalar: its text, and whether it was written plain (unquoted, not a
 block scalar). Only plain scalars can be keywords: `null` is null, while `"null"`
-and a `|` block containing `null` are strings. -/
+and a `|` block containing `null` are strings.
+-/
 structure Scalar where
   text : String
   plain : Bool := true
   deriving Repr, BEq, Inhabited
 
-/-- A YAML node, with anchors and aliases already resolved. Mapping keys are
-scalars, unique, and kept in source order. -/
+/--
+A YAML node, with anchors and aliases already resolved. Mapping keys are
+scalars, unique, and kept in source order.
+-/
 inductive Node where
   | scalar (s : Scalar)
   | seq (items : Array Node)
@@ -38,15 +42,19 @@ structure Error where
 
 instance : ToString Error := ⟨Error.message⟩
 
-/-- Reject an explicit tag such as `!!str`: `Node` cannot represent it, and
-silently dropping it would change what the value means. -/
+/--
+Reject an explicit tag such as `!!str`: `Node` cannot represent it, and silently
+dropping it would change what the value means.
+-/
 private def noTag (tag : Option String) : Except Error Unit :=
   match tag with
   | some t => throw ⟨s!"explicit tag {t} is not supported"⟩
   | none => pure ()
 
-/-- The first key that occurs twice, if any. YAML forbids duplicate keys, but
-L4YAML does not check. -/
+/--
+The first key that occurs twice, if any. YAML forbids duplicate keys, but L4YAML
+does not check.
+-/
 private def duplicateKey? (entries : Array (String × Node)) : Option String :=
   go entries.toList []
 where
@@ -55,9 +63,11 @@ where
     | (k, _) :: rest, seen => if k ∈ seen then some k else go rest (k :: seen)
 
 open L4YAML in
-/-- Convert L4YAML's value into a `Node`. Fails on anything `Node` cannot
-represent faithfully: tags, non-scalar keys, duplicate keys, and aliases (which
-composition should already have resolved). -/
+/--
+Convert L4YAML's value into a `Node`. Fails on anything `Node` cannot represent
+faithfully: tags, non-scalar keys, duplicate keys, and aliases (which
+composition should already have resolved).
+-/
 private def ofYamlValue : YamlValue → Except Error Node
   | .scalar s => do
     noTag s.tag
@@ -80,12 +90,14 @@ private def ofYamlValue : YamlValue → Except Error Node
     return .map entries
   | .alias name => throw ⟨s!"unresolved alias *{name}"⟩
 
-/-- Parse a YAML string holding exactly one document.
+/--
+Parse a YAML string holding exactly one document.
 
 Uses L4YAML's main (non-indexed) parser, the one its soundness proofs cover. It
-applies no resource limits, which is fine for our own vendored input. The
-"safe" indexed parser in v0.5.2 rejects a block scalar followed by another key,
-which `webgpu.yml` does throughout. -/
+applies no resource limits, which is fine for our own vendored input. The "safe"
+indexed parser in v0.5.2 rejects a block scalar followed by another key, which
+`webgpu.yml` does throughout.
+-/
 def parse (input : String) : Except Error Node := do
   let docs ← match L4YAML.TokenParser.parseYaml input with
     | .ok docs => pure docs

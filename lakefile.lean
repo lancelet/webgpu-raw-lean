@@ -6,8 +6,10 @@ open Lake DSL
 package WebGPURaw where
   leanOptions := #[⟨`autoImplicit, false⟩]
 
-/-- The bindings. Modules under `WebGPU.Raw.Internal` are helpers for the
-generated code: the bindings import them privately, so users never see them. -/
+/--
+The bindings. Modules under `WebGPU.Raw.Internal` are helpers for the generated
+code: the bindings import them privately, so users never see them.
+-/
 @[default_target]
 lean_lib WebGPURaw where
   roots := #[`WebGPU.Raw]

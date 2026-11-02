@@ -21,8 +21,10 @@ open WebGPUGen.Common
 
 /-! ## Names by ID -/
 
-/-- The name of the entry at `idx`, or a placeholder if there is none (which
-`WellFormed` rules out). -/
+/--
+The name of the entry at `idx`, or a placeholder if there is none (which
+`WellFormed` rules out).
+-/
 def nameAt {α} (name : α → Name) (xs : Array α) (idx : Nat) : Name :=
   (xs[idx]?.map name).getD default
 
@@ -50,9 +52,11 @@ def unresolveTypeRef (r : Spec) : TypeRef → Parsed.TypeRef
   | .arrayOf t   => .refArray t.kind (namedName r t)
   | .callback id => .callback (callbackName r id)
 
-/-- A default, written with names. An entry default is rebuilt from its entry's
-name, which must read as an entry name; `WellFormed` says it does, so the
-`zero` placeholder is never used. -/
+/--
+A default, written with names. An entry default is rebuilt from its entry's
+name, which must read as an entry name; `WellFormed` says it does, so the `zero`
+placeholder is never used.
+-/
 def unresolveDefault (r : Spec) : Default → Parsed.Default
   | .bool b           => .bool b
   | .int n            => .int n

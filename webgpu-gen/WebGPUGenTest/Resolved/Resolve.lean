@@ -22,8 +22,10 @@ def indent (block : String) : String :=
   "\n".intercalate ((block.splitOn "\n").map fun line =>
     if line.isEmpty then line else "  " ++ line)
 
-/-- A spec file whose sections are the given YAML blocks (each a list of
-entries, written with `dedent`), and empty otherwise. -/
+/--
+A spec file whose sections are the given YAML blocks (each a list of entries,
+written with `dedent`), and empty otherwise.
+-/
 def spec (constants typedefs enums bitflags structs callbacks functions objects : String := "[]") :
     String :=
   let part (key block : String) :=
@@ -38,8 +40,10 @@ def spec (constants typedefs enums bitflags structs callbacks functions objects 
     ++ part "functions" functions
     ++ part "objects" objects
 
-/-- Decode and resolve a spec file. Decoding errors and resolution problems
-both become their messages. -/
+/--
+Decode and resolve a spec file. Decoding errors and resolution problems both
+become their messages.
+-/
 def resolveText (input : String) : Except (List String) Spec :=
   match decodeText Parsed.Spec.codec.decode input with
   | .error e => .error [s!"decode error: {e}"]

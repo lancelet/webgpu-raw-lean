@@ -20,8 +20,10 @@ open WebGPUGen.Common
 
 /-! ## IDs -/
 
-/-- The kinds of entry that can be referred to, each listed in its own section of
-the spec. -/
+/--
+The kinds of entry that can be referred to, each listed in its own section of
+the spec.
+-/
 inductive Kind where
   | constant
   | typedef
@@ -32,24 +34,29 @@ inductive Kind where
   | object
   deriving Repr, DecidableEq, Hashable
 
-/-- An entry of kind `k`: an index into that kind's array in `Spec`, so
-`Id .struct` indexes `Spec.structs`. IDs of different kinds are different
-types: an `Id .struct` cannot be used where an `Id .enum` is expected. -/
+/--
+An entry of kind `k`: an index into that kind's array in `Spec`, so `Id .struct`
+indexes `Spec.structs`. IDs of different kinds are different types: an `Id
+.struct` cannot be used where an `Id .enum` is expected.
+-/
 structure Id (k : Kind) where
   idx : Nat
   deriving Repr, DecidableEq, Hashable
 
-/-- An entry of a given enum or bitflag: an index into its `entries`. For an
-enum, reserved slots count, so an entry's index is its position in the spec. -/
+/--
+An entry of a given enum or bitflag: an index into its `entries`. For an enum,
+reserved slots count, so an entry's index is its position in the spec.
+-/
 structure EntryIndex where
   idx : Nat
   deriving Repr, DecidableEq, Hashable
 
 /-! ## Types -/
 
-/-- A named type a value can have. The spec's `function_type.x` has no
-counterpart: nothing in the spec defines function types, so resolution rejects
-it. -/
+/--
+A named type a value can have. The spec's `function_type.x` has no counterpart:
+nothing in the spec defines function types, so resolution rejects it.
+-/
 inductive Named where
   | typedef (id : Id .typedef)
   | enum    (id : Id .enum)
@@ -82,10 +89,12 @@ inductive EntryRef where
   | flag      (bitflag : Id .bitflag) (entry : EntryIndex)
   deriving Repr, DecidableEq, Hashable
 
-/-- A member's default, resolved. A `float` keeps the parsed spec's proof that
-its text reads as a float, so the parsed default can be rebuilt from it. For
-an `entry`, `WellFormed` says the slot holds an entry (not a reserved gap)
-whose name reads as an entry name, which rebuilding the parsed default needs. -/
+/--
+A member's default, resolved. A `float` keeps the parsed spec's proof that its
+text reads as a float, so the parsed default can be rebuilt from it. For an
+`entry`, `WellFormed` says the slot holds an entry (not a reserved gap) whose
+name reads as an entry name, which rebuilding the parsed default needs.
+-/
 inductive Default where
   | bool     (b : Bool)
   | int      (n : Int)
@@ -97,17 +106,21 @@ inductive Default where
 
 /-! ## Bitflags -/
 
-/-- How a flag's value is given. The parsed spec allows a `value` and a
+/--
+How a flag's value is given. The parsed spec allows a `value` and a
 `value_combination` together, and named values; upstream rejects both, so the
-resolved spec cannot express them. -/
+resolved spec cannot express them.
+-/
 inductive FlagValue where
   | implicit                                -- by position: 0, then 1, 2, 4, …
   | explicit    (n : UInt64)                -- `value`
   | combination (flags : Array EntryIndex)  -- `value_combination`: flags of this type
   deriving Repr, DecidableEq
 
-/-- One flag of a bitflag type, or a named combination of other flags of the
-same type. -/
+/--
+One flag of a bitflag type, or a named combination of other flags of the same
+type.
+-/
 structure BitflagEntry where
   name  : Name
   ns    : Option Name  -- the spec's `namespace`
@@ -126,8 +139,10 @@ structure Bitflag where
 
 /-! ## Structs -/
 
-/-- A struct member, function argument or return value. `Doc` is `String` for
-struct members and `Paragraph` for arguments, as in the parsed spec. -/
+/--
+A struct member, function argument or return value. `Doc` is `String` for struct
+members and `Paragraph` for arguments, as in the parsed spec.
+-/
 structure Parameter (Doc : Type) where
   name                : Name
   doc                 : Doc
@@ -138,8 +153,10 @@ structure Parameter (Doc : Type) where
   default             : Option Default
   deriving Repr, DecidableEq
 
-/-- A struct. `extendedStructs` is the spec's `extends`: the structs an
-extension attaches to. -/
+/--
+A struct. `extendedStructs` is the spec's `extends`: the structs an extension
+attaches to.
+-/
 structure Struct where
   name            : Name
   ns              : Option Name                -- the spec's `namespace`
@@ -170,8 +187,10 @@ structure Return where
   pointer             : Option Pointer
   deriving Repr, DecidableEq
 
-/-- A function or method. `callback` is the callback type of an asynchronous
-function. -/
+/--
+A function or method. `callback` is the callback type of an asynchronous
+function.
+-/
 structure Function where
   name     : Name
   ns       : Option Name                    -- the spec's `namespace`
@@ -192,8 +211,10 @@ structure Object where
 
 /-! ## The whole spec -/
 
-/-- A whole spec, resolved. Each array is in the parsed spec's order, and IDs
-index into them. -/
+/--
+A whole spec, resolved. Each array is in the parsed spec's order, and IDs index
+into them.
+-/
 structure Spec where
   copyright  : String
   name       : Name

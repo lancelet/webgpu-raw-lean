@@ -22,8 +22,10 @@ executable `webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere
 
 open WebGPUGen.Yaml WebGPUGen.Common WebGPUGen.Parsed
 
-/-- The vendored spec, found from this executable's location
-(`webgpu-gen/.lake/build/bin/`), so the driver works from any directory. -/
+/--
+The vendored spec, found from this executable's location
+(`webgpu-gen/.lake/build/bin/`), so the driver works from any directory.
+-/
 def specPath : IO System.FilePath := do
   let bin := (← IO.appPath).parent.getD "."
   let package := ((bin.parent.bind (·.parent)).bind (·.parent)).getD "."
@@ -39,9 +41,11 @@ def memberNames {Doc} (ps : Array (Parameter Doc)) : List String :=
   ps.toList.map (memberName ·.name)
 
 open WebGPUGen.Lowered in
-/-- Every C name `webgpu.h` should declare for `s`: types, enum entries and
-flags, constants, functions and methods with their pointer types, and the
-names of members and arguments. -/
+/--
+Every C name `webgpu.h` should declare for `s`: types, enum entries and flags,
+constants, functions and methods with their pointer types, and the names of
+members and arguments.
+-/
 def cNames (s : WebGPUGen.Parsed.Spec) : List String :=
   s.constants.toList.map (constantName ·.name)
     ++ s.typedefs.toList.map (typeName ·.name)
@@ -62,9 +66,11 @@ def cNames (s : WebGPUGen.Parsed.Spec) : List String :=
 def identifiers (text : String) : Std.HashSet String :=
   Std.HashSet.ofList (text.splitToList (fun c => !(c.isAlphanum || c == '_')))
 
-/-- The values `webgpu.h` gives enum entries and flags, by C name, from lines such
-as `    WGPUFeatureLevel_Core = 0x00000002,` and
-`static const WGPUBufferUsage WGPUBufferUsage_MapRead = 0x0000000000000001;`. -/
+/--
+The values `webgpu.h` gives enum entries and flags, by C name, from lines such
+as ` WGPUFeatureLevel_Core = 0x00000002,` and `static const WGPUBufferUsage
+WGPUBufferUsage_MapRead = 0x0000000000000001;`.
+-/
 def headerValues (text : String) : Std.HashMap String Nat :=
   (text.splitOn "\n").foldl (init := {}) fun values line =>
     match line.splitOn " = 0x" with
@@ -88,8 +94,10 @@ def computedValues (l : WebGPUGen.Lowered.Spec) : List (String × Nat) :=
 def repeated (names : List String) : List String :=
   (names.filter fun n => names.count n > 1).eraseDups
 
-/-- Lean names that clash in the lowered spec: type names shared by two types,
-and entry or flag names shared within one type. -/
+/--
+Lean names that clash in the lowered spec: type names shared by two types, and
+entry or flag names shared within one type.
+-/
 def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
   let types := l.enums.toList.map (·.names.lean) ++ l.bitflags.toList.map (·.names.lean)
   let enums := l.enums.toList.map fun e =>

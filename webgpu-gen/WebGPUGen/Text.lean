@@ -21,8 +21,10 @@ theorem stripPrefix?_append (p r : List Char) : stripPrefix? p (p ++ r) = some r
   | nil => rfl
   | cons c p ih => simp [stripPrefix?, ih]
 
-/-- Do `p` and `x` differ at some position both have? Then nothing starting
-with `x` starts with `p`. Closed instances are checked with `decide`. -/
+/--
+Do `p` and `x` differ at some position both have? Then nothing starting with `x`
+starts with `p`. Closed instances are checked with `decide`.
+-/
 def diverges : List Char → List Char → Bool
   | c :: p, d :: x => c != d || diverges p x
   | _, _ => false

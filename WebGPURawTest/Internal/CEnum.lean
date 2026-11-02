@@ -16,8 +16,10 @@ open WebGPU.Raw WebGPU.Raw.Internal
 Scaffolding for the tests below; these are not tests themselves. -/
 
 open Lean Elab Command in
-/-- `#rejects cmd` passes if `cmd` reports an error, and fails otherwise. The
-errors themselves are not shown: their wording is Lean's, not ours. -/
+/--
+`#rejects cmd` passes if `cmd` reports an error, and fails otherwise. The errors
+themselves are not shown: their wording is Lean's, not ours.
+-/
 elab "#rejects " cmd:command : command => do
   let before := (← get).messages
   modify fun s => { s with messages := {} }

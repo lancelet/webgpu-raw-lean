@@ -35,8 +35,9 @@ theorem nameAt_mem_map {α β} {name : β → Name} {g : α → β} {name' : α 
   ⟨g xs[i], Array.mem_map_of_mem (Array.getElem_mem lt),
     by simp [nameAt, Array.getElem?_eq_getElem lt, hg]⟩
 
-/-- When names are distinct, looking up the name at a position finds that
-position. -/
+/--
+When names are distinct, looking up the name at a position finds that position.
+-/
 theorem indexOf?_nameAt {α} {name : α → Name} {xs : Array α}
     (h : (xs.toList.map name).Nodup) {i : Nat} (lt : i < xs.size) :
     indexOf? name xs (nameAt name xs i) = some ⟨i, lt⟩ := by
@@ -93,8 +94,10 @@ theorem memberShape_unresolveTypeRef {r : Spec} {t : TypeRef} :
   | arrayOf _   => rfl
   | callback _  => rfl
 
-/-- An entry default whose entry has a name that reads as an entry name
-unresolves to that name. -/
+/--
+An entry default whose entry has a name that reads as an entry name unresolves
+to that name.
+-/
 theorem unresolveDefault_entry {r : Spec} {ref : EntryRef} {n : Name}
     (h : ref.name? r = some n) (v : Parsed.defaultText n.text = .entry) :
     unresolveDefault r (.entry ref) = .entry n v := by
@@ -114,9 +117,11 @@ theorem suits_unresolve {r : Spec} {t : TypeRef} {d : Default} (hd : d.WellForme
   | constant _ => exact fun _ => hd.2
   | _          => exact fun _ => hd
 
-/-- A well-formed default unresolves to one that names what exists. An entry
-default needs the enum or bitflag names to be distinct: the parsed spec finds
-an entry's owner by name, and must find the one the ID points at. -/
+/--
+A well-formed default unresolves to one that names what exists. An entry default
+needs the enum or bitflag names to be distinct: the parsed spec finds an entry's
+owner by name, and must find the one the ID points at.
+-/
 theorem defaultOk_unresolve {r : Spec} (hr : WellFormed r) {t : TypeRef} {d : Default}
     (hd : d.WellFormed r t) :
     DefaultOk (unresolve r) (unresolveTypeRef r t) (unresolveDefault r d) := by
@@ -273,8 +278,10 @@ theorem indexOf_nameAt_map {α β} {name : β → Name} {g : α → β} {name' :
     {i : Nat} (lt : i < xs.size) : indexOf name (xs.map g) (nameAt name' xs i) = i := by
   simp [indexOf, indexOf?_nameAt_map hg h lt]
 
-/-- An enum's named slots have distinct names, so looking up a slot's name finds
-that slot. Reserved slots have no name and never match. -/
+/--
+An enum's named slots have distinct names, so looking up a slot's name finds
+that slot. Reserved slots have no name and never match.
+-/
 theorem indexOf?_slotName {entries : Array (Option EnumEntry)}
     (h : (entries.toList.filterMap (·.map (·.name))).Nodup) {i : Nat}
     (lt : i < entries.size) {n : Name} (hs : slotName entries[i] = some n) :
@@ -349,8 +356,10 @@ theorem buildTypeRef_unresolveTypeRef {r : Spec} (hr : WellFormed r) {t : TypeRe
   | arrayOf _   => exact congrArg TypeRef.arrayOf  (buildNamed_namedName hr h)
   | callback _  => exact congrArg TypeRef.callback (callbackId_callbackName hr h)
 
-/-- A well-formed entry default's reference comes back: its enum or bitflag by
-name, then its entry by name, both distinct. -/
+/--
+A well-formed entry default's reference comes back: its enum or bitflag by name,
+then its entry by name, both distinct.
+-/
 theorem buildEntryRef_unresolve {r : Spec} (hr : WellFormed r) {ref : EntryRef} {n : Name}
     (hn : ref.name? r = some n) :
     buildEntryRef (unresolve r) (unresolveTypeRef r (.named ref.owner)) n = ref := by
@@ -412,8 +421,10 @@ theorem buildReturn_unresolve {r : Spec} (hr : WellFormed r) {ret : Return}
     (h : ret.WellFormed r) : buildReturn (unresolve r) (unresolveReturn r ret) = ret := by
   simp only [buildReturn, unresolveReturn, buildTypeRef_unresolveTypeRef hr h.typeInRange]
 
-/-- A well-formed flag comes back: a combination's names find the flags they
-came from, since flag names are distinct. -/
+/--
+A well-formed flag comes back: a combination's names find the flags they came
+from, since flag names are distinct.
+-/
 theorem buildFlag_unresolve {b : Bitflag} (hb : b.WellFormed) {e : BitflagEntry}
     (h : e.value.WellFormed b) : buildFlag (unresolveBitflag b) (unresolveFlag b e) = e := by
   obtain ⟨name, ns, doc, value⟩ := e
@@ -492,8 +503,10 @@ theorem build_unresolve {r : Spec} (hr : WellFormed r) : build (unresolve r) = r
 
 /-! ## The equivalence -/
 
-/-- Every well-formed spec comes from a parsed one: unresolve it, and resolving
-gives it back. -/
+/--
+Every well-formed spec comes from a parsed one: unresolve it, and resolving
+gives it back.
+-/
 theorem resolve_unresolve {r : Spec} (hr : WellFormed r) : resolve (unresolve r) = .ok r := by
   unfold resolve
   rw [check_unresolve hr, build_unresolve hr]

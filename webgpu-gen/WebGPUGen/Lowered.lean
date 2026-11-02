@@ -29,8 +29,10 @@ structure EnumEntry where
   value : UInt32
   deriving Repr, DecidableEq
 
-/-- An enum. Reserved slots are left out: they only shift the values of the
-entries after them, and the values are already worked out. -/
+/--
+An enum. Reserved slots are left out: they only shift the values of the entries
+after them, and the values are already worked out.
+-/
 structure Enum where
   names    : Names
   doc      : String

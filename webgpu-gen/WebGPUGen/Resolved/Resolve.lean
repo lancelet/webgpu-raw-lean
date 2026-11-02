@@ -43,8 +43,10 @@ def indexOf? {α β} [BEq β] (key : α → β) (xs : Array α) (k : β) : Optio
 /-- The key of an enum slot: its entry's name, or `none` for a reserved slot. -/
 def slotName (slot : Option EnumEntry) : Option Name := slot.map (·.name)
 
-/-- The names of the entries of kind `kind`, in order. Function types have
-none: nothing in a spec defines them. -/
+/--
+The names of the entries of kind `kind`, in order. Function types have none:
+nothing in a spec defines them.
+-/
 def namesOf (s : Parsed.Spec) : RefKind → Option (Array Name)
   | .typedef      => some (s.typedefs.map (·.name))
   | .enum         => some (s.enums.map    (·.name))
@@ -68,8 +70,10 @@ def eachAt {α} (path : Array String) (key : String) (xs : Array α)
     (check : Array String → α → List Problem) : List Problem :=
   xs.toList.zipIdx.flatMap fun (x, i) => check ((path.push key).push s!"[{i}]") x
 
-/-- Names that occur twice, reported at the later occurrence. `none` stands for
-an unnamed slot (a reserved enum entry), which never clashes. -/
+/--
+Names that occur twice, reported at the later occurrence. `none` stands for an
+unnamed slot (a reserved enum entry), which never clashes.
+-/
 def duplicates (path : Array String) (key : String) (names : List (Option Name)) :
     List Problem :=
   names.zipIdx.flatMap fun (name, i) =>
@@ -99,8 +103,10 @@ def checkTypeRef (s : Parsed.Spec) (path : Array String) : Parsed.TypeRef → Li
   | .refArray kind n => checkRef s path kind n
   | .callback n      => checkCallbackName s path n
 
-/-- Check a default against the spec. An entry default must be on a member
-whose type is an enum or bitflag, and name one of its entries. -/
+/--
+Check a default against the spec. An entry default must be on a member whose
+type is an enum or bitflag, and name one of its entries.
+-/
 def checkDefault (s : Parsed.Spec) (path : Array String) (type : Parsed.TypeRef) :
     Parsed.Default → List Problem
   | .constant n =>
@@ -163,8 +169,10 @@ def checkOwnership (role : Role) (path : Array String) (owned : Option Bool) : L
   | .argument         => problem path "a function argument cannot be passed without ownership"
   | .callbackArgument => []  -- never reached: `ownershipOk` allows any value here
 
-/-- A default may only be on a struct member that is not a pointer, and must
-suit the member's type. -/
+/--
+A default may only be on a struct member that is not a pointer, and must suit
+the member's type.
+-/
 def checkDefaultUse {Doc} (role : Role) (path : Array String) (p : Parsed.Parameter Doc)
     (d : Parsed.Default) : List Problem :=
   let path := path.push "default"
@@ -236,9 +244,11 @@ def checkSection {α} (key : String) (xs : Array α) (name : α → Name)
     (check : Array String → α → List Problem) : List Problem :=
   duplicates #[] key (xs.toList.map (some ∘ name)) ++ eachAt #[] key xs check
 
-/-- An enum's entries have distinct names. A namespaced entry, as upstream's
-generator requires, has an explicit value, is only in the core spec (enum
-prefix 0), and uses a namespace with its own block of enum values. -/
+/--
+An enum's entries have distinct names. A namespaced entry, as upstream's
+generator requires, has an explicit value, is only in the core spec (enum prefix
+0), and uses a namespace with its own block of enum values.
+-/
 def checkEnum (s : Parsed.Spec) (path : Array String) (e : Enum) : List Problem :=
   duplicates path "entries" (e.entries.toList.map slotName)
     ++ eachAt path "entries" e.entries fun path slot =>
@@ -273,8 +283,10 @@ def checkFunctions (s : Parsed.Spec) : List Problem :=
 def checkObjects   (s : Parsed.Spec) : List Problem :=
   checkSection "objects"   s.objects   (·.name) (checkObject s)
 
-/-- Things upstream's generator accepts but that look like mistakes. They do not
-stop resolution. -/
+/--
+Things upstream's generator accepts but that look like mistakes. They do not
+stop resolution.
+-/
 def warnings (s : Parsed.Spec) : List Problem :=
   eachAt #[] "structs" s.structs fun path st =>
     if st.kind == .extension && st.extendedStructs.isEmpty then
@@ -417,8 +429,10 @@ def buildObject (s : Parsed.Spec) (o : Parsed.Object) : Object where
 
 /-! ### The whole spec -/
 
-/-- Replace every name in `s` with the ID it names. Meaningful only when
-`check s` finds nothing. -/
+/--
+Replace every name in `s` with the ID it names. Meaningful only when `check s`
+finds nothing.
+-/
 def build (s : Parsed.Spec) : Spec where
   copyright  := s.copyright
   name       := s.name

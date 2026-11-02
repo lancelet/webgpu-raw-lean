@@ -32,8 +32,10 @@ end WebGPUGen.Parsed
 
 namespace WebGPUGen.Common
 
-/-- A value in decimal; `hex` for bitflags, where bits matter. Declared in
-`Common` so that `v.render` works on the common `Value64`. -/
+/--
+A value in decimal; `hex` for bitflags, where bits matter. Declared in `Common`
+so that `v.render` works on the common `Value64`.
+-/
 def Value64.render (v : Value64) (asHex : Bool := false) : String :=
   match v with
   | .int n => if asHex then Parsed.hex n.toNat else toString n
@@ -44,8 +46,10 @@ end WebGPUGen.Common
 namespace WebGPUGen.Parsed
 open WebGPUGen.Common
 
-/-- A default, labelled with its kind so that, say, the boolean `true` and an
-entry named `true` read differently. -/
+/--
+A default, labelled with its kind so that, say, the boolean `true` and an entry
+named `true` read differently.
+-/
 def Default.render : Default → String
   | .bool b => s!"default {b}"
   | .int n => s!"default {n}"
@@ -59,9 +63,11 @@ def Default.render : Default → String
 /-- Pad `s` with spaces to `width`. -/
 def pad (s : String) (width : Nat) : String := s.pushn ' ' (width - s.length)
 
-/-- Lay out rows of cells as aligned columns, two spaces apart, each line
-indented by `indent`. A column empty in every row is dropped, and trailing
-spaces are trimmed. -/
+/--
+Lay out rows of cells as aligned columns, two spaces apart, each line indented
+by `indent`. A column empty in every row is dropped, and trailing spaces are
+trimmed.
+-/
 def columns (indent : Nat) (rows : List (List String)) : List String :=
   let cell (row : List String) (i : Nat) := row.getD i ""
   let count := rows.foldl (fun n row => max n row.length) 0
@@ -148,8 +154,10 @@ def ownershipTag : Option Bool → String
   | some false => "without ownership"
   | none => ""
 
-/-- Attributes in one cell, two spaces apart, so that rows mixing different
-attributes stay compact. -/
+/--
+Attributes in one cell, two spaces apart, so that rows mixing different
+attributes stay compact.
+-/
 def attributeCell (attributes : List String) : String :=
   "  ".intercalate (attributes.filter (!·.isEmpty))
 
@@ -192,9 +200,11 @@ def Return.render (r : Return) : String :=
   attributeCell [s!"returns {r.type.render}", pointerTag r.pointer,
     flagTag r.optional "optional", ownershipTag r.passedWithOwnership]
 
-/-- Functions at `indent`, their names and returns aligned as a group. Each is
+/--
+Functions at `indent`, their names and returns aligned as a group. Each is
 followed by its docs (with docs on, a return doc is marked `Returns:`) and its
-arguments, two spaces deeper. -/
+arguments, two spaces deeper.
+-/
 def dumpFunctionList (o : DumpOptions) (indent : Nat) (fs : List Function) : List String :=
   let headers := columns indent <| fs.map fun f =>
     [f.name.text, nsTag f.ns, (f.returns.map Return.render).getD "",

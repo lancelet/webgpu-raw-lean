@@ -55,8 +55,10 @@ theorem callbackName_callbackId {s : Parsed.Spec} {n : Name}
     (h : ∃ c ∈ s.callbacks, c.name = n) : callbackName (build s) (callbackId s n) = n :=
   nameAt_map_indexOf (fun _ => rfl) h
 
-/-- Building with a function and unresolving with one that undoes it, on
-every item, gives the array back. -/
+/--
+Building with a function and unresolving with one that undoes it, on every item,
+gives the array back.
+-/
 theorem map_map_eq_self {α β} {f : α → β} {g : β → α} {xs : Array α}
     (h : ∀ x ∈ xs.toList, g (f x) = x) : (xs.map f).map g = xs := by
   rw [Array.map_map]
@@ -111,8 +113,10 @@ theorem unresolveReturn_buildReturn {s : Parsed.Spec} {path : Array String} {r :
 
 /-! ## Entries -/
 
-/-- A flag that passes its check comes back: an explicit value as itself, and a
-combination as the names of the flags it combines. -/
+/--
+A flag that passes its check comes back: an explicit value as itself, and a
+combination as the names of the flags it combines.
+-/
 theorem unresolveFlag_buildFlag {path : Array String} {b : Parsed.Bitflag}
     {e : Parsed.BitflagEntry} (h : checkFlag b path e = []) :
     unresolveFlag (buildBitflag b) (buildFlag b e) = e := by
@@ -182,8 +186,10 @@ theorem unresolveObject_buildObject {s : Parsed.Spec} {path : Array String}
 
 /-! ## The whole spec -/
 
-/-- If `check` finds no problems, unresolving what `build` makes gives back the
-spec. -/
+/--
+If `check` finds no problems, unresolving what `build` makes gives back the
+spec.
+-/
 theorem unresolve_build {s : Parsed.Spec} (h : check s = []) : unresolve (build s) = s := by
   rw [check_eq_nil, checkConstants_eq_nil, checkTypedefs_eq_nil, checkEnums_eq_nil,
     checkBitflags_eq_nil, checkStructs_eq_nil, checkCallbacks_eq_nil, checkFunctions_eq_nil,

@@ -25,22 +25,28 @@ open WebGPUGen.Common
 Character by character, as upstream does. Spec names are ASCII, so Lean's
 `Char.toUpper` agrees with Go's `unicode.ToUpper` on them. -/
 
-/-- Write `cs` with the character after each underscore in upper case and the
+/--
+Write `cs` with the character after each underscore in upper case and the
 underscore dropped; `upper` says whether the first character is upper case too.
 Like upstream, the character after an underscore is upper-cased even if it is
-another underscore, which is then kept. -/
+another underscore, which is then kept.
+-/
 def joinWords : Bool → List Char → List Char
   | true,  c :: cs   => c.toUpper :: joinWords false cs
   | false, '_' :: cs => joinWords true cs
   | false, c :: cs   => c :: joinWords false cs
   | _,     []        => []
 
-/-- Upstream's `PascalCase`: words joined, each starting in upper case. The rest
-of each word is kept as written, so `BC1_RGBA_unorm` is `BC1RGBAUnorm`. -/
+/--
+Upstream's `PascalCase`: words joined, each starting in upper case. The rest of
+each word is kept as written, so `BC1_RGBA_unorm` is `BC1RGBAUnorm`.
+-/
 def pascalCase (s : String) : String := String.ofList (joinWords true s.toList)
 
-/-- Upstream's `CamelCase`: the same, but the first word kept as written, so
-`next_in_chain` is `nextInChain`. -/
+/--
+Upstream's `CamelCase`: the same, but the first word kept as written, so
+`next_in_chain` is `nextInChain`.
+-/
 def camelCase (s : String) : String := String.ofList (joinWords false s.toList)
 
 /-- Upstream's `ConstantCase`: all in upper case, underscores kept. -/
@@ -54,8 +60,10 @@ def typeName (n : Name) : String := "WGPU" ++ pascalCase n.text
 /-- A callback's function pointer type: `WGPURequestDeviceCallback`. -/
 def callbackTypeName (n : Name) : String := typeName n ++ "Callback"
 
-/-- A callback's info struct, which carries the callback and its mode:
-`WGPURequestDeviceCallbackInfo`. -/
+/--
+A callback's info struct, which carries the callback and its mode:
+`WGPURequestDeviceCallbackInfo`.
+-/
 def callbackInfoName (n : Name) : String := typeName n ++ "CallbackInfo"
 
 /-- An enum entry or flag: `WGPUBufferUsage_MapRead`. -/

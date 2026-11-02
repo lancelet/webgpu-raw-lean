@@ -25,9 +25,11 @@ open WebGPUGen.Common
 
 /-! ## Enums -/
 
-/-- The value of the enum entry at position `i`: its block in the high 16 bits
-(the spec's enum prefix, or its namespace's block), and in the low 16 its
-explicit value or else its position. -/
+/--
+The value of the enum entry at position `i`: its block in the high 16 bits (the
+spec's enum prefix, or its namespace's block), and in the low 16 its explicit
+value or else its position.
+-/
 def enumValue (r : Spec) (i : Nat) (entry : EnumEntry) : UInt32 :=
   let block : UInt16 := match entry.ns with
     | some ns => (namespaceBlock? ns).getD 0  -- `WellFormed` says it is known
@@ -37,9 +39,11 @@ def enumValue (r : Spec) (i : Nat) (entry : EnumEntry) : UInt32 :=
 
 /-! ## Flags -/
 
-/-- A flag's own value: as written, or else by position `i`, 0 for the first
-and then 1, 2, 4, …. A combination's own value is by position: this is what
-upstream ORs together when another combination names it. -/
+/--
+A flag's own value: as written, or else by position `i`, 0 for the first and
+then 1, 2, 4, …. A combination's own value is by position: this is what
+upstream ORs together when another combination names it.
+-/
 def flagOwnValue (i : Nat) : FlagValue → UInt64
   | .explicit n => n
   | _           => if i = 0 then 0 else 1 <<< (i - 1).toUInt64
@@ -48,9 +52,11 @@ def flagOwnValue (i : Nat) : FlagValue → UInt64
 def flagOwnValueAt (b : Bitflag) (i : Nat) : UInt64 :=
   flagOwnValue i ((b.entries[i]?.map (·.value)).getD .implicit)
 
-/-- The value of the flag at position `i` of `b`: a combination ORs together
-the own values of the flags it names, any other flag has its own value. Like
-upstream, an empty combination counts as none, so its value is by position. -/
+/--
+The value of the flag at position `i` of `b`: a combination ORs together the own
+values of the flags it names, any other flag has its own value. Like upstream,
+an empty combination counts as none, so its value is by position.
+-/
 def flagValue (b : Bitflag) (i : Nat) : UInt64 :=
   match (b.entries[i]?.map (·.value)).getD .implicit with
   | .combination flags =>
