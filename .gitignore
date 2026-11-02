@@ -2,3 +2,6 @@
 .lake/
 # Downloaded by vendor/wgpu-native/fetch.sh
 /vendor/wgpu-native/*/
+# Downloaded by vendor/lean4/fetch.sh and vendor/libuv/fetch.sh
+/vendor/lean4/*/
+/vendor/libuv/*/

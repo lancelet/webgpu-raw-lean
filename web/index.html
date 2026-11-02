@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webgpu-raw-lean: web self-test</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1b1f24;
+    --muted: #59636e;
+    --ok: #1a7f37;
+    --fail: #cf222e;
+    --panel: #f6f8fa;
+    --border: #d1d9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --fg: #e6edf3;
+      --muted: #9198a1;
+      --ok: #3fb950;
+      --fail: #f85149;
+      --panel: #151b23;
+      --border: #3d444d;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 system-ui, sans-serif;
+  }
+  main {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.5rem;
+  }
+  p {
+    color: var(--muted);
+  }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+  .ok { color: var(--ok); }
+  .fail { color: var(--fail); }
+</style>
+</head>
+<body>
+<main>
+  <h1>webgpu-raw-lean: web self-test</h1>
+  <p>
+    Lean, compiled to WebAssembly, checks that it runs correctly here, then
+    calls the WebGPU bindings. A triangle comes when the bindings can draw one.
+    <a href="https://github.com/lancelet/webgpu-raw-lean">Source</a>.
+  </p>
+  <pre id="out">Running…
+</pre>
+  <p id="status"></p>
+</main>
+<script>
+  // Emscripten's script declares globals of its own (such as `out`), so this
+  // page keeps its names in a block, and declares only `Module`, through which
+  // the program prints and reports its exit.
+  var Module;
+  {
+    const output = document.getElementById("out");
+    const status = document.getElementById("status");
+    output.textContent = "";
+    const line = (text) => {
+      const span = document.createElement("span");
+      if (text.startsWith("ok")) span.className = "ok";
+      if (text.startsWith("FAIL")) span.className = "fail";
+      span.textContent = text + "\n";
+      output.appendChild(span);
+    };
+    if (!("gpu" in navigator)) {
+      status.textContent = "This browser has no WebGPU: the bindings' " +
+        "check may fail.";
+    }
+    Module = {
+      print: line,
+      printErr: line,
+      onExit: (code) => {
+        status.textContent = code === 0
+          ? "All checks passed."
+          : `Exited with code ${code}.`;
+        status.className = code === 0 ? "ok" : "fail";
+      },
+    };
+  }
+</script>
+<script src="webgpu-raw-web-test.js"></script>
+</body>
+</html>
