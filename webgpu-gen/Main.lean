@@ -13,6 +13,11 @@ file starts with a banner recording when it was generated, from which commit of
 this repository (and whether it had uncommitted changes), and which spec it was
 generated from. A spec with problems stops the generator before anything is
 written.
+
+    lake exe webgpu-gen dump [--docs]
+
+prints what the generator read from the spec, section by section, with its docs
+if asked: a view for checking the reader by eye, and for debugging.
 -/
 
 open WebGPUGen
@@ -56,12 +61,16 @@ def provenance (root : System.FilePath) : IO Emit.Provenance := do
     pinnedBy     := source.pinnedBy
   }
 
+/-- Decode the vendored spec, or report where decoding failed. -/
+def parseSpec (root : System.FilePath) : IO Parsed.Spec := do
+  let node ← Yaml.parseFile (root / "vendor/webgpu-headers/webgpu.yml")
+  match (Parsed.Spec.codec.decode node).run with
+  | .ok parsed => pure parsed
+  | .error e   => throw (IO.userError (toString e))
+
 /-- Decode, resolve and lower the vendored spec, or report every problem. -/
 def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
-  let node ← Yaml.parseFile (root / "vendor/webgpu-headers/webgpu.yml")
-  let parsed ← match (Parsed.Spec.codec.decode node).run with
-    | .ok parsed => pure parsed
-    | .error e   => throw (IO.userError (toString e))
+  let parsed ← parseSpec root
   -- The documentation sections the spec's docs refer to, from upstream's articles.
   let articles ← (root / "vendor/webgpu-headers/articles").readDir
   let sections ← articles.toList.flatMapM fun entry => do
@@ -88,9 +97,19 @@ def generate : IO Unit := do
     IO.FS.writeFile path text
     IO.println s!"wrote {path}"
 
+/--
+Print what the reader understood of the vendored spec, section by section, with
+its docs if `docs` is set.
+-/
+def dump (docs : Bool) : IO Unit := do
+  for line in Parsed.dumpSpec { docs } (← parseSpec (← repoRoot)) do
+    IO.println line
+
 def main (args : List String) : IO UInt32 := do
   match args with
-  | ["generate"] => generate; return 0
+  | ["generate"]       => generate; return 0
+  | ["dump"]           => dump false; return 0
+  | ["dump", "--docs"] => dump true; return 0
   | _ =>
-    IO.eprintln "usage: webgpu-gen generate"
+    IO.eprintln "usage: webgpu-gen generate\n       webgpu-gen dump [--docs]"
     return 1

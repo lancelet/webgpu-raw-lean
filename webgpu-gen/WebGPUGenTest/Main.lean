@@ -1,6 +1,5 @@
 import WebGPUGen.Yaml
 import WebGPUGen.Parsed.Codec
-import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Unresolve
 import WebGPUGen.Resolved.Values
@@ -14,11 +13,13 @@ import WebGPUGenTest
 
 Reads the vendored spec, decodes it, checks that it re-encodes to the same spec,
 and resolves it. Then checks the C names and the enum and flag values generated
-for it against the vendored `webgpu.h`, and prints a dump of the result. A
-decoding failure stops with its path.
+for it against the vendored `webgpu.h`, and compiles the generated C shims. It
+prints one line if every check passes, and otherwise the first failure; a
+decoding failure stops with its path. (To see what the reader understood, run
+`lake exe webgpu-gen dump`.)
 
-Run with `lake test` (or `lake test -- --docs`) inside `webgpu-gen`; the built
-executable `webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere.
+Run with `lake test` inside `webgpu-gen`; the built executable
+`webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere.
 -/
 
 open WebGPUGen.Yaml WebGPUGen.Common WebGPUGen.Parsed
@@ -144,8 +145,7 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
 
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
-def main (args : List String) : IO Unit := do
-  let options : DumpOptions := { docs := args.contains "--docs" }
+def main : IO Unit := do
   let node ← parseFile (← specPath)
   let spec ← match (Spec.codec.decode node).run with
     | .ok spec => pure spec
@@ -201,14 +201,4 @@ def main (args : List String) : IO Unit := do
   if let some errors ← compileShims lowered (← headerPath) then
     failWith s!"the generated C shims do not compile:\n{errors}"
 
-  let dump :=
-    dumpConstants options spec.constants
-      ++ dumpTypedefs options spec.typedefs
-      ++ dumpEnums options spec.enums
-      ++ dumpBitflags options spec.bitflags
-      ++ dumpStructs options spec.structs
-      ++ dumpCallbacks options spec.callbacks
-      ++ dumpFunctions options spec.functions
-      ++ dumpObjects options spec.objects
-  for line in dump do
-    IO.println line
+  IO.println "webgpu-gen-test: every check passed on the vendored spec."

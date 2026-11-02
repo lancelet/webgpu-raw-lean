@@ -228,4 +228,15 @@ def dumpObject (o : DumpOptions) (x : Object) : List String :=
 def dumpObjects (o : DumpOptions) (xs : Array Object) : List String :=
   dumpSection "objects" (xs.toList.flatMap (dumpObject o))
 
+/-- The whole spec, section by section. -/
+def dumpSpec (o : DumpOptions) (s : Spec) : List String :=
+  dumpConstants o s.constants
+    ++ dumpTypedefs o s.typedefs
+    ++ dumpEnums o s.enums
+    ++ dumpBitflags o s.bitflags
+    ++ dumpStructs o s.structs
+    ++ dumpCallbacks o s.callbacks
+    ++ dumpFunctions o s.functions
+    ++ dumpObjects o s.objects
+
 end WebGPUGen.Parsed
