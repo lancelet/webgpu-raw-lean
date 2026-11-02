@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 22c5845 (clean)
-  Generated:        2026-11-02 10:47:29 UTC
+  Generator commit: b8f64dd (clean)
+  Generated:        2026-11-02 20:16:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -18,7 +18,7 @@
 
 // A view of the bytes of the Lean string `s`, which stays alive while the
 // string is borrowed. Its length leaves out the terminating NUL.
-static WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
+static inline WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
     WGPUStringView view = {
         .data   = lean_string_cstr(s),
         .length = lean_string_size(s) - 1,
@@ -26,8 +26,9 @@ static WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
     return view;
 }
 
-// An `IO` error saying `message`, for a check a shim makes.
-static lean_obj_res lean_wgpu_io_error(char const * message) {
+// An `IO` error saying `message`, for a check a shim makes, or a function an
+// implementation does not implement.
+static inline lean_obj_res lean_wgpu_io_error(char const * message) {
     return lean_io_result_mk_error(
         lean_mk_io_user_error(lean_mk_string(message))
     );
@@ -35,8 +36,15 @@ static lean_obj_res lean_wgpu_io_error(char const * message) {
 
 // Lean's `hasInstanceFeature`: calls `wgpuHasInstanceFeature`.
 LEAN_EXPORT lean_obj_res lean_wgpuHasInstanceFeature(uint32_t feature) {
+    #ifdef WEBGPU_RAW_DAWN
     WGPUBool result = wgpuHasInstanceFeature((WGPUInstanceFeatureName)feature);
     return lean_io_result_mk_ok(lean_box(result != 0));
+    #else
+    (void)feature;
+    return lean_wgpu_io_error(
+        "hasInstanceFeature: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Adapter.hasFeature`: calls `wgpuAdapterHasFeature`.
@@ -56,11 +64,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuBindGroupSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuBindGroupSetLabel(
         lean_wgpu_bind_group_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "BindGroup.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `BindGroupLayout.setLabel`: calls `wgpuBindGroupLayoutSetLabel`.
@@ -68,11 +84,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuBindGroupLayoutSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuBindGroupLayoutSetLabel(
         lean_wgpu_bind_group_layout_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "BindGroupLayout.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Buffer.setLabel`: calls `wgpuBufferSetLabel`.
@@ -80,11 +104,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuBufferSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuBufferSetLabel(
         lean_wgpu_buffer_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "Buffer.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Buffer.getUsage`: calls `wgpuBufferGetUsage`.
@@ -101,10 +133,17 @@ LEAN_EXPORT lean_obj_res lean_wgpuBufferGetSize(b_lean_obj_arg self) {
 
 // Lean's `Buffer.getMapState`: calls `wgpuBufferGetMapState`.
 LEAN_EXPORT lean_obj_res lean_wgpuBufferGetMapState(b_lean_obj_arg self) {
+    #ifdef WEBGPU_RAW_DAWN
     WGPUBufferMapState result = wgpuBufferGetMapState(
         lean_wgpu_buffer_unbox(self)
     );
     return lean_io_result_mk_ok(lean_box_uint32((uint32_t)result));
+    #else
+    (void)self;
+    return lean_wgpu_io_error(
+        "Buffer.getMapState: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Buffer.unmap`: calls `wgpuBufferUnmap`.
@@ -124,11 +163,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandBufferSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuCommandBufferSetLabel(
         lean_wgpu_command_buffer_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "CommandBuffer.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `CommandEncoder.copyBufferToBuffer`: calls
@@ -244,11 +291,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuCommandEncoderSetLabel(
         lean_wgpu_command_encoder_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "CommandEncoder.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `ComputePassEncoder.insertDebugMarker`: calls
@@ -344,11 +399,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuComputePassEncoderSetLabel(
         lean_wgpu_compute_pass_encoder_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "ComputePassEncoder.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `ComputePipeline.getBindGroupLayout`: calls
@@ -374,11 +437,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePipelineSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuComputePipelineSetLabel(
         lean_wgpu_compute_pipeline_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "ComputePipeline.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Device.destroy`: calls `wgpuDeviceDestroy`.
@@ -425,11 +496,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuDeviceSetLabel(
         lean_wgpu_device_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "Device.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `ExternalTexture.setLabel`: calls `wgpuExternalTextureSetLabel`.
@@ -437,11 +516,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuExternalTextureSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuExternalTextureSetLabel(
         lean_wgpu_external_texture_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "ExternalTexture.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Instance.hasWGSLLanguageFeature`: calls
@@ -450,11 +537,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuInstanceHasWGSLLanguageFeature(
     b_lean_obj_arg self,
     uint32_t       feature
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     WGPUBool result = wgpuInstanceHasWGSLLanguageFeature(
         lean_wgpu_instance_unbox(self),
         (WGPUWGSLLanguageFeatureName)feature
     );
     return lean_io_result_mk_ok(lean_box(result != 0));
+    #else
+    (void)self;
+    (void)feature;
+    return lean_wgpu_io_error(
+        "Instance.hasWGSLLanguageFeature: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Instance.processEvents`: calls `wgpuInstanceProcessEvents`.
@@ -468,11 +563,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuPipelineLayoutSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuPipelineLayoutSetLabel(
         lean_wgpu_pipeline_layout_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "PipelineLayout.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `QuerySet.setLabel`: calls `wgpuQuerySetSetLabel`.
@@ -480,11 +583,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuQuerySetSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuQuerySetSetLabel(
         lean_wgpu_query_set_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "QuerySet.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `QuerySet.getType`: calls `wgpuQuerySetGetType`.
@@ -510,11 +621,17 @@ LEAN_EXPORT lean_obj_res lean_wgpuQueueSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuQueueSetLabel(
         lean_wgpu_queue_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error("Queue.setLabel: not implemented by wgpu-native");
+    #endif
 }
 
 // Lean's `RenderBundle.setLabel`: calls `wgpuRenderBundleSetLabel`.
@@ -522,11 +639,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuRenderBundleSetLabel(
         lean_wgpu_render_bundle_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "RenderBundle.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `RenderBundleEncoder.setPipeline`: calls
@@ -692,11 +817,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuRenderBundleEncoderSetLabel(
         lean_wgpu_render_bundle_encoder_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "RenderBundleEncoder.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `RenderPassEncoder.setPipeline`: calls
@@ -946,11 +1079,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuRenderPassEncoderSetLabel(
         lean_wgpu_render_pass_encoder_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "RenderPassEncoder.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `RenderPipeline.getBindGroupLayout`: calls
@@ -976,11 +1117,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPipelineSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuRenderPipelineSetLabel(
         lean_wgpu_render_pipeline_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "RenderPipeline.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Sampler.setLabel`: calls `wgpuSamplerSetLabel`.
@@ -988,11 +1137,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuSamplerSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuSamplerSetLabel(
         lean_wgpu_sampler_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "Sampler.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `ShaderModule.setLabel`: calls `wgpuShaderModuleSetLabel`.
@@ -1000,11 +1157,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuShaderModuleSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuShaderModuleSetLabel(
         lean_wgpu_shader_module_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "ShaderModule.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Surface.present`: calls `wgpuSurfacePresent`.
@@ -1024,11 +1189,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuSurfaceSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuSurfaceSetLabel(
         lean_wgpu_surface_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "Surface.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Texture.setLabel`: calls `wgpuTextureSetLabel`.
@@ -1036,11 +1209,19 @@ LEAN_EXPORT lean_obj_res lean_wgpuTextureSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuTextureSetLabel(
         lean_wgpu_texture_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "Texture.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Texture.getWidth`: calls `wgpuTextureGetWidth`.
@@ -1093,10 +1274,17 @@ LEAN_EXPORT lean_obj_res lean_wgpuTextureGetDimension(b_lean_obj_arg self) {
 LEAN_EXPORT lean_obj_res lean_wgpuTextureGetTextureBindingViewDimension(
     b_lean_obj_arg self
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     WGPUTextureViewDimension result = wgpuTextureGetTextureBindingViewDimension(
         lean_wgpu_texture_unbox(self)
     );
     return lean_io_result_mk_ok(lean_box_uint32((uint32_t)result));
+    #else
+    (void)self;
+    return lean_wgpu_io_error(
+        "Texture.getTextureBindingViewDimension: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Texture.getFormat`: calls `wgpuTextureGetFormat`.
@@ -1126,9 +1314,17 @@ LEAN_EXPORT lean_obj_res lean_wgpuTextureViewSetLabel(
     b_lean_obj_arg self,
     b_lean_obj_arg label
 ) {
+    #ifdef WEBGPU_RAW_DAWN
     wgpuTextureViewSetLabel(
         lean_wgpu_texture_view_unbox(self),
         lean_wgpu_string_view(label)
     );
     return lean_io_result_mk_ok(lean_box(0));
+    #else
+    (void)self;
+    (void)label;
+    return lean_wgpu_io_error(
+        "TextureView.setLabel: not implemented by wgpu-native"
+    );
+    #endif
 }
