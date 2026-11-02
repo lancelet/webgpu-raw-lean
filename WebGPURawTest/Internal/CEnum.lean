@@ -1,5 +1,5 @@
-import Lean
 import WebGPU.Raw.Internal.CEnum
+import WebGPURawTest.Commands
 
 /-!
 # Tests for `c_enum`
@@ -10,26 +10,6 @@ class's, and an enum whose codes are not distinct is rejected.
 
 namespace WebGPURawTest.Internal.CEnum
 open WebGPU.Raw WebGPU.Raw.Internal
-
-/-! ## Helpers
-
-Scaffolding for the tests below; these are not tests themselves. -/
-
-open Lean Elab Command in
-/--
-`#rejects cmd` passes if `cmd` reports an error, and fails otherwise. The errors
-themselves are not shown: their wording is Lean's, not ours.
--/
-elab "#rejects " cmd:command : command => do
-  let before := (← get).messages
-  modify fun s => { s with messages := {} }
-  -- Undo whatever the command declared before it failed.
-  let failed ← withoutModifyingEnv do
-    elabCommand cmd
-    return (← get).messages.hasErrors
-  modify fun s => { s with messages := before }
-  unless failed do
-    throwError "expected an error, but the command succeeded"
 
 /-! ## A declared enum -/
 

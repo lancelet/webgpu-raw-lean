@@ -1,4 +1,5 @@
 import WebGPU.Raw.Internal.CObject
+import WebGPURawTest.Commands
 
 /-!
 # Tests for `c_object`
@@ -14,10 +15,11 @@ open WebGPU.Raw.Internal
 c_object Thing
 
 -- It is a type, and Lean knows it has values, so a C function returning one can
--- be declared `@[extern]`, as the bindings will.
+-- be declared `@[extern]`, as the bindings will. (Checked in a scratch
+-- environment: no C function `make_thing` exists to link.)
 example : Type := Thing
 example : Nonempty Thing := inferInstance
-@[extern "make_thing"] opaque makeThing : Unit → Thing
+#accepts @[extern "make_thing"] opaque makeThing : Unit → Thing
 
 -- Its handle is under `Internal`, not beside the type.
 example : NonemptyType := Internal.ThingHandle
