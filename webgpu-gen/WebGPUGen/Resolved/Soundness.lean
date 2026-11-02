@@ -85,6 +85,48 @@ theorem defaultKind'_buildDefault {s : Parsed.Spec} {t : Parsed.TypeRef} {d : Pa
     defaultKind' (buildDefault s t d) = defaultKind d := by
   cases d <;> rfl
 
+/-- An entry default's member type is the enum or bitflag its built reference
+points into. -/
+theorem buildTypeRef_eq_owner {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
+    {v : Parsed.defaultText n.text = .entry}
+    (ht : TypeRefOk s t) (hd : DefaultOk s t (.entry n v)) :
+    buildTypeRef s t = .named (buildEntryRef s t n).owner := by
+  -- Any other member type has no entry defaults: `DefaultOk` is `False`.
+  rcases t with _ | ⟨kind, name⟩ | _ | _ <;> try exact hd.elim
+  cases kind with
+  | enum =>
+    obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
+    simp [buildEntryRef, buildTypeRef, buildNamed, EntryRef.owner, hi, enumId, indexOf]
+  | bitflag =>
+    obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
+    simp [buildEntryRef, buildTypeRef, buildNamed, EntryRef.owner, hi, bitflagId, indexOf]
+  | _ => exact hd.elim
+
+/-- An entry default that names an existing entry builds a reference to an
+entry with that name. -/
+theorem buildEntryRef_name? {s : Parsed.Spec} {t : Parsed.TypeRef} {n : Name}
+    {v : Parsed.defaultText n.text = .entry}
+    (ht : TypeRefOk s t) (hd : DefaultOk s t (.entry n v)) :
+    (buildEntryRef s t n).name? (build s) = some n := by
+  rcases t with _ | ⟨kind, name⟩ | _ | _ <;> try exact hd.elim
+  cases kind with
+  | enum =>
+    obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
+    obtain ⟨lt, hj⟩ := indexOf_spec (hd i hi)
+    simp only [slotName, Option.map_eq_some_iff] at hj
+    obtain ⟨entry, hentry, rfl⟩ := hj
+    simp only [buildEntryRef, hi, EntryRef.name?, build]
+    -- `DefaultOk` indexes the enums by `i`, the goal by `i.val`.
+    simp only [Fin.getElem_fin] at lt hentry
+    simp [Array.getElem?_eq_getElem lt, hentry]
+  | bitflag =>
+    obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
+    obtain ⟨lt, hj⟩ := indexOf_spec (hd i hi)
+    simp only [buildEntryRef, hi, EntryRef.name?, build]
+    simp [buildBitflag, buildFlag]
+    exact ⟨_, Array.getElem?_eq_getElem lt, hj⟩
+  | _ => exact hd.elim
+
 /-- A default that names what exists, and suits its member's type, builds a
 well-formed default. -/
 theorem buildDefault_wellFormed {s : Parsed.Spec} {t : Parsed.TypeRef} {d : Parsed.Default}
@@ -98,32 +140,7 @@ theorem buildDefault_wellFormed {s : Parsed.Spec} {t : Parsed.TypeRef} {d : Pars
   | float _ _    => exact suits (by simp [defaultKind])
   | zero         => exact suits (by simp [defaultKind])
   | constant _   => exact ⟨constantId_inRange hd, suits (by simp [defaultKind])⟩
-  | entry n v    =>
-    -- The member's type is its enum or bitflag, which exists; the entry is one
-    -- of that enum's or bitflag's entries.
-    -- Any other member type has no entry defaults: `DefaultOk` is `False`.
-    rcases t with _ | ⟨kind, name⟩ | _ | _ <;> try exact hd.elim
-    cases kind with
-    | enum =>
-      obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
-      obtain ⟨lt, hj⟩ := indexOf_spec (hd i hi)
-      simp only [slotName, Option.map_eq_some_iff] at hj
-      obtain ⟨entry, hentry, rfl⟩ := hj
-      refine ⟨by simp [buildEntryRef, buildTypeRef, buildNamed, EntryRef.owner,
-        hi, enumId, indexOf], entry.name, ?_, v⟩
-      simp only [buildEntryRef, hi, EntryRef.name?, build]
-      -- `DefaultOk` indexes the enums by `i`, the goal by `i.val`.
-      simp only [Fin.getElem_fin] at lt hentry
-      simp [Array.getElem?_eq_getElem lt, hentry]
-    | bitflag =>
-      obtain ⟨i, hi⟩ := Option.isSome_iff_exists.mp (indexOf?_isSome.mpr ht)
-      obtain ⟨lt, hj⟩ := indexOf_spec (hd i hi)
-      refine ⟨by simp [buildEntryRef, buildTypeRef, buildNamed, EntryRef.owner,
-        hi, bitflagId, indexOf], n, ?_, v⟩
-      simp only [buildEntryRef, hi, EntryRef.name?, build]
-      simp [buildBitflag, buildFlag]
-      exact ⟨_, Array.getElem?_eq_getElem lt, hj⟩
-    | _ => exact hd.elim
+  | entry n v    => exact ⟨buildTypeRef_eq_owner ht hd, n, buildEntryRef_name? ht hd, v⟩
 
 /-! ## Parameters and return values -/
 
