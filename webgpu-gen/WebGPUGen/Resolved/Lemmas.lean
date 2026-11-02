@@ -80,6 +80,19 @@ theorem eachAt_eq_nil_mem {α} {path : Array String} {key : String} {xs : Array 
   obtain ⟨i, h, rfl⟩ := List.getElem_of_mem hx
   exact ⟨_, eachAt_eq_nil.mp H i h⟩
 
+/-- For a check whose verdict does not depend on the path (the path only
+labels problems), `eachAt` reports nothing exactly when each item passes the
+check at every path. -/
+theorem eachAt_eq_nil_iff_mem {α} {path : Array String} {key : String} {xs : Array α}
+    {f : Array String → α → List Problem} (hf : ∀ p q x, f p x = [] → f q x = []) :
+    eachAt path key xs f = [] ↔ ∀ x ∈ xs.toList, ∀ p, f p x = [] := by
+  constructor
+  · intro H x hx q
+    obtain ⟨p, hp⟩ := eachAt_eq_nil_mem H x hx
+    exact hf p q x hp
+  · intro H
+    exact eachAt_eq_nil.mpr fun i h => H _ (by simp) _
+
 /-! ## `duplicates` -/
 
 /-- `duplicates` reports nothing exactly when no name occurs earlier in the
@@ -159,12 +172,26 @@ theorem refIndex?_isSome {s : Parsed.Spec} {kind : RefKind} {n : Name} :
     rw [← Option.ne_none_iff_isSome, ne_eq, Array.findIdx?_eq_none_iff]
     simp
 
-/-- `checkRef` reports nothing exactly when the reference is not to a function
-type and names an existing entry. -/
+/-- An entry of kind `kind` is named `n`. Nothing defines function types. -/
+def RefOk (s : Parsed.Spec) : RefKind → Name → Prop
+  | .typedef,      n => ∃ t  ∈ s.typedefs, t.name  = n
+  | .enum,         n => ∃ e  ∈ s.enums,    e.name  = n
+  | .bitflag,      n => ∃ b  ∈ s.bitflags, b.name  = n
+  | .struct,       n => ∃ st ∈ s.structs,  st.name = n
+  | .functionType, _ => False
+  | .object,       n => ∃ o  ∈ s.objects,  o.name  = n
+
+/-- A reference is found exactly when it names an entry of its kind. -/
+theorem refIndex?_isSome_iff_refOk {s : Parsed.Spec} {kind : RefKind} {n : Name} :
+    (refIndex? s kind n).isSome ↔ RefOk s kind n := by
+  cases kind <;> simp [refIndex?_isSome, namesOf, RefOk]
+
+/-- `checkRef` reports nothing exactly when the reference names an entry of its
+kind. -/
 theorem checkRef_eq_nil {s : Parsed.Spec} {path : Array String} {kind : RefKind} {n : Name} :
-    checkRef s path kind n = [] ↔ kind ≠ .functionType ∧ (refIndex? s kind n).isSome := by
+    checkRef s path kind n = [] ↔ RefOk s kind n := by
   unfold checkRef
-  cases kind <;> simp [problem, Option.ne_none_iff_isSome]
+  cases kind <;> simp [problem, refIndex?_isSome_iff_refOk, RefOk]
 
 /-- `checkCallbackName` reports nothing exactly when a callback named `n`
 exists. -/
