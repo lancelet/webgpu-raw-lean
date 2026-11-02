@@ -1,6 +1,7 @@
 import WebGPUGen.Lowered
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Emit.Pretty
+import WebGPUGen.Emit.C.Functions
 
 /-!
 # The Lean printer
@@ -12,7 +13,9 @@ them out, as `Doc`s, with `Layout`'s columns, doc comments and banner.
 Enums are declared with `c_enum` (`WebGPU.Raw.Internal.CEnum`), which the
 generated module imports privately so the command never reaches users of the
 bindings. Bitflag types are structures around a `UInt64`, with a constant per
-flag.
+flag. Object types are declared with `c_object`. Each bound function is a raw
+`@[extern]` declaration its C shim implements, and the function itself, which
+converts its values and calls it.
 
 An enum or bitflag type that extends another spec's (`extended`) is not printed
 yet: the output says so in its place. The core spec has none.
@@ -166,6 +169,98 @@ def objectsStartup : Doc := Doc.lines [
   "end Internal"
 ]
 
+/-! ## Functions
+
+Each bound function is two declarations: the raw `@[extern]` its shim
+implements, under `Internal`, and the function itself, which converts what
+needs converting and calls it. Every function is in `IO`, since every call
+reaches the GPU or its driver.
+
+    @[extern "lean_wgpuAdapterHasFeature"]
+    opaque Internal.Adapter.hasFeature (self : @& Adapter) (feature : UInt32) :
+        IO Bool
+
+    @[inline]
+    def Adapter.hasFeature (self : Adapter) (feature : FeatureName) : IO Bool :=
+      Internal.Adapter.hasFeature self (CEnum.toC feature)
+-/
+
+/-- A type as an argument of `IO`: in parentheses if it has spaces. -/
+def ioOf (type : String) : String :=
+  if type.contains ' ' then s!"IO ({type})" else s!"IO {type}"
+
+/--
+A method's object, as the first parameter `self`, and its type; nothing for a
+function of no object type.
+-/
+def receiverBinder (f : Lowered.Function) (borrowed : Bool) : List Binder :=
+  f.receiver.toList.map fun names =>
+    ⟨"self", (if borrowed then "@& " else "") ++ names.lean⟩
+
+/--
+The raw `@[extern]` declaration of `f`, as its shim implements it: objects and
+strings borrowed, an enum as its code and a bitflag type as its bits. None if a
+value has no raw type, which a bound function never has.
+-/
+def rawDecl (f : Lowered.Function) : Option Doc := do
+  let args ← f.args.toList.mapM fun a => do
+    let type ← a.value.rawLeanType
+    let borrowed := if a.value.isObject then "@& " else ""
+    pure (⟨a.names.lean, borrowed ++ type⟩ : Binder)
+  let result ← match f.result with
+    | none   => pure "Unit"
+    | some v => v.rawLeanType
+  let shim := Emit.C.functionShimName f
+  pure <| text s!"/-- The shim behind `{f.names.lean}`. -/" ++ hardline
+    ++ text s!"@[extern \"{shim}\"]" ++ hardline
+    ++ signature {
+      keyword := "opaque"
+      name    := "Internal." ++ f.names.lean
+      binders := receiverBinder f true ++ args
+      result  := ioOf result
+    }
+
+/-- An argument `x` of `f`, converted to what the raw declaration takes. -/
+def rawArg (x : String) : Value → String
+  | .enum _    => s!"(CEnum.toC {x})"
+  | .bitflag _ => s!"{x}.bits"
+  | _          => x
+
+/--
+`f` itself: its arguments and result in their Lean types, converted for its
+raw declaration, which it calls. A result enum keeps a code no value has
+(`CEnum.decode`). None if a value has no Lean type, which a bound function
+never has.
+-/
+def wrapperDecl (f : Lowered.Function) : Option Doc := do
+  let args ← f.args.toList.mapM fun a => do
+    let type ← a.value.leanType
+    pure (⟨a.names.lean, type⟩ : Binder)
+  let result ← match f.result with
+    | none   => pure "Unit"
+    | some v => v.resultLeanType
+  let callArgs :=
+    (f.receiver.toList.map fun _ => "self")
+      ++ f.args.toList.map fun a => rawArg a.names.lean a.value
+  let call := group (nest 4 (join space
+    ((text ("Internal." ++ f.names.lean)) :: callArgs.map text)))
+  let body := match f.result with
+    | some (.enum _)          => text "CEnum.decode <$> " ++ call
+    | some (.bitflag names)   => text s!"{names.lean}.mk <$> " ++ call
+    | _                       => call
+  pure <| docBefore 0 f.doc ++ text "@[inline]" ++ hardline
+    ++ signature {
+      keyword := "def"
+      name    := f.names.lean
+      binders := receiverBinder f false ++ args
+      result  := ioOf result
+    }
+    ++ text " :=" ++ indented 2 body
+
+/-- A bound function: its raw declaration, then itself. -/
+def functionDecls (f : Lowered.Function) : List Doc :=
+  (rawDecl f).toList ++ (wrapperDecl f).toList
+
 /-! ## Files -/
 
 /--
@@ -244,5 +339,23 @@ def objectsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "make one or look inside it."
     ]
     (spec.objects.toList.map objectDecl ++ [objectsStartup])
+
+/-- The module of functions and methods. -/
+def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  moduleFile p
+    [
+      "public import WebGPU.Raw.CEnum",
+      "public import WebGPU.Raw.Enums",
+      "public import WebGPU.Raw.Objects"
+    ]
+    [
+      "# Functions",
+      "",
+      "The functions and methods of `webgpu.h` the bindings can bind so far, each in",
+      "`IO`. A method takes its object first, as `self`, so `device.getQueue` calls",
+      "`wgpuDeviceGetQueue`. Each calls a raw declaration under `Internal`, which",
+      "its C shim implements; `docs/Safety.md` gives the rules they follow."
+    ]
+    ((Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
 
 end WebGPUGen.Emit.Lean

@@ -13,4 +13,4 @@
 [headers]: https://github.com/webgpu-native/webgpu-headers
 [headers-badge]: https://img.shields.io/badge/webgpu--headers-673658b-6f42c1?style=flat-square
 
-Status: WIP: approximately 35% complete.
+Status: WIP: approximately 38% complete.

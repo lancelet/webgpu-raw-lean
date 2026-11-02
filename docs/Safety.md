@@ -27,10 +27,14 @@ A result is boxed into the `IO` result as Lean unboxes it: `Bool`, `UInt16`
 and `Int16` with `lean_box`, `UInt32` and `Int32` with `lean_box_uint32`,
 `UInt64` with `lean_box_uint64`, `Float32` with `lean_box_float32`, and `Float`
 with `lean_box_float`. *Checked by:* review, against the C Lean 4.31 emits for
-such `@[extern]` declarations.
+such `@[extern]` declarations. (`scripts/check-abi.sh` cannot check boxing,
+since every result is a `lean_object *`; the runtime test calls a shim, but
+none with a result yet, as wgpu-native leaves those it could call
+unimplemented.)
 
 - **Integers are unboxed** at the boundary, `UInt64` included, on 32-bit
-  platforms too. *Checked by:* review.
+  platforms too. *Checked by:* `scripts/check-abi.sh`, which compiles each
+  shim with the declaration Lean makes of it, so their C types must agree.
 - **An enum crosses as its constructor's index**, not its code in `webgpu.h`.
   So no shim takes or returns a Lean enum: the Lean side converts to and from
   the C code with `CEnum`, whose conversions are proved inverse. Likewise a
@@ -101,6 +105,21 @@ Whatever the implementation:
 A Lean `Task` may run on any thread of the pool, so an encoder must not be
 shared between tasks running at the same time, and a push and pop of an error
 scope must not be split between tasks. *Checked by:* not enforced; documented.
+
+## Functions an implementation does not implement
+
+wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one
+aborts the program (a Rust panic that cannot unwind into C). 25 of them are
+bound: every bound `setLabel` method (21), `hasInstanceFeature`,
+`Instance.hasWGSLLanguageFeature`, `Buffer.getMapState` and
+`Texture.getTextureBindingViewDimension`. Dawn, used on the web, implements
+them. *Planned:* the shims will return an `IO` error for them when
+built against wgpu-native, from a list `fetch.sh` takes from its source.
+
+wgpu-native also aborts on some inputs that WebGPU treats as validation errors,
+such as a `bytesPerRow` of 0 in a texture copy; an enum code it does not know
+is another, which the bindings never pass. *Checked by:* not checked; a later
+layer can validate such inputs.
 
 ## Not yet bound
 

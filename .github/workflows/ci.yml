@@ -93,3 +93,9 @@ jobs:
       - name: Check header edits rebuild the shims
         if: runner.os == 'Linux'
         run: scripts/check-shim-rebuild.sh
+
+      # Not a build step: checks that every shim's C types agree with how Lean
+      # calls it, against Lean's own declarations.
+      - name: Check the shims agree with Lean's ABI
+        if: runner.os == 'Linux'
+        run: scripts/check-abi.sh

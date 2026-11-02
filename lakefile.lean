@@ -48,6 +48,13 @@ def wgpuRpath : Array String :=
   else if System.Platform.isOSX then #[s!"-Wl,-rpath,@executable_path/{lib}"]
   else #[s!"-Wl,-rpath,$ORIGIN/{lib}"]
 
+/-- The C compiler: `cc`, or the one `CC` names. -/
+def cCompiler : IO String := return (← IO.getEnv "CC").getD "cc"
+
+/-- Position-independent code, for any C linked into a shared library. -/
+def picArgs : Array String :=
+  if System.Platform.isWindows then #[] else #["-fPIC"]
+
 package WebGPURaw where
   leanOptions  := #[⟨`autoImplicit, false⟩]
   moreLinkArgs := wgpuRpath
@@ -82,8 +89,7 @@ target wgpuShim pkg : FilePath := do
   let wgpuHeaders ← paths (wgpuInclude / "webgpu")
   let headers := (files ++ wgpuHeaders).filter (·.extension == some "h")
   let headerJobs ← headers.mapM fun h => inputTextFile h
-  let cc := (← IO.getEnv "CC").getD "cc"
-  let pic := if System.Platform.isWindows then #[] else #["-fPIC"]
+  let cc ← cCompiler
   let leanInclude ← getLeanIncludeDir
   let includes := #["-I", leanInclude.toString, "-I", wgpuInclude.toString]
   let objs ← (files.filter (·.extension == some "c")).mapM fun src => do
@@ -92,7 +98,7 @@ target wgpuShim pkg : FilePath := do
     let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
       (Job.mixArray headerJobs "headers")
     buildO (pkg.buildDir / "c" / s!"{stem}.o") srcJob
-      includes (#["-O2"] ++ pic) cc getLeanTrace
+      includes (#["-O2"] ++ picArgs) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
 
 /--
@@ -106,8 +112,31 @@ lean_lib WebGPURaw where
   moreLinkObjs := #[wgpuShim]
   moreLinkLibs := #[wgpuNative]
 
+/--
+C helpers for the tests only (`WebGPURawTest/c/`): an instance to call
+functions on, until the bindings can create one.
+-/
+target testHelpers pkg : FilePath := do
+  let src := pkg.dir / "WebGPURawTest" / "c" / "instance.c"
+  let includes := #[
+    "-I", (← getLeanIncludeDir).toString,
+    "-I", (wgpuDir pkg.dir / "include").toString,
+    "-I", (pkg.dir / "c" / "generated").toString
+  ]
+  let headers ← [
+    pkg.dir / "c" / "generated" / "objects.h",
+    wgpuDir pkg.dir / "include" / "webgpu" / "webgpu.h"
+  ].mapM fun h => inputTextFile h
+  -- The source, with the headers' traces mixed into its own.
+  let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
+    (Job.mixArray headers.toArray "headers")
+  let obj ← buildO (pkg.buildDir / "c" / "test" / "instance.o") srcJob
+    includes (#["-O2"] ++ picArgs) (← cCompiler) getLeanTrace
+  buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpurawtest") #[obj]
+
 /-- Tests. `#guard` checks run while this library builds. -/
-lean_lib WebGPURawTest
+lean_lib WebGPURawTest where
+  moreLinkObjs := #[testHelpers]
 
 /--
 The test driver: builds the tests, then builds and runs a program that imports

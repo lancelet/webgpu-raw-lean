@@ -91,7 +91,8 @@ def generate : IO Unit := do
   IO.FS.createDirAll c
   let files := [
     (lean / "Enums.lean",   Emit.Lean.enumsFile p spec),
-    (lean / "Objects.lean", Emit.Lean.objectsFile p spec)
+    (lean / "Objects.lean", Emit.Lean.objectsFile p spec),
+    (lean / "Functions.lean", Emit.Lean.functionsFile p spec)
   ] ++ (Emit.C.objectsFiles p spec ++ Emit.C.functionsFiles p spec).map
     fun (name, text) => (c / name, text)
   for (path, text) in files do

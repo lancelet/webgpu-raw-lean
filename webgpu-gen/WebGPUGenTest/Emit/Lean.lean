@@ -330,6 +330,108 @@ def parsesAsCommand (src : String) : CoreM Bool := do
     "
   render objectsStartup == expected
 
+/-! ## Functions -/
+
+open WebGPUGen.Lowered
+
+/-- A buffer's names. -/
+def bufferNames : Names := ⟨"WGPUBuffer", "Buffer"⟩
+
+/-- An undocumented argument named the same on both sides. -/
+def arg (name : String) (value : Value) : Arg := ⟨⟨name, name⟩, "", value⟩
+
+/-- An undocumented function that takes no callback. -/
+def function (c lean : String) (receiver : Option Names) (args : Array Arg)
+    (result : Option Value) : Lowered.Function := {
+  names    := ⟨c, lean⟩
+  doc      := ""
+  receiver := receiver
+  args     := args
+  result   := result
+  callback := false
+}
+
+/-- A function's two declarations, printed. -/
+def printFunction (f : Lowered.Function) : String :=
+  render (joinDecls (functionDecls f))
+
+-- A function of no object type: its raw declaration takes an enum as its code,
+-- and the function converts it with `CEnum.toC`.
+#guard
+  let feature : Names := ⟨"WGPUFeatureName", "FeatureName"⟩
+  let input := function "wgpuHasFeature" "hasFeature" none
+    #[arg "feature" (.enum feature)] (some .bool)
+  let expected := dedent "
+    /-- The shim behind `hasFeature`. -/
+    @[extern \"lean_wgpuHasFeature\"]
+    opaque Internal.hasFeature (feature : UInt32) : IO Bool
+
+    @[inline]
+    def hasFeature (feature : FeatureName) : IO Bool :=
+      Internal.hasFeature (CEnum.toC feature)
+    "
+  printFunction input == expected
+
+-- A method: its object first, as `self`; objects borrowed (`@&`) in the raw
+-- declaration only; signatures too long for a line broken into tables.
+#guard
+  let encoder : Names := ⟨"WGPURenderPassEncoder", "RenderPassEncoder"⟩
+  let input := function "wgpuRenderPassEncoderSetVertexBuffer"
+    "RenderPassEncoder.setVertexBuffer" (some encoder)
+    #[arg "slot" .uint32, arg "buffer" (.object bufferNames true),
+      arg "offset" .uint64, arg "size" .uint64] none
+  let expected := dedent "
+    /-- The shim behind `RenderPassEncoder.setVertexBuffer`. -/
+    @[extern \"lean_wgpuRenderPassEncoderSetVertexBuffer\"]
+    opaque Internal.RenderPassEncoder.setVertexBuffer
+        (self   : @& RenderPassEncoder)
+        (slot   : UInt32)
+        (buffer : @& Option Buffer)
+        (offset : UInt64)
+        (size   : UInt64) :
+        IO Unit
+
+    @[inline]
+    def RenderPassEncoder.setVertexBuffer
+        (self   : RenderPassEncoder)
+        (slot   : UInt32)
+        (buffer : Option Buffer)
+        (offset : UInt64)
+        (size   : UInt64) :
+        IO Unit :=
+      Internal.RenderPassEncoder.setVertexBuffer self slot buffer offset size
+    "
+  printFunction input == expected
+
+-- A result enum is decoded, keeping a code no value has; a result bitflag type
+-- is rebuilt from its bits.
+#guard
+  let state : Names := ⟨"WGPUBufferMapState", "BufferMapState"⟩
+  let usage : Names := ⟨"WGPUBufferUsage", "BufferUsage"⟩
+  let enumResult := function "wgpuBufferGetMapState" "Buffer.getMapState"
+    (some bufferNames) #[] (some (.enum state))
+  let flagsResult := function "wgpuBufferGetUsage" "Buffer.getUsage"
+    (some bufferNames) #[] (some (.bitflag usage))
+  let wrapper (f : Lowered.Function) := render ((wrapperDecl f).getD .nil)
+  wrapper enumResult == dedent "
+    @[inline]
+    def Buffer.getMapState (self : Buffer) : IO (Except UInt32 BufferMapState) :=
+      CEnum.decode <$> Internal.Buffer.getMapState self
+    "
+    && wrapper flagsResult == dedent "
+    @[inline]
+    def Buffer.getUsage (self : Buffer) : IO BufferUsage :=
+      BufferUsage.mk <$> Internal.Buffer.getUsage self
+    "
+
+-- A method named with a keyword keeps its quotes in both declarations.
+#guard
+  let encoder : Names := ⟨"WGPUComputePassEncoder", "ComputePassEncoder"⟩
+  let input := function "wgpuComputePassEncoderEnd" "ComputePassEncoder.«end»"
+    (some encoder) #[] none
+  (printFunction input).contains "opaque Internal.ComputePassEncoder.«end»"
+    && (printFunction input).contains "def ComputePassEncoder.«end» (self"
+
 /-! ## Joining declarations -/
 
 -- One-line declarations stay together; a longer one has blank lines around it.

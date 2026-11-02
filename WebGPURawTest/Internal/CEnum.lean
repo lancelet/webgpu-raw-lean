@@ -45,6 +45,17 @@ c_enum Mode where
 -- The laws hold for it, as the class's theorems.
 example (m : Mode) : CEnum.ofC? (CEnum.toC m) = some m := CEnum.ofC_toC m
 
+-- A code from C decodes to its value, or is kept if no value has it, as one
+-- from an implementation's own extensions would be.
+#guard
+  let decode (n : UInt32) : Except UInt32 Mode := CEnum.decode n
+  decode 0x00000003 matches .ok .third
+    && decode 0x00000002 matches .error 0x00000002
+    && decode 0x00030001 matches .error 0x00030001
+
+-- And decoding a value's code gives it back, as `CEnum.decode_toC` proves.
+example (m : Mode) : CEnum.decode (CEnum.toC m) = .ok m := CEnum.decode_toC m
+
 /-! ## Several enums -/
 
 -- Documented enums one after another: each doc comment belongs to its own
