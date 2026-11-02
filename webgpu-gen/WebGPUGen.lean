@@ -11,3 +11,4 @@ import WebGPUGen.Resolved
 import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Rules
 import WebGPUGen.Resolved.WellFormed
+import WebGPUGen.Resolved.Unresolve

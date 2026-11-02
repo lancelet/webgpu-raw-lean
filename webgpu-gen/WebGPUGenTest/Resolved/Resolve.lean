@@ -24,13 +24,13 @@ def indent (block : String) : String :=
 
 /-- A spec file whose sections are the given YAML blocks (each a list of
 entries, written with `dedent`), and empty otherwise. -/
-def spec (constants enums bitflags structs callbacks functions objects : String := "[]") :
+def spec (constants typedefs enums bitflags structs callbacks functions objects : String := "[]") :
     String :=
   let part (key block : String) :=
     if block == "[]" then s!"{key}: []\n" else s!"{key}:\n{indent block}"
   "copyright: x\nname: webgpu\nenum_prefix: 0\ndoc: x\n"
     ++ part "constants" constants
-    ++ "typedefs: []\n"
+    ++ part "typedefs" typedefs
     ++ part "enums" enums
     ++ part "bitflags" bitflags
     ++ part "structs" structs

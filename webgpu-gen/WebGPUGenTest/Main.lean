@@ -2,6 +2,7 @@ import WebGPUGen.Yaml
 import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved.Resolve
+import WebGPUGen.Resolved.Unresolve
 import WebGPUGenTest
 
 /-!
@@ -41,7 +42,10 @@ def main (args : List String) : IO Unit := do
   -- Every reference must resolve; warnings are printed but do not fail.
   for w in WebGPUGen.Resolved.warnings spec do IO.eprintln s!"warning: {w}"
   match WebGPUGen.Resolved.resolve spec with
-  | .ok _ => pure ()
+  | .ok r =>
+    -- Unresolving gives back the parsed spec, as faithfulness will prove.
+    unless WebGPUGen.Resolved.unresolve r == spec do
+      failWith "unresolving the resolved spec did not give back the parsed spec"
   | .error problems =>
     for p in problems do IO.eprintln p
     failWith s!"{problems.length} problems resolving the spec"

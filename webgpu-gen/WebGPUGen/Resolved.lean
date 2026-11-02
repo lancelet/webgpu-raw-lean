@@ -58,6 +58,14 @@ inductive Named where
   | object  (id : Id .object)
   deriving Repr, DecidableEq, Hashable
 
+/-- The kind of entry a named type refers to, as the parsed spec writes it. -/
+def Named.kind : Named → RefKind
+  | .typedef _ => .typedef
+  | .enum    _ => .enum
+  | .bitflag _ => .bitflag
+  | .struct  _ => .struct
+  | .object  _ => .object
+
 /-- A `type:`, resolved. -/
 inductive TypeRef where
   | primitive (p : PrimitiveType)    -- uint32, array<uint32>
