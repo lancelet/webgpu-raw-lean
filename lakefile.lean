@@ -7,8 +7,9 @@ Raw Lean bindings to WebGPU (`webgpu.h`), generated from upstream's
 
 Run `vendor/wgpu-native/fetch.sh` once before building: it downloads the
 wgpu-native release for this platform into `vendor/wgpu-native/<platform>/`.
-The C shims are compiled with Lean's own C compiler, so the build needs no
-other.
+The C shims need a C compiler with the C library's headers (`webgpu.h`
+includes `<math.h>`), which Lean's bundled compiler lacks: the build uses `cc`,
+or the compiler `CC` names. On Windows, use MinGW's: `CC=gcc`.
 
 Programs built here find wgpu-native where `fetch.sh` put it: on Linux and
 macOS, the link records its directory (an rpath), so a program moved elsewhere
@@ -58,7 +59,7 @@ lean_lib WebGPURaw where
 
 /--
 The C shims, generated into `c/generated/` by `webgpu-gen`: every `.c` file
-there, compiled with the Lean toolchain's C compiler and flags into one static
+there, compiled with the system C compiler (`cc`, or `CC`) into one static
 library linked into programs that use the bindings. Each is rebuilt when it,
 or any header beside it or in wgpu-native's `include/webgpu/`, changes.
 -/
@@ -75,13 +76,17 @@ extern_lib wgpushim pkg := do
   let wgpuHeaders ← paths (wgpuInclude / "webgpu")
   let headers := (files ++ wgpuHeaders).filter (·.extension == some "h")
   let headerJobs ← headers.mapM fun h => inputTextFile h
+  let cc := (← IO.getEnv "CC").getD "cc"
+  let pic := if System.Platform.isWindows then #[] else #["-fPIC"]
+  let leanInclude ← getLeanIncludeDir
+  let includes := #["-I", leanInclude.toString, "-I", wgpuInclude.toString]
   let objs ← (files.filter (·.extension == some "c")).mapM fun src => do
     let stem := src.fileStem.getD "shim"
     -- The source, with the headers' traces mixed into its own.
     let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
       (Job.mixArray headerJobs "headers")
-    buildLeanO (pkg.buildDir / "c" / s!"{stem}.o") srcJob
-      #["-I", wgpuInclude.toString] #["-O2"]
+    buildO (pkg.buildDir / "c" / s!"{stem}.o") srcJob
+      includes (#["-O2"] ++ pic) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
 
 /-- Tests. `#guard` checks run while this library builds. -/

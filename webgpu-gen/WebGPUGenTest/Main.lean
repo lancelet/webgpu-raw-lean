@@ -109,7 +109,9 @@ def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
 
 /--
 Compile the generated C shims, with warnings as errors, against the vendored
-`webgpu.h` (at `headerPath`) and Lean's `lean.h`, with Lean's own C compiler.
+`webgpu.h` (at `headerPath`) and Lean's `lean.h`, with the system C compiler
+(`cc`, or the one `CC` names), as the bindings' build does: Lean's bundled
+compiler lacks the C library's headers, which `webgpu.h` includes.
 Only compiling, not linking: nothing here needs wgpu-native.
 -/
 def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
@@ -131,10 +133,11 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     for (name, text) in WebGPUGen.Emit.C.objectsFiles provenance spec do
       IO.FS.writeFile (dir / name) text
     let leanPrefix := (← IO.Process.output { cmd := "lean", args := #["--print-prefix"] }).stdout
-    let leanc := System.FilePath.mk leanPrefix.trimAscii.toString / "bin" / "leanc"
+    let leanInclude := System.FilePath.mk leanPrefix.trimAscii.toString / "include"
     let out ← IO.Process.output {
-      cmd  := leanc.toString
+      cmd  := (← IO.getEnv "CC").getD "cc"
       args := #["-c", "-std=c11", "-Wall", "-Wextra", "-Werror", "-I", dir.toString,
+        "-I", leanInclude.toString,
         (dir / "objects.c").toString, "-o", (dir / "objects.o").toString]
     }
     return if out.exitCode == 0 then none else some out.stderr

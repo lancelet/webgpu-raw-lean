@@ -35,11 +35,14 @@ jobs:
       - name: Fetch wgpu-native
         run: vendor/wgpu-native/fetch.sh
 
-      # Programs find wgpu_native.dll through PATH on Windows; on Linux and
-      # macOS the build records where the library is.
-      - name: Put wgpu-native on PATH (Windows)
+      # On Windows, the C shims are compiled with MinGW's gcc (Lean's own
+      # compiler lacks the C library's headers; elsewhere the build uses cc),
+      # and programs find wgpu_native.dll through PATH (elsewhere the build
+      # records where the library is).
+      - name: Set up the C compiler and wgpu-native (Windows)
         if: runner.os == 'Windows'
         run: |
+          echo "CC=gcc" >> "$GITHUB_ENV"
           lib="$GITHUB_WORKSPACE\\vendor\\wgpu-native\\windows-x86_64\\lib"
           echo "$lib" >> "$GITHUB_PATH"
 
