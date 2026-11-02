@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 59c2220 (clean)
-  Generated:        2026-11-02 08:12:06 UTC
+  Generator commit: 87fd6b1 (clean)
+  Generated:        2026-11-02 08:54:45 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -163,9 +163,9 @@ static void lean_wgpu_texture_view_finalize(void * data) {
     wgpuTextureViewRelease((WGPUTextureView)data);
 }
 
-// Register the external class of every object type. Called once, when the
-// bindings are loaded, before any object is boxed.
-void lean_wgpu_register_object_classes(void) {
+// The bindings' start-up, run by Lean when a program using them starts:
+// register every object type's external class.
+LEAN_EXPORT lean_obj_res lean_wgpu_objects_init(void) {
     lean_wgpu_adapter_class = lean_register_external_class(
         lean_wgpu_adapter_finalize,
         lean_wgpu_visit_nothing
@@ -258,6 +258,7 @@ void lean_wgpu_register_object_classes(void) {
         lean_wgpu_texture_view_finalize,
         lean_wgpu_visit_nothing
     );
+    return lean_io_result_mk_ok(lean_box(0));
 }
 
 // A Lean `Adapter` owning the reference `handle`, which it releases when Lean
@@ -268,7 +269,7 @@ lean_obj_res lean_wgpu_adapter_box(WGPUAdapter handle) {
     }
     if (lean_wgpu_adapter_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_adapter_box: object classes not registered"
+            "lean_wgpu_adapter_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_adapter_class, handle);
@@ -287,7 +288,7 @@ lean_obj_res lean_wgpu_bind_group_box(WGPUBindGroup handle) {
     }
     if (lean_wgpu_bind_group_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_bind_group_box: object classes not registered"
+            "lean_wgpu_bind_group_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_bind_group_class, handle);
@@ -309,7 +310,7 @@ lean_obj_res lean_wgpu_bind_group_layout_box(WGPUBindGroupLayout handle) {
     }
     if (lean_wgpu_bind_group_layout_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_bind_group_layout_box: object classes not registered"
+            "lean_wgpu_bind_group_layout_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_bind_group_layout_class, handle);
@@ -329,7 +330,7 @@ lean_obj_res lean_wgpu_buffer_box(WGPUBuffer handle) {
     }
     if (lean_wgpu_buffer_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_buffer_box: object classes not registered"
+            "lean_wgpu_buffer_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_buffer_class, handle);
@@ -350,7 +351,7 @@ lean_obj_res lean_wgpu_command_buffer_box(WGPUCommandBuffer handle) {
     }
     if (lean_wgpu_command_buffer_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_command_buffer_box: object classes not registered"
+            "lean_wgpu_command_buffer_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_command_buffer_class, handle);
@@ -372,7 +373,7 @@ lean_obj_res lean_wgpu_command_encoder_box(WGPUCommandEncoder handle) {
     }
     if (lean_wgpu_command_encoder_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_command_encoder_box: object classes not registered"
+            "lean_wgpu_command_encoder_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_command_encoder_class, handle);
@@ -394,7 +395,7 @@ lean_obj_res lean_wgpu_compute_pass_encoder_box(WGPUComputePassEncoder handle) {
     }
     if (lean_wgpu_compute_pass_encoder_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_compute_pass_encoder_box: object classes not registered"
+            "lean_wgpu_compute_pass_encoder_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_compute_pass_encoder_class, handle);
@@ -416,7 +417,7 @@ lean_obj_res lean_wgpu_compute_pipeline_box(WGPUComputePipeline handle) {
     }
     if (lean_wgpu_compute_pipeline_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_compute_pipeline_box: object classes not registered"
+            "lean_wgpu_compute_pipeline_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_compute_pipeline_class, handle);
@@ -436,7 +437,7 @@ lean_obj_res lean_wgpu_device_box(WGPUDevice handle) {
     }
     if (lean_wgpu_device_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_device_box: object classes not registered"
+            "lean_wgpu_device_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_device_class, handle);
@@ -457,7 +458,7 @@ lean_obj_res lean_wgpu_external_texture_box(WGPUExternalTexture handle) {
     }
     if (lean_wgpu_external_texture_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_external_texture_box: object classes not registered"
+            "lean_wgpu_external_texture_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_external_texture_class, handle);
@@ -477,7 +478,7 @@ lean_obj_res lean_wgpu_instance_box(WGPUInstance handle) {
     }
     if (lean_wgpu_instance_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_instance_box: object classes not registered"
+            "lean_wgpu_instance_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_instance_class, handle);
@@ -499,7 +500,7 @@ lean_obj_res lean_wgpu_pipeline_layout_box(WGPUPipelineLayout handle) {
     }
     if (lean_wgpu_pipeline_layout_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_pipeline_layout_box: object classes not registered"
+            "lean_wgpu_pipeline_layout_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_pipeline_layout_class, handle);
@@ -519,7 +520,7 @@ lean_obj_res lean_wgpu_query_set_box(WGPUQuerySet handle) {
     }
     if (lean_wgpu_query_set_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_query_set_box: object classes not registered"
+            "lean_wgpu_query_set_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_query_set_class, handle);
@@ -538,9 +539,7 @@ lean_obj_res lean_wgpu_queue_box(WGPUQueue handle) {
         lean_internal_panic("lean_wgpu_queue_box: a NULL WGPUQueue");
     }
     if (lean_wgpu_queue_class == NULL) {
-        lean_internal_panic(
-            "lean_wgpu_queue_box: object classes not registered"
-        );
+        lean_internal_panic("lean_wgpu_queue_box: before the bindings started");
     }
     return lean_alloc_external(lean_wgpu_queue_class, handle);
 }
@@ -560,7 +559,7 @@ lean_obj_res lean_wgpu_render_bundle_box(WGPURenderBundle handle) {
     }
     if (lean_wgpu_render_bundle_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_render_bundle_box: object classes not registered"
+            "lean_wgpu_render_bundle_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_render_bundle_class, handle);
@@ -582,7 +581,7 @@ lean_obj_res lean_wgpu_render_bundle_encoder_box(WGPURenderBundleEncoder handle)
     }
     if (lean_wgpu_render_bundle_encoder_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_render_bundle_encoder_box: object classes not registered"
+            "lean_wgpu_render_bundle_encoder_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_render_bundle_encoder_class, handle);
@@ -604,7 +603,7 @@ lean_obj_res lean_wgpu_render_pass_encoder_box(WGPURenderPassEncoder handle) {
     }
     if (lean_wgpu_render_pass_encoder_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_render_pass_encoder_box: object classes not registered"
+            "lean_wgpu_render_pass_encoder_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_render_pass_encoder_class, handle);
@@ -626,7 +625,7 @@ lean_obj_res lean_wgpu_render_pipeline_box(WGPURenderPipeline handle) {
     }
     if (lean_wgpu_render_pipeline_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_render_pipeline_box: object classes not registered"
+            "lean_wgpu_render_pipeline_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_render_pipeline_class, handle);
@@ -646,7 +645,7 @@ lean_obj_res lean_wgpu_sampler_box(WGPUSampler handle) {
     }
     if (lean_wgpu_sampler_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_sampler_box: object classes not registered"
+            "lean_wgpu_sampler_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_sampler_class, handle);
@@ -667,7 +666,7 @@ lean_obj_res lean_wgpu_shader_module_box(WGPUShaderModule handle) {
     }
     if (lean_wgpu_shader_module_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_shader_module_box: object classes not registered"
+            "lean_wgpu_shader_module_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_shader_module_class, handle);
@@ -687,7 +686,7 @@ lean_obj_res lean_wgpu_surface_box(WGPUSurface handle) {
     }
     if (lean_wgpu_surface_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_surface_box: object classes not registered"
+            "lean_wgpu_surface_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_surface_class, handle);
@@ -706,7 +705,7 @@ lean_obj_res lean_wgpu_texture_box(WGPUTexture handle) {
     }
     if (lean_wgpu_texture_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_texture_box: object classes not registered"
+            "lean_wgpu_texture_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_texture_class, handle);
@@ -727,7 +726,7 @@ lean_obj_res lean_wgpu_texture_view_box(WGPUTextureView handle) {
     }
     if (lean_wgpu_texture_view_class == NULL) {
         lean_internal_panic(
-            "lean_wgpu_texture_view_box: object classes not registered"
+            "lean_wgpu_texture_view_box: before the bindings started"
         );
     }
     return lean_alloc_external(lean_wgpu_texture_view_class, handle);
