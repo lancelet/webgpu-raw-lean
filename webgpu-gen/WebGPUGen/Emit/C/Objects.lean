@@ -91,10 +91,55 @@ def unboxFunction (o : Lowered.Object) : Function where
   params := [⟨"b_lean_obj_arg", "object"⟩]
   body   := [.ret (some (.cast o.names.c (.call "lean_get_external_data" [.name "object"])))]
 
+/--
+The function that boxes a handle of `o` that may be NULL as a Lean `Option`:
+`none` for NULL, taking the reference otherwise. (`none` is the scalar 0, and
+`some` an object whose one field is the value: Lean's ABI, `docs/Safety.md`.)
+-/
+def boxOptionFunction (o : Lowered.Object) : Function where
+  doc    := s!"A Lean `Option {o.names.lean}`: `none` for NULL, and otherwise \
+    owning the reference `handle`."
+  attrs  := []
+  result := "lean_obj_res"
+  name   := shimName o "box_option"
+  params := [⟨o.names.c, "handle"⟩]
+  body   := [
+    .ifElse (.binary "==" (.name "handle") (.lit "NULL"))
+      [.ret (some (.call "lean_box" [.lit "0"]))] [],
+    .decl "lean_object *" "some"
+      (some (.call "lean_alloc_ctor" [.lit "1", .lit "1", .lit "0"])),
+    .expr (.call "lean_ctor_set"
+      [.name "some", .lit "0", .call (shimName o "box") [.name "handle"]]),
+    .ret (some (.name "some"))
+  ]
+
+/--
+The function that gives the handle a Lean `Option` of `o` holds, borrowing it:
+NULL for `none`.
+-/
+def unboxOptionFunction (o : Lowered.Object) : Function where
+  doc    := s!"The `{o.names.c}` a Lean `Option {o.names.lean}` holds, or NULL \
+    for `none`; the Lean value keeps the reference."
+  attrs  := []
+  result := o.names.c
+  name   := shimName o "unbox_option"
+  params := [⟨"b_lean_obj_arg", "option"⟩]
+  body   := [
+    .ifElse (.call "lean_is_scalar" [.name "option"])
+      [.ret (some (.lit "NULL"))] [],
+    .ret (some (.call (shimName o "unbox")
+      [.call "lean_ctor_get" [.name "option", .lit "0"]]))
+  ]
+
 /-- The header: the functions other shims use to box and unbox objects. -/
 def objectsHeader (objects : List Lowered.Object) : List Decl :=
   [.pragma "once", .include "lean/lean.h", .include "webgpu/webgpu.h"]
-    ++ objects.flatMap fun o => [.prototype (boxFunction o), .prototype (unboxFunction o)]
+    ++ objects.flatMap fun o => [
+      .prototype (boxFunction o),
+      .prototype (unboxFunction o),
+      .prototype (boxOptionFunction o),
+      .prototype (unboxOptionFunction o)
+    ]
 
 /-- The source: each object type's class and finalizer, the start-up, and the functions. -/
 def objectsSource (objects : List Lowered.Object) : List Decl :=
@@ -118,7 +163,12 @@ def objectsSource (objects : List Lowered.Object) : List Decl :=
   }
   [.includeLocal "objects.h", .function visit] ++ classes ++ objects.map finalizer
     ++ [.function (initFunction objects)]
-    ++ objects.flatMap fun o => [.function (boxFunction o), .function (unboxFunction o)]
+    ++ objects.flatMap fun o => [
+      .function (boxFunction o),
+      .function (unboxFunction o),
+      .function (boxOptionFunction o),
+      .function (unboxOptionFunction o)
+    ]
 
 /-! ## Files -/
 

@@ -58,6 +58,14 @@ def queue : Lowered.Object := {
 
     // The `WGPUDevice` a Lean `Device` holds; the Lean value keeps the reference.
     WGPUDevice lean_wgpu_device_unbox(b_lean_obj_arg object);
+
+    // A Lean `Option Device`: `none` for NULL, and otherwise owning the reference
+    // `handle`.
+    lean_obj_res lean_wgpu_device_box_option(WGPUDevice handle);
+
+    // The `WGPUDevice` a Lean `Option Device` holds, or NULL for `none`; the Lean
+    // value keeps the reference.
+    WGPUDevice lean_wgpu_device_unbox_option(b_lean_obj_arg option);
     "
   file (objectsHeader [device]) == expected
 
@@ -114,6 +122,26 @@ def queue : Lowered.Object := {
     // The `WGPUDevice` a Lean `Device` holds; the Lean value keeps the reference.
     WGPUDevice lean_wgpu_device_unbox(b_lean_obj_arg object) {
         return (WGPUDevice)lean_get_external_data(object);
+    }
+
+    // A Lean `Option Device`: `none` for NULL, and otherwise owning the reference
+    // `handle`.
+    lean_obj_res lean_wgpu_device_box_option(WGPUDevice handle) {
+        if (handle == NULL) {
+            return lean_box(0);
+        }
+        lean_object * some = lean_alloc_ctor(1, 1, 0);
+        lean_ctor_set(some, 0, lean_wgpu_device_box(handle));
+        return some;
+    }
+
+    // The `WGPUDevice` a Lean `Option Device` holds, or NULL for `none`; the Lean
+    // value keeps the reference.
+    WGPUDevice lean_wgpu_device_unbox_option(b_lean_obj_arg option) {
+        if (lean_is_scalar(option)) {
+            return NULL;
+        }
+        return lean_wgpu_device_unbox(lean_ctor_get(option, 0));
     }
     "
   file (objectsSource [device]) == expected

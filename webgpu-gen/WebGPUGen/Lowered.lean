@@ -141,6 +141,49 @@ def Value.cType : Value → Option String
   | .string _          => "WGPUStringView"
   | .unsupported _     => none
 
+/-! ### Across the boundary
+
+Each function is bound by a shim in C and a raw `@[extern]` declaration in
+Lean, whose types must agree as Lean's ABI says (`docs/Safety.md`). The two are
+defined here, side by side, so they cannot drift apart. An enum crosses as its
+code and a bitflag type as its bits: Lean converts them, so the shims never
+depend on how Lean represents its types.
+-/
+
+/--
+Whether the value crosses as a Lean object (`lean_object *`): borrowed (`@&`)
+as an argument, and owned as a result.
+-/
+def Value.isObject : Value → Bool
+  | .object .. | .string _ => true
+  | _                      => false
+
+/-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
+def Value.rawLeanType : Value → Option String
+  | .enum _    => "UInt32"
+  | .bitflag _ => "UInt64"
+  | v          => v.leanType
+
+/--
+The C type a shim takes the value as, matching `rawLeanType` by Lean's ABI. (A
+result is boxed into the `IO` result instead.)
+-/
+def Value.abiCType : Value → Option String
+  | .bool            => "uint8_t"
+  | .uint16          => "uint16_t"
+  | .uint32          => "uint32_t"
+  | .uint64          => "uint64_t"
+  | .int16           => "uint16_t"
+  | .int32           => "uint32_t"
+  | .float32         => "float"
+  | .float64         => "double"
+  | .usize           => "uint64_t"
+  | .enum _          => "uint32_t"
+  | .bitflag _       => "uint64_t"
+  | .object ..       => "b_lean_obj_arg"
+  | .string _        => "b_lean_obj_arg"
+  | .unsupported _   => none
+
 /-- What the bindings cannot pass yet, if anything. -/
 def Value.unsupported? : Value → Option String
   | .unsupported what => some what

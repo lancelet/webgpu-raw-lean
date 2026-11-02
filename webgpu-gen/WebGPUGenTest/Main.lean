@@ -6,6 +6,7 @@ import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.Lower
 import WebGPUGen.Emit.C.Objects
+import WebGPUGen.Emit.C.Functions
 import WebGPUGenTest
 
 /-!
@@ -117,6 +118,58 @@ def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
   repeated types ++ enums.flatten ++ flags.flatten
     ++ repeated (functions.map (·.names.lean)) ++ args.flatten
 
+open WebGPUGen.Emit.C in
+/--
+A probe of every conversion the shims make: a method of `WGPUBuffer` taking an
+argument of every kind, and a function returning each kind of result, with the
+prototypes of the C functions they call (which `webgpu.h` does not declare).
+Compiled with the real shims, so every conversion, check and helper is
+compiled, though the spec may not use it yet.
+-/
+def probeSource (buffer : WebGPUGen.Lowered.Object) : String :=
+  let format : WebGPUGen.Lowered.Names := ⟨"WGPUTextureFormat", "TextureFormat"⟩
+  let usage : WebGPUGen.Lowered.Names := ⟨"WGPUBufferUsage", "BufferUsage"⟩
+  let kinds : List (String × WebGPUGen.Lowered.Value) := [
+    ("Flag", .bool), ("U16", .uint16), ("U32", .uint32), ("U64", .uint64),
+    ("I16", .int16), ("I32", .int32), ("F32", .float32), ("F64", .float64),
+    ("Size", .usize), ("Format", .enum format), ("Usage", .bitflag usage),
+    ("Buffer", .object buffer.names false),
+    ("Maybe", .object buffer.names true),
+    ("Label", .string false), ("Name", .string true)
+  ]
+  let function (name : String) (receiver : Bool)
+      (args : List (String × WebGPUGen.Lowered.Value))
+      (result : Option WebGPUGen.Lowered.Value) :
+      WebGPUGen.Lowered.Function := {
+    names    := ⟨"wgpuProbe" ++ name, "probe" ++ name⟩
+    doc      := ""
+    receiver := if receiver then some buffer.names else none
+    args     := args.toArray.map fun (n, v) => ⟨⟨"arg" ++ n, "arg" ++ n⟩, "", v⟩
+    result   := result
+    callback := false
+  }
+  let functions :=
+    function "Args" true kinds none
+      :: (kinds.filter fun (_, v) => !v matches .string _).map fun (n, v) =>
+        function n false [] (some v)
+  let prototype (f : WebGPUGen.Lowered.Function) : Decl := .prototype {
+    doc    := ""
+    attrs  := []
+    result := (f.result.bind (·.cType)).getD "void"
+    name   := f.names.c
+    params := (if f.receiver.isSome then [⟨"WGPUBuffer", "self"⟩] else [])
+      ++ f.args.toList.map fun a => ⟨(a.value.cType).getD "void", a.names.c⟩
+    body   := []
+  }
+  let spec : WebGPUGen.Lowered.Spec := {
+    enums     := #[]
+    bitflags  := #[]
+    objects   := #[buffer]
+    functions := functions.toArray
+  }
+  let decls := functionsSource spec
+  file (decls.take 2 ++ functions.map prototype ++ decls.drop 2)
+
 /--
 Compile the generated C shims, with warnings as errors, against the vendored
 `webgpu.h` (at `headerPath`) and Lean's `lean.h`, with the system C compiler
@@ -140,17 +193,29 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
       sourceDate   := ""
       pinnedBy     := ""
     }
-    for (name, text) in WebGPUGen.Emit.C.objectsFiles provenance spec do
+    let files :=
+      WebGPUGen.Emit.C.objectsFiles provenance spec
+        ++ WebGPUGen.Emit.C.functionsFiles provenance spec
+    for (name, text) in files do
       IO.FS.writeFile (dir / name) text
     let leanPrefix := (← IO.Process.output { cmd := "lean", args := #["--print-prefix"] }).stdout
     let leanInclude := System.FilePath.mk leanPrefix.trimAscii.toString / "include"
-    let out ← IO.Process.output {
-      cmd  := (← IO.getEnv "CC").getD "cc"
-      args := #["-c", "-std=c11", "-Wall", "-Wextra", "-Werror", "-I", dir.toString,
-        "-I", leanInclude.toString,
-        (dir / "objects.c").toString, "-o", (dir / "objects.o").toString]
-    }
-    return if out.exitCode == 0 then none else some out.stderr
+    let mut errors := ""
+    if let some buffer := spec.objects.find? (·.names.c == "WGPUBuffer") then
+      IO.FS.writeFile (dir / "probe.c") (probeSource buffer)
+    for source in ["objects", "functions", "probe"] do
+      let out ← IO.Process.output {
+        cmd  := (← IO.getEnv "CC").getD "cc"
+        args := #[
+          "-c", "-std=c11", "-Wall", "-Wextra", "-Werror",
+          "-I", dir.toString, "-I", leanInclude.toString,
+          (dir / s!"{source}.c").toString, "-o", (dir / s!"{source}.o").toString
+        ]
+      }
+      errors := errors ++ out.stderr
+      unless out.exitCode == 0 do
+        return some errors
+    return none
 
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
@@ -207,6 +272,13 @@ def main : IO Unit := do
     failWith s!"Lean names that clash: {clashes}"
 
   -- The generated C shims compile.
+  -- Every function lowering says can be bound has a shim: none is lost.
+  let shimmed := (WebGPUGen.Emit.C.boundFunctions lowered).map (·.1.names.c)
+  let lost := (WebGPUGen.Emit.C.allFunctions lowered).filter fun f =>
+    f.unsupported.isEmpty && !shimmed.contains f.names.c
+  unless lost.isEmpty do
+    failWith s!"bindable functions with no shim: {lost.map (·.names.c)}"
+
   if let some errors ← compileShims lowered (← headerPath) then
     failWith s!"the generated C shims do not compile:\n{errors}"
 

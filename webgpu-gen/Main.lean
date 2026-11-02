@@ -92,7 +92,8 @@ def generate : IO Unit := do
   let files := [
     (lean / "Enums.lean",   Emit.Lean.enumsFile p spec),
     (lean / "Objects.lean", Emit.Lean.objectsFile p spec)
-  ] ++ (Emit.C.objectsFiles p spec).map fun (name, text) => (c / name, text)
+  ] ++ (Emit.C.objectsFiles p spec ++ Emit.C.functionsFiles p spec).map
+    fun (name, text) => (c / name, text)
   for (path, text) in files do
     IO.FS.writeFile path text
     IO.println s!"wrote {path}"

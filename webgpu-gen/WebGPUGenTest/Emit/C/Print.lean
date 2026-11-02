@@ -191,6 +191,24 @@ Defects found in review, each tested before it was fixed. -/
   let input := Stmt.comment "First.\n\nSecond."
   Doc.pretty 80 (stmt 0 input) == "// First.\n//\n// Second."
 
+-- A signature with one parameter that does not fit on a line breaks before it,
+-- as a table of one; before, it stayed on one line, past the width.
+#guard
+  let input : Function := {
+    doc    := ""
+    attrs  := ["LEAN_EXPORT"]
+    result := "lean_obj_res"
+    name   := "lean_wgpuTextureGetTextureBindingViewDimension"
+    params := [⟨"b_lean_obj_arg", "self"⟩]
+    body   := []
+  }
+  let expected := dedent "
+    LEAN_EXPORT lean_obj_res lean_wgpuTextureGetTextureBindingViewDimension(
+        b_lean_obj_arg self
+    ) {
+    }"
+  Doc.pretty 80 (function input) == expected.dropRightWhile (· == '\n')
+
 /-! ## A whole file -/
 
 -- Includes together, a blank line around each function; a long signature as a

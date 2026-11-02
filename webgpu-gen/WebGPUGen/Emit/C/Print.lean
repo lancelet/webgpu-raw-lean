@@ -92,13 +92,19 @@ decreasing_by
 
 /--
 A function's signature: its result type, name and parameters. Two or more
-parameters are always laid out as a table of types and names, one per line.
+parameters are always laid out as a table of types and names, one per line; one
+parameter is too, if the signature would not fit on a line otherwise.
 -/
 def signature (f : Function) : Doc :=
   let head := " ".intercalate (f.attrs ++ [f.result, f.name])
   let params := match f.params with
     | []  => text "(void)"
-    | [p] => text ("(" ++ p.type ++ " " ++ p.name ++ ")")
+    | [p] =>
+      -- One parameter stays on the line if it fits, and otherwise breaks as a
+      -- table of one.
+      let param := p.type ++ " " ++ p.name
+      alt (text ("(" ++ param ++ ")"))
+        (text "(" ++ nest 4 (hardline ++ text param) ++ hardline ++ text ")")
     | ps  =>
       let rows := ps.zipIdx.map fun (p, i) =>
         [p.type, if i + 1 == ps.length then p.name else p.name ++ ","]

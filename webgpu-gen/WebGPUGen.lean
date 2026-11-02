@@ -28,5 +28,6 @@ import WebGPUGen.Emit.Pretty
 import WebGPUGen.Emit.C
 import WebGPUGen.Emit.C.Print
 import WebGPUGen.Emit.C.Objects
+import WebGPUGen.Emit.C.Functions
 import WebGPUGen.Emit.Lean
 import WebGPUGen.Source
