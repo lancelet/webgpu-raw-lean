@@ -18,8 +18,16 @@ open WebGPUGenTest.Lowered.Lower (lowerText)
 
 Scaffolding for the tests below; these are not tests themselves. -/
 
-/-- Lines as one text, for comparing with a `dedent` literal. -/
-def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
+/-- A document as printed, for comparing with a `dedent` literal. -/
+def render (d : Doc) : String := Doc.pretty width d ++ "\n"
+
+/-- The first enum of the spec `input`, lowered and printed. -/
+def printEnum (input : String) : Option String :=
+  ((lowerText input).bind (·.enums[0]?)).map (render ∘ enumDecl)
+
+/-- The first bitflag type of the spec `input`, lowered and printed. -/
+def printBitflag (input : String) : Option String :=
+  ((lowerText input).bind (·.bitflags[0]?)).map (render ∘ bitflagDecl)
 
 /-! ## Numbers -/
 
@@ -50,7 +58,44 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
       | clampToEdge = 0x00000001
       | «repeat»    = 0x00000002
     "
-  ((lowerText input).bind (·.enums[0]?)).map (text ∘ enumDecl) == some expected
+  printEnum input == some expected
+
+-- An enum with no entries is just its header: no stray line after `where`.
+#guard
+  let input := spec (enums := dedent "
+    - name: nothing
+      doc: An empty enum.
+      entries: []
+    ")
+  let expected := dedent "
+    /-- An empty enum. -/
+    c_enum Nothing where
+    "
+  printEnum input == some expected
+
+-- An entry's doc of several paragraphs is indented with the entry, its blank
+-- line left empty, with no spaces at its end.
+#guard
+  let input := spec (enums := dedent "
+    - name: two
+      doc: TODO
+      entries:
+        - name: a
+          doc: |
+            First paragraph.
+
+            Second paragraph.
+    ")
+  let expected := dedent "
+    c_enum Two where
+      /--
+      First paragraph.
+
+      Second paragraph.
+      -/
+      | a = 0x00000000
+    "
+  printEnum input == some expected
 
 /-! ## Bitflags -/
 
@@ -84,7 +129,29 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     end MapMode
     "
-  ((lowerText input).bind (·.bitflags[0]?)).map (text ∘ bitflagDecl) == some expected
+  printBitflag input == some expected
+
+-- A bitflag type with no flags has no constants, and one blank line where
+-- they would be.
+#guard
+  let input := spec (bitflags := dedent "
+    - name: no_flags
+      doc: TODO
+      entries: []
+    ")
+  let expected := dedent "
+    structure NoFlags where
+      bits : UInt64
+      deriving Repr, DecidableEq, Inhabited
+
+    namespace NoFlags
+
+    instance : OrOp NoFlags  := ⟨fun a b => ⟨a.bits ||| b.bits⟩⟩
+    instance : AndOp NoFlags := ⟨fun a b => ⟨a.bits &&& b.bits⟩⟩
+
+    end NoFlags
+    "
+  printBitflag input == some expected
 
 
 /-! ## Objects -/
@@ -104,7 +171,9 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     /-- A set of queries. -/
     c_object QuerySet
     "
-  (lowerText input).map (fun l => text (l.objects.toList.flatMap objectDecl)) == some expected
+  let objects (l : Lowered.Spec) := l.objects.toList.map objectDecl
+  (lowerText input).map (fun l => render (Doc.join .hardline (objects l)))
+    == some expected
 
 -- The start-up that registers the object classes: a `builtin_initialize`, so
 -- that the compiler does not run it when it imports the module (a regression
@@ -121,7 +190,7 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     end Internal
     "
-  text objectsStartup == expected
+  render objectsStartup == expected
 
 /-! ## Joining declarations -/
 
@@ -142,7 +211,14 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     c_object Queue
     "
-  text (joinDecls input) == expected
+  render (joinDecls (input.map Doc.lines)) == expected
+
+-- A declaration on one line counts as one line however wide it is: it never
+-- breaks, so it stays with its neighbour.
+#guard
+  let wide := "c_object " ++ String.ofList (List.replicate 90 'A')
+  let input := [[wide], ["c_object Queue"]]
+  render (joinDecls (input.map Doc.lines)) == wide ++ "\nc_object Queue\n"
 
 /-! ## The whole file -/
 
@@ -247,5 +323,21 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     "
   let sections := [("SentinelValues", "SentinelValues")]
   (lowerText input sections).map (enumsFile provenance) == some expected
+
+-- A module with no declarations: one blank line inside its namespace.
+#guard
+  let provenance : Provenance := {
+    generator    := ""
+    time         := ""
+    commit       := ""
+    dirty        := false
+    source       := ""
+    sourceRepo   := ""
+    sourceCommit := ""
+    sourceDate   := ""
+    pinnedBy     := ""
+  }
+  let empty := moduleFile provenance ["import X"] ["# Nothing"] []
+  (empty.splitOn "namespace WebGPU.Raw\n\nend WebGPU.Raw\n").length == 2
 
 end WebGPUGenTest.Emit.Lean

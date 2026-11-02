@@ -36,11 +36,19 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
 /-! ## Doc comments -/
 
--- A short doc fits on one line, at the indent.
+-- A short doc fits on one line. Its lines are not indented: the document
+-- around them indents them.
 #guard
   let input := "The first mode."
-  let expected := "  /-- The first mode. -/\n"
-  text (docComment 2 input) == expected
+  let expected := "/-- The first mode. -/\n"
+  text (docLines 2 input) == expected
+
+-- Whether it fits depends on the indent: 73 characters fit on one line at the
+-- margin, but not indented 2 spaces.
+#guard
+  let input := String.ofList (List.replicate 73 'a')
+  docLines 0 input == ["/-- " ++ input ++ " -/"]
+    && docLines 2 input == ["/--", input, "-/"]
 
 -- A longer doc has `/--` and `-/` on lines of their own, as in Lean's own
 -- library, with the text between wrapped to 80 columns.
@@ -55,7 +63,7 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     SentinelValues and the places that use this sentinel value.
     -/
     "
-  text (docComment 0 input) == expected
+  text (docLines 0 input) == expected
 
 -- Paragraphs stay apart, and each list item is refilled, its later lines
 -- indented under its text, however the input was broken.
@@ -80,7 +88,7 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     This is the default mode.
     -/
     "
-  text (docComment 0 input) == expected
+  text (docLines 0 input) == expected
 
 -- A link definition keeps a line of its own, as written, even past 80 columns:
 -- a URL cannot be broken.
@@ -98,10 +106,10 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
     -/
     "
-  text (docComment 0 input) == expected
+  text (docLines 0 input) == expected
 
 -- A placeholder is left out altogether.
-#guard docComment 2 "TODO\n" == []
+#guard docLines 2 "TODO\n" == []
 
 -- So is a placeholder paragraph, and a doc made only of them.
 #guard
@@ -111,16 +119,16 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     Releasing the last ref also destroys it.
     "
   let expected := "/-- Releasing the last ref also destroys it. -/\n"
-  text (docComment 0 input) == expected
+  text (docLines 0 input) == expected
 
-#guard docComment 0 "TODO\n\nTODO\n" == []
+#guard docLines 0 "TODO\n\nTODO\n" == []
 
 -- Comment delimiters in the text are escaped, so they cannot end the comment
 -- early or open a nested one.
 #guard
   let input := "Ends with -/ and opens /- here."
   let expected := "/-- Ends with -\\/ and opens /\\- here. -/\n"
-  text (docComment 0 input) == expected
+  text (docLines 0 input) == expected
 
 /-! ## The banner -/
 

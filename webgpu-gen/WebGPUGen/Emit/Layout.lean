@@ -120,22 +120,20 @@ def escapeComment (text : String) : String :=
   (text.replace "/-" "/\\-").replace "-/" "-\\/"
 
 /--
-`doc` as a doc comment indented by `indent` spaces, in the form Lean's own
-library uses: on one line if it fits, and otherwise with `/--` and `-/` on lines
-of their own around the text, wrapped to the line width. No lines at all for a
-placeholder.
+The lines of `doc` as a doc comment for a line indented by `indent` spaces, in
+the form Lean's own library uses: on one line if it fits, and otherwise with
+`/--` and `-/` on lines of their own around the text, wrapped to the line width.
+The lines are not indented themselves: the document around them does that. No
+lines at all for a placeholder.
 -/
-def docComment (indent : Nat) (doc : String) : List String :=
+def docLines (indent : Nat) (doc : String) : List String :=
   if isPlaceholder doc then [] else
-  let pad := String.ofList (List.replicate indent ' ')
   match reflow (width - indent) (escapeComment doc) with
   | [] => []  -- only placeholder paragraphs
   | [line] =>
-    if indent + 4 + line.length + 3 ≤ width then [pad ++ "/-- " ++ line ++ " -/"]
-    else [pad ++ "/--", pad ++ line, pad ++ "-/"]
-  | lines =>
-    let body := lines.map fun line => if line.isEmpty then line else pad ++ line
-    [pad ++ "/--"] ++ body ++ [pad ++ "-/"]
+    if indent + 4 + line.length + 3 ≤ width then ["/-- " ++ line ++ " -/"]
+    else ["/--", line, "-/"]
+  | lines => ["/--"] ++ lines ++ ["-/"]
 
 /-! ## The banner -/
 
