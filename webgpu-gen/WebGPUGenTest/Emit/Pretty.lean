@@ -84,6 +84,21 @@ def call (f : String) (args : List Doc) : Doc :=
   let input := text "a " ++ hardline ++ "b"
   pretty 80 input == "a\nb"
 
+/-! ## Choices -/
+
+-- `alt` takes its first layout if it fits on the line, otherwise its second.
+#guard pretty 80 (alt (text "short") (text "long")) == "short"
+#guard pretty 3 (alt (text "short") (text "long")) == "long"
+
+-- Inside a group that is flat, `alt` takes its first layout without checking.
+#guard pretty 80 (group (text "f(" ++ alt (text "a") (text "b") ++ text ")")) == "f(a)"
+
+-- A choice that breaks breaks the groups around it too, as its hard lines do.
+#guard
+  let long := text (String.ofList (List.replicate 90 'a'))
+  let input := call "f" [alt long (text "{" ++ hardline ++ text "}")]
+  pretty 80 input == "f(\n    {\n    }\n)"
+
 /-! ## Edges -/
 
 -- Text after a group counts against it: the group breaks if the text would not

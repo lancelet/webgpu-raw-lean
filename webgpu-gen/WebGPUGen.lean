@@ -25,5 +25,7 @@ import WebGPUGen.Lowered.Docs
 import WebGPUGen.Lowered.Lower
 import WebGPUGen.Emit.Layout
 import WebGPUGen.Emit.Pretty
+import WebGPUGen.Emit.C
+import WebGPUGen.Emit.C.Print
 import WebGPUGen.Emit.Lean
 import WebGPUGen.Source

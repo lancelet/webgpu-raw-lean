@@ -1,0 +1,125 @@
+import WebGPUGen.Emit.C
+import WebGPUGen.Emit.Pretty
+
+/-!
+# Printing C
+
+Lays out the C syntax tree with `Doc`, in one consistent style:
+
+* four spaces of indentation, and braces on the line that opens the block;
+* a call on one line if it fits, and otherwise one argument per line, with the
+  closing bracket back at the start;
+* an initialiser always one field per line, its `=` signs aligned, and two or
+  more parameters always one per line, their names aligned, even where they
+  would fit on one line;
+* parentheses around an operand that is itself an operation or a cast, so the
+  tree's meaning is kept whatever the operators' precedence.
+-/
+
+namespace WebGPUGen.Emit.C
+open WebGPUGen.Emit Doc
+
+/--
+Items in brackets: on one line if they fit, otherwise one per line, indented,
+with the closing bracket on a line of its own.
+-/
+def bracketed (opening closing : String) (items : List Doc) : Doc :=
+  group (text opening ++ nest 4 (softline ++ join (text "," ++ space) items) ++ softline
+    ++ text closing)
+
+/-- Does `e`, as the operand of another operation, need parentheses? -/
+def Expr.needsParens : Expr → Bool
+  | .binary .. | .cast .. => true
+  | _                     => false
+
+/-- `d`, the document of `e`, in parentheses if `e` needs them as an operand. -/
+def operand (e : Expr) (d : Doc) : Doc :=
+  if e.needsParens then text "(" ++ d ++ text ")" else d
+
+/-- An expression. -/
+def expr : Expr → Doc
+  | .name n         => text n
+  | .lit t          => text t
+  | .call f args    => bracketed (f ++ "(") ")" (args.attach.map fun ⟨a, _⟩ => expr a)
+  | .addr e         => text "&" ++ operand e (expr e)
+  | .member e field => operand e (expr e) ++ text ("." ++ field)
+  | .arrow e field  => operand e (expr e) ++ text ("->" ++ field)
+  | .cast type e    => text ("(" ++ type ++ ")") ++ operand e (expr e)
+  | .binary op a b  => operand a (expr a) ++ text (" " ++ op ++ " ") ++ operand b (expr b)
+  | .init []        => text "{ 0 }"
+  | .init fields    =>
+    let values := fields.attach.map fun ⟨(field, value), _⟩ => ("." ++ field, expr value)
+    -- Only the field column is padded, so that each value can break as it needs.
+    let widest := (values.map (·.1.length)).foldl max 0
+    let rows := values.map fun (f, v) => text (padRight widest f ++ " = ") ++ v ++ text ","
+    text "{" ++ nest 4 (hardline ++ join hardline rows) ++ hardline ++ text "}"
+decreasing_by
+  all_goals simp_wf
+  all_goals
+    first
+    | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega
+    | omega
+
+/-- A comment: each line of `s`, after `//`, wrapped to the line width. -/
+def comment (s : String) : Doc :=
+  lines ((reflow (width - 3) s).map fun line => if line.isEmpty then "//" else "// " ++ line)
+
+/-- Statements in braces, indented; no statements, just the braces. -/
+def block (body : List Doc) : Doc :=
+  if body.isEmpty then text "{" ++ hardline ++ text "}"
+  else text "{" ++ nest 4 (hardline ++ join hardline body) ++ hardline ++ text "}"
+
+/-- A statement. -/
+def stmt : Stmt → Doc
+  | .decl type name none       => text (type ++ " " ++ name ++ ";")
+  | .decl type name (some e)   => text (type ++ " " ++ name ++ " = ") ++ expr e ++ text ";"
+  | .expr e                    => expr e ++ text ";"
+  | .ret none                  => text "return;"
+  | .ret (some e)              => text "return " ++ expr e ++ text ";"
+  | .comment t                 => comment t
+  | .ifElse cond thenBody elseBody =>
+    let thenDoc := block (thenBody.attach.map fun ⟨s, _⟩ => stmt s)
+    let elseDoc := block (elseBody.attach.map fun ⟨s, _⟩ => stmt s)
+    text "if (" ++ expr cond ++ text ") " ++ thenDoc
+      ++ (if elseBody.isEmpty then nil else text " else " ++ elseDoc)
+decreasing_by
+  all_goals simp_wf
+  all_goals have := List.sizeOf_lt_of_mem ‹_ ∈ _›
+  all_goals omega
+
+/--
+A function: its comment, then its signature, then its body. Two or more
+parameters are always laid out as a table of types and names, one per line.
+-/
+def function (f : Function) : Doc :=
+  let doc := if f.doc.isEmpty then nil else comment f.doc ++ hardline
+  let head := " ".intercalate (f.attrs ++ [f.result, f.name])
+  let params := match f.params with
+    | []  => text "(void) "
+    | [p] => text ("(" ++ p.type ++ " " ++ p.name ++ ") ")
+    | ps  =>
+      let rows := ps.zipIdx.map fun (p, i) =>
+        [p.type, if i + 1 == ps.length then p.name else p.name ++ ","]
+      text "(" ++ nest 4 (hardline ++ table rows) ++ hardline ++ text ") "
+  doc ++ text head ++ params ++ block (f.body.map stmt)
+
+/-- A top-level declaration. -/
+def decl : Decl → Doc
+  | .include header => text ("#include <" ++ header ++ ">")
+  | .function f     => function f
+
+/--
+A C file: its declarations, with includes together and a blank line around
+each function.
+-/
+def file (decls : List Decl) : String :=
+  -- Each declaration with the one before it; the first has none, so is kept
+  -- apart from nothing.
+  let docs := (decls.zip (none :: decls.map some)).map fun (d, previous) =>
+    match d, previous with
+    | _, none                         => decl d
+    | .include _, some (.include _)   => hardline ++ decl d
+    | _, _                            => hardline ++ hardline ++ decl d
+  pretty width (join nil docs) ++ "\n"
+
+end WebGPUGen.Emit.C

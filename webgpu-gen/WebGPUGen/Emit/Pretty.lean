@@ -18,7 +18,8 @@ space when its group fits. Code needs a second kind, which becomes nothing:
     )
 
 so `Doc` has both: `space` (a space or a new line) and `softline` (nothing or a
-new line), and `hardline`, which always breaks.
+new line), and `hardline`, which always breaks. `alt` chooses between two
+layouts of the same thing, such as a list on one line or as an aligned table.
 
 Printing is total, linear in the size of the output, and needs no stack: it
 takes the document apart a node at a time, and builds the text as it goes.
@@ -42,6 +43,11 @@ inductive Doc where
   | concat (a b : Doc)
   /-- `d`'s breaks, all taken or none: none if `d` fits on the rest of the line. -/
   | group (d : Doc)
+  /--
+  `flat` if it fits on the rest of the line, otherwise `broken`: two layouts of
+  the same thing, such as a list on one line or as an aligned table.
+  -/
+  | alt (flat broken : Doc)
   deriving Repr, Inhabited
 
 namespace Doc
@@ -84,6 +90,7 @@ def size : Doc → Nat
   | nest _ d   => size d + 1
   | concat a b => size a + size b + 1
   | group d    => size d + 1
+  | alt a b    => size a + size b + 1
   | _          => 1
 
 /-! ## Printing -/
@@ -113,6 +120,8 @@ def fits (room : Int) (items : List Item) : Bool :=
   | (i, b, .nest n d) :: rest   => fits room ((i + n, b, d) :: rest)
   | (i, b, .concat x y) :: rest => fits room ((i, b, x) :: (i, b, y) :: rest)
   | (i, b, .group d) :: rest    => fits room ((i, b, d) :: rest)
+  | (i, true, .alt a _) :: rest  => fits room ((i, true, a) :: rest)
+  | (i, false, .alt _ b) :: rest => fits room ((i, false, b) :: rest)
 termination_by itemsSize items
 decreasing_by
   all_goals simp [itemsSize, size]
@@ -138,6 +147,10 @@ def render (width : Nat) (out : String) (col : Nat) : List Item → String
   | (i, flat, .group d) :: rest    =>
     let flat := flat || fits (width - col) ((i, true, d) :: rest)
     render width out col ((i, flat, d) :: rest)
+  | (i, flat, .alt a b) :: rest    =>
+    if flat || fits (width - col) ((i, true, a) :: rest) then
+      render width out col ((i, true, a) :: rest)
+    else render width out col ((i, false, b) :: rest)
 termination_by items => itemsSize items
 decreasing_by
   all_goals simp [itemsSize, size]
