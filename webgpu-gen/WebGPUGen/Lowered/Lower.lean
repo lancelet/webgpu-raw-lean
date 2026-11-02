@@ -189,20 +189,35 @@ def lowerObject (ctx : DocContext) (r : Resolved.Spec) (o : Resolved.Object) :
 /-! ## The whole spec -/
 
 /--
+`f`, marked with the implementations whose stubs it is among: `stubs` gives
+each implementation with the C names of the functions it leaves unimplemented
+(for wgpu-native, `vendor/wgpu-native/stubs`).
+-/
+def markStubs (stubs : List (String × List String)) (f : Lowered.Function) :
+    Lowered.Function :=
+  { f with notImplementedBy := stubs.filterMap fun (impl, names) =>
+      if names.contains f.names.c then some impl else none }
+
+/--
 Lower a resolved spec. `sections` are the documentation sections its docs may
 refer to, each with its page (`articleSections` reads them from upstream's
-articles).
+articles); `stubs` are the functions each implementation leaves unimplemented
+(`markStubs`).
 -/
-def lower (r : Resolved.Spec) (sections : List (String × String) := []) : Lowered.Spec :=
+def lower (r : Resolved.Spec) (sections : List (String × String) := [])
+    (stubs : List (String × List String) := []) : Lowered.Spec :=
   let ctx : DocContext := {
     leanNames := leanNamesOfC r
     sections  := Std.HashMap.ofList sections
   }
+  let mark := markStubs stubs
   {
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)
-    objects   := r.objects.map (lowerObject ctx r)
-    functions := r.functions.map (lowerFunction ctx r none)
+    objects   := r.objects.map fun o =>
+      let lowered := lowerObject ctx r o
+      { lowered with methods := lowered.methods.map mark }
+    functions := r.functions.map (mark ∘ lowerFunction ctx r none)
   }
 
 end WebGPUGen.Lowered

@@ -186,6 +186,14 @@ Defects found in review, each tested before it was fixed. -/
   let input := Stmt.ifElse (.name "a") [.ifElse (.name "b") [.comment words] []] []
   ((Doc.pretty 80 (stmt 0 input)).splitOn "\n").all (·.length ≤ 80)
 
+-- A conditional on one macro is `#ifdef`; on several, `#if defined(...) || ...`.
+#guard
+  let one := Stmt.ifDefined ["A"] [.ret none] []
+  let two := Stmt.ifDefined ["A", "B"] [.ret none] []
+  Doc.pretty 80 (stmt 0 one) == "#ifdef A\nreturn;\n#else\n#endif"
+    && Doc.pretty 80 (stmt 0 two)
+      == "#if defined(A) || defined(B)\nreturn;\n#else\n#endif"
+
 -- A comment keeps its paragraphs apart with an empty comment line.
 #guard
   let input := Stmt.comment "First.\n\nSecond."

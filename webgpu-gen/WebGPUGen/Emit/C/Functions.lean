@@ -48,15 +48,24 @@ def Value.checked : Value → Bool
   | .object _ false => true
   | _               => false
 
+/-- Whether `f` takes or returns a value `p` holds of. -/
+def takes (p : Value → Bool) (f : Lowered.Function) : Bool :=
+  f.args.any (p ·.value) || f.result.any p
+
+/-- Whether a shim for `f` checks a value (`Value.checked`). -/
+def checksAValue (f : Lowered.Function) : Bool := takes Value.checked f
+
 /--
 The helpers shims use, defined once at the top of the file: each with which
-values need it. A helper no shim uses is left out, since C warns of it.
+functions need it. A helper no shim uses is left out, since C warns of it. They
+are `static inline`, since in a build where an implementation leaves some
+functions unimplemented, the shims that would use one may not be compiled.
 -/
-def helpers : List ((Value → Bool) × Decl) := [
-  ((· matches .string _), .function {
+def helpers : List ((Lowered.Function → Bool) × Decl) := [
+  (takes (· matches .string _), .function {
     doc    := "A view of the bytes of the Lean string `s`, which stays alive \
       while the string is borrowed. Its length leaves out the terminating NUL."
-    attrs  := ["static"]
+    attrs  := ["static", "inline"]
     result := "WGPUStringView"
     name   := stringViewName
     params := [⟨"b_lean_obj_arg", "s"⟩]
@@ -69,10 +78,10 @@ def helpers : List ((Value → Bool) × Decl) := [
       .ret (some (.name "view"))
     ]
   }),
-  ((· == .string true), .function {
+  (takes (· == .string true), .function {
     doc    := "A view of the string a Lean `Option String` holds, or the null \
       view for `none`."
-    attrs  := ["static"]
+    attrs  := ["static", "inline"]
     result := "WGPUStringView"
     name   := optionStringViewName
     params := [⟨"b_lean_obj_arg", "option"⟩]
@@ -85,9 +94,10 @@ def helpers : List ((Value → Bool) × Decl) := [
         [.call "lean_ctor_get" [.name "option", .lit "0"]]))
     ]
   }),
-  (Value.checked, .function {
-    doc    := "An `IO` error saying `message`, for a check a shim makes."
-    attrs  := ["static"]
+  (fun f => !f.notImplementedBy.isEmpty || checksAValue f, .function {
+    doc    := "An `IO` error saying `message`, for a check a shim makes, or a \
+      function an implementation does not implement."
+    attrs  := ["static", "inline"]
     result := "lean_obj_res"
     name   := ioErrorName
     params := [⟨"char const *", "message"⟩]
@@ -187,6 +197,41 @@ where
 /-! ## Shims -/
 
 /--
+The macro a build defines to say it builds against the implementation `impl`:
+`WEBGPU_RAW_DAWN` for `dawn`.
+-/
+def implementationMacro (impl : String) : String :=
+  let symbol (c : Char) := if c.isAlphanum then c.toUpper else '_'
+  "WEBGPU_RAW_" ++ impl.map symbol
+
+/--
+The implementations a build can say it is against, each by defining its macro
+(`implementationMacro`): the web build defines `WEBGPU_RAW_DAWN`. The native
+build, against wgpu-native, defines none, so needs none.
+-/
+def implementations : List String := ["wgpu-native", "dawn"]
+
+/--
+The body of a shim for `f`, given its usual body and parameters. If an
+implementation leaves `f` unimplemented, the shim calls it only when built
+against one that implements it, and otherwise raises an `IO` error, its
+parameters marked as used: so a build that says nothing, or the wrong thing,
+gets the error, never the call that would abort.
+-/
+def guardStubs (f : Lowered.Function) (params : List Param) (body : List Stmt) :
+    List Stmt :=
+  if f.notImplementedBy.isEmpty then body else
+  let unused := params.map fun p => Stmt.expr (.cast "void" (.name p.name))
+  let missing := ", ".intercalate f.notImplementedBy
+  let message := s!"\"{f.names.lean}: not implemented by {missing}\""
+  let error := unused ++ [.ret (some (.call ioErrorName [.lit message]))]
+  match implementations.filter (!f.notImplementedBy.contains ·) with
+  | []           => error
+  | implementing =>
+    [.ifDefined (implementing.map implementationMacro) body error]
+
+
+/--
 A method's object, as the shim's first parameter `self` and the handle it
 holds; nothing for a function of no object type. None if the object type is
 not known.
@@ -227,13 +272,14 @@ def functionShim (objects : List Lowered.Object) (f : Lowered.Function) :
       let boxed ← resultExpr objects v
       pure ([.decl cType "result" (some call)] ++ resultCheck f v
         ++ [.ret (some (.call "lean_io_result_mk_ok" [boxed]))])
+  let params := (receiver ++ args).map (·.1)
   pure {
     doc    := s!"Lean's `{f.names.lean}`: calls `{f.names.c}`."
     attrs  := ["LEAN_EXPORT"]
     result := "lean_obj_res"
     name   := shim
-    params := (receiver ++ args).map (·.1)
-    body   := checks ++ body
+    params := params
+    body   := guardStubs f params (checks ++ body)
   }
 
 /-- Every function and method of the spec, in its order. -/
@@ -252,11 +298,9 @@ def boundFunctions (spec : Lowered.Spec) : List (Lowered.Function × Function) :
 /-- The source: the helpers the shims use, then the shims. -/
 def functionsSource (spec : Lowered.Spec) : List Decl :=
   let bound := boundFunctions spec
-  let values := bound.flatMap fun (f, _) =>
-    f.args.toList.map (·.value) ++ f.result.toList
   [.include "stdint.h", .includeLocal "objects.h"]
     ++ helpers.filterMap (fun (needs, d) =>
-      if values.any needs then some d else none)
+      if bound.any (needs ·.1) then some d else none)
     ++ bound.map fun (_, shim) => .function shim
 
 /-- The function shims' source, `functions.c`. -/

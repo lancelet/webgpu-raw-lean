@@ -29,6 +29,10 @@ compile time, so the check runs where the program does.
 @[noinline]
 def runtime {α : Type} (x : α) : α := x
 
+/-- Whether this page has WebGPU, from the test helper. -/
+@[extern "lean_wgpu_test_has_webgpu"]
+opaque hasWebGPU : Unit → Bool
+
 /-- A name built at run time from its parts, so it is not a static constant. -/
 @[noinline]
 def runtimeName (parts : List String) : Lean.Name :=
@@ -76,7 +80,24 @@ def main : IO UInt32 := do
       pure "ok   an instance created, and a method called on it"
     catch e => pure s!"FAIL the bindings: {e}"
   IO.println bindings
-  let bindingsFailed := if bindings.startsWith "ok" then 0 else 1
+  -- A function and a method wgpu-native leaves unimplemented, which Dawn
+  -- implements: on the web their shims call them.
+  -- (The method needs WebGPU, which Node lacks: there, emdawnwebgpu throws a
+  -- JavaScript error, which ends the program.)
+  let dawn ← try
+      let _ ← WebGPU.Raw.hasInstanceFeature .timedWaitAny
+      if WebGPURawWebTest.hasWebGPU () then
+        let wgpu ← WebGPURawWebTest.createInstance
+        let _ ← wgpu.hasWGSLLanguageFeature .readonlyAndReadwriteStorageTextures
+        pure "ok   a function and a method wgpu-native leaves unimplemented, \
+          called"
+      else
+        pure "ok   a function wgpu-native leaves unimplemented, called (no \
+          WebGPU here for the method)"
+    catch e => pure s!"FAIL calling what wgpu-native does not implement: {e}"
+  IO.println dawn
+  let bindingsFailed :=
+    [bindings, dawn].filter (!·.startsWith "ok") |>.length
   if failed.isEmpty && bindingsFailed == 0 then
     IO.println "All checks passed."
     return 0

@@ -85,6 +85,16 @@ def stmt (depth : Nat) : Stmt → Doc
     let elseDoc := block (elseBody.attach.map fun ⟨s, _⟩ => stmt (depth + 1) s)
     text "if (" ++ expr cond ++ text ") " ++ thenDoc
       ++ (if elseBody.isEmpty then nil else text " else " ++ elseDoc)
+  | .ifDefined names thenBody elseBody =>
+    -- Directives at the statements' own indentation: C allows it, and it keeps
+    -- the function's shape.
+    let thenDocs := thenBody.attach.map fun ⟨s, _⟩ => stmt depth s
+    let elseDocs := elseBody.attach.map fun ⟨s, _⟩ => stmt depth s
+    let condition := match names with
+      | [name] => "#ifdef " ++ name
+      | _      => "#if " ++ " || ".intercalate (names.map (s!"defined({·})"))
+    join hardline ([text condition] ++ thenDocs ++ [text "#else"] ++ elseDocs
+      ++ [text "#endif"])
 decreasing_by
   all_goals simp_wf
   all_goals have := List.sizeOf_lt_of_mem ‹_ ∈ _›

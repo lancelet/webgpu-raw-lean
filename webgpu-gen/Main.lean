@@ -68,6 +68,14 @@ def parseSpec (root : System.FilePath) : IO Parsed.Spec := do
   | .ok parsed => pure parsed
   | .error e   => throw (IO.userError (toString e))
 
+/--
+The functions each implementation leaves unimplemented, from its list of stubs
+(`vendor/wgpu-native/stubs`, which `stubs.sh` writes).
+-/
+def stubs (root : System.FilePath) : IO (List (String × List String)) := do
+  let text ← IO.FS.readFile (root / "vendor/wgpu-native/stubs")
+  return [("wgpu-native", parseStubs text)]
+
 /-- Decode, resolve and lower the vendored spec, or report every problem. -/
 def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
   let parsed ← parseSpec root
@@ -76,7 +84,7 @@ def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
   let sections ← articles.toList.flatMapM fun entry => do
     return Lowered.articleSections (← IO.FS.readFile entry.path)
   match Resolved.resolve parsed with
-  | .ok resolved => return Lowered.lower resolved sections
+  | .ok resolved => return Lowered.lower resolved sections (← stubs root)
   | .error problems =>
     for p in problems do IO.eprintln p
     throw (IO.userError s!"{problems.length} problems in the spec")

@@ -77,6 +77,10 @@ jobs:
           (cd webgpu-gen && lake exe webgpu-gen generate)
           git diff --exit-code -I '^  Generator commit:' -I '^  Generated:' \
             -- WebGPU c/generated
+          # And the list of wgpu-native's stubs, which the generator reads, is
+          # what its source at the pinned version gives.
+          vendor/wgpu-native/stubs.sh
+          git diff --exit-code -- vendor/wgpu-native/stubs
 
       # Runs, at the repository root:
       #

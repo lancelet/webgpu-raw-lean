@@ -113,8 +113,32 @@ aborts the program (a Rust panic that cannot unwind into C). 25 of them are
 bound: every bound `setLabel` method (21), `hasInstanceFeature`,
 `Instance.hasWGSLLanguageFeature`, `Buffer.getMapState` and
 `Texture.getTextureBindingViewDimension`. Dawn, used on the web, implements
-them. *Planned:* the shims will return an `IO` error for them when
-built against wgpu-native, from a list `fetch.sh` takes from its source.
+them.
+
+- **Their shims call them only when built against an implementation known to
+  implement them**, which the build says by defining a macro: the web build
+  defines `WEBGPU_RAW_DAWN`. Otherwise, as in the native build, which defines
+  nothing, they raise an `IO` error ("not implemented by wgpu-native"). So a
+  build that says nothing, or the wrong thing, gets the error, never the abort.
+  *Checked by:* test, on both: natively, a function and a method raise the
+  error; on the web, both are called.
+- **The list is read from wgpu-native's source** at the pinned version, by
+  `vendor/wgpu-native/stubs.sh`, into `vendor/wgpu-native/stubs`, which the
+  generator reads: each exported function whose first statement is
+  `unimplemented!`. *Checked by:* CI, which runs it again and fails if the list
+  differs, and the test driver, which fails if a name in it is not a function
+  `webgpu.h` declares (one renamed would lose its guard). A function that
+  always aborts through a helper would not be found.
+
+On the web, emdawnwebgpu needs the browser's WebGPU for some functions, such as
+`Instance.hasWGSLLanguageFeature`: where there is none, as under Node, it
+throws a JavaScript error, which ends the program. *Checked by:* not checked;
+the web self-test calls such functions only where WebGPU exists.
+
+On WebAssembly, a function called with a C type other than its own traps when
+called. `web/build.sh` fails if the linker warns of one, except the two in
+Lean v4.31.0's runtime (lean4#16089), which nothing calls. *Checked by:* the
+web build, every time.
 
 wgpu-native also aborts on some inputs that WebGPU treats as validation errors,
 such as a `bytesPerRow` of 0 in a texture copy; an enum code it does not know

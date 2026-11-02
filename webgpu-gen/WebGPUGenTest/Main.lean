@@ -34,6 +34,15 @@ def specPath : IO System.FilePath := do
   let package := ((bin.parent.bind (·.parent)).bind (·.parent)).getD "."
   return package / ".." / "vendor" / "webgpu-headers" / "webgpu.yml"
 
+/--
+The functions wgpu-native leaves unimplemented (`vendor/wgpu-native/stubs`), as
+the generator reads them.
+-/
+def stubs : IO (List (String × List String)) := do
+  let path := (← specPath).parent.bind (·.parent) |>.getD "."
+  let text ← IO.FS.readFile (path / "wgpu-native" / "stubs")
+  return [("wgpu-native", WebGPUGen.parseStubs text)]
+
 /-- The C header upstream generates from the vendored spec, next to it. -/
 def headerPath : IO System.FilePath := do
   return (← specPath).withFileName "webgpu.h"
@@ -203,12 +212,20 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     let mut errors := ""
     if let some buffer := spec.objects.find? (·.names.c == "WGPUBuffer") then
       IO.FS.writeFile (dir / "probe.c") (probeSource buffer)
-    for source in ["objects", "functions", "probe"] do
+    -- The shims both ways: built against Dawn, and not.
+    let builds := [
+      ("objects", #[]),
+      ("functions", #[]),
+      ("functions", #["-DWEBGPU_RAW_DAWN"]),
+      ("probe", #[])
+    ]
+    for (source, defines) in builds do
       let out ← IO.Process.output {
         cmd  := (← IO.getEnv "CC").getD "cc"
         args := #[
           "-c", "-std=c11", "-Wall", "-Wextra", "-Werror",
-          "-I", dir.toString, "-I", leanInclude.toString,
+          "-I", dir.toString, "-I", leanInclude.toString
+        ] ++ defines ++ #[
           (dir / s!"{source}.c").toString, "-o", (dir / s!"{source}.o").toString
         ]
       }
@@ -252,9 +269,16 @@ def main : IO Unit := do
   unless missing.isEmpty do
     failWith s!"C names not in webgpu.h: {missing}"
 
+  -- Every function wgpu-native leaves unimplemented is one webgpu.h declares:
+  -- one renamed would otherwise lose its guard silently.
+  let stubNames := (← stubs).flatMap (·.2)
+  let unknown := stubNames.filter (!declared.contains ·)
+  unless unknown.isEmpty do
+    failWith s!"stubs webgpu.h does not declare: {unknown}"
+
   -- Every enum entry and flag has the value upstream's header gives it.
   let values := headerValues header
-  let lowered := WebGPUGen.Lowered.lower resolved
+  let lowered := WebGPUGen.Lowered.lower resolved (stubs := ← stubs)
   let computed := computedValues lowered
   let wrong := computed.filter fun (name, v) => values.get? name != some v
   unless wrong.isEmpty do

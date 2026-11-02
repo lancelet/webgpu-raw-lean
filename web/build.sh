@@ -205,11 +205,13 @@ export app
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
 
-# The shims and the test helper, against emdawnwebgpu's webgpu.h.
+# The shims and the test helper, against emdawnwebgpu's webgpu.h. The shims
+# are told they are built against Dawn: those of functions wgpu-native leaves
+# unimplemented then call them, rather than raise an IO error.
 port=--use-port=emdawnwebgpu
 read_flags
 for f in c/generated/*.c WebGPURawTest/c/instance.c; do
-  emcc "${flags[@]}" "$port" -I c/generated -c "$f" \
+  emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN -I c/generated -c "$f" \
     -o "$app/shim_$(basename "$f" .c).o"
 done
 
@@ -217,6 +219,16 @@ echo "== link"
 em++ -o "$site/webgpu-raw-web-test.js" "$app"/*.o \
   "$cache/lib/libInit.a" "$cache/lib/libleanrt.a" "$cache/lib/libuv.a" \
   -O2 -fwasm-exceptions "$port" -sENVIRONMENT=web,node -sEXIT_RUNTIME=1 \
-  -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608
+  -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608 2> "$app/link.log" \
+  || { cat "$app/link.log" >&2; exit 1; }
+cat "$app/link.log" >&2
+# A call to a function whose C type differs from how it is called traps on
+# WebAssembly, so the linker's warning of one is an error here, except for the
+# two Lean v4.31.0's runtime has (lean4#16089), which nothing here calls.
+if grep "function signature mismatch" "$app/link.log" \
+    | grep -v -e lean_io_create_tempfile -e lean_io_create_tempdir; then
+  echo "web/build.sh: a function is called with the wrong C type" >&2
+  exit 1
+fi
 cp web/index.html "$site/index.html"
 echo "Built $site"

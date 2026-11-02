@@ -19,11 +19,29 @@ open WebGPU.Raw
 @[extern "lean_wgpu_test_create_instance"]
 opaque createInstance : IO Instance
 
+/--
+Check that calling `action`, the Lean function `name`, raises the IO error for
+a function wgpu-native leaves unimplemented.
+-/
+def expectNotImplemented {α : Type} (name : String) (action : IO α) :
+    IO Unit := do
+  match ← action.toBaseIO with
+  | .ok _ => throw (IO.userError s!"FAIL: {name} returned")
+  | .error e =>
+    let expected := s!"{name}: not implemented by wgpu-native"
+    unless toString e == expected do
+      throw (IO.userError s!"FAIL: {name} raised {e}, not {expected}")
+
 def main : IO Unit := do
   let wgpu ← createInstance
   -- A method with no result: the object is passed borrowed, and `()` returned.
   wgpu.processEvents
-  -- (Calls with enum arguments and results wait for functions wgpu-native
-  -- implements: `hasInstanceFeature` and `hasWGSLLanguageFeature` abort there.)
+  -- A function wgpu-native leaves unimplemented is an IO error, not an abort,
+  -- for a function and for a method. (A regression test: calling one through
+  -- its shim aborted the program.)
+  expectNotImplemented "hasInstanceFeature"
+    (hasInstanceFeature .timedWaitAny)
+  expectNotImplemented "Instance.hasWGSLLanguageFeature"
+    (wgpu.hasWGSLLanguageFeature .readonlyAndReadwriteStorageTextures)
   -- The instance's reference is released when `wgpu` is freed, at the end.
   IO.println "The WebGPU bindings called through their shims."

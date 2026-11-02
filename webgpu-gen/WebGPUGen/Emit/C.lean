@@ -46,6 +46,12 @@ inductive Stmt where
   | ifElse (cond : Expr) (thenBody elseBody : List Stmt)
   /-- `// text`, one comment line per line of `text`. -/
   | comment (text : String)
+  /--
+  `#if defined(A) || defined(B)`, the first statements, `#else`, the others,
+  `#endif` (`#ifdef A` for one macro): which are compiled depends on whether
+  any of the macros `names` is defined.
+  -/
+  | ifDefined (names : List String) (thenBody elseBody : List Stmt)
   deriving Repr, Inhabited
 
 /-- A function parameter. -/

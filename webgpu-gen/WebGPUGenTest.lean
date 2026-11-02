@@ -24,3 +24,4 @@ import WebGPUGenTest.Emit.C.Objects
 import WebGPUGenTest.Emit.C.Functions
 import WebGPUGenTest.Emit.Lean
 import WebGPUGenTest.Source
+import WebGPUGenTest.Stubs

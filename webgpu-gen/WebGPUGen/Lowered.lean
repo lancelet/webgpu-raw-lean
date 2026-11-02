@@ -215,6 +215,12 @@ structure Function where
   calling back when its operation completes; none is bound yet.
   -/
   callback : Bool
+  /--
+  The implementations that leave it unimplemented, aborting if it is called,
+  such as `wgpu-native`: built against one, its shim raises an `IO` error
+  instead.
+  -/
+  notImplementedBy : List String := []
   deriving Repr, DecidableEq
 
 /--

@@ -159,6 +159,37 @@ def shimText (f : Lowered.Function) : Option String :=
     "
   shimText input == some expected
 
+-- A function an implementation leaves unimplemented: its shim calls it only
+-- when built against one that implements it, and otherwise raises an IO error
+-- (calling it would abort), its parameters marked used. So a build that says
+-- nothing gets the error, never the abort.
+#guard
+  let input := { function #[arg "count" .uint32] none with
+    notImplementedBy := ["wgpu-native"] }
+  let expected := dedent "
+    // Lean's `doIt`: calls `wgpuDoIt`.
+    LEAN_EXPORT lean_obj_res lean_wgpuDoIt(uint32_t count) {
+        #ifdef WEBGPU_RAW_DAWN
+        wgpuDoIt(count);
+        return lean_io_result_mk_ok(lean_box(0));
+        #else
+        (void)count;
+        return lean_wgpu_io_error(\"doIt: not implemented by wgpu-native\");
+        #endif
+    }
+    "
+  shimText input == some expected
+
+-- A function no implementation implements is the error alone.
+#guard
+  let input := { function #[] none with
+    notImplementedBy := ["wgpu-native", "dawn"] }
+  (shimText input).any fun text =>
+    !text.contains "#if" && text.contains "not implemented by wgpu-native, dawn"
+
+-- The macro for an implementation is its name, in capitals.
+#guard implementationMacro "dawn" == "WEBGPU_RAW_DAWN"
+
 /-! ## Not bound -/
 
 -- A function the bindings cannot pass every value of has no shim.
