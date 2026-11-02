@@ -1,6 +1,6 @@
-# webgpu-gen: Code Generator for `wgpu-raw-lean`
+# webgpu-gen: Code Generator for `webgpu-raw-lean`
 
-This Lean project is the code generator for `wgpu-raw-lean`. It uses the
+This Lean project is the code generator for `webgpu-raw-lean`. It uses the
 [`webgpu.yml`][webgpu.yml] file from [`webgpu-headers`][webgpu-headers] as a
 source of truth to generate C and Lean code for the raw bindings.
 

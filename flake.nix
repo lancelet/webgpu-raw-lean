@@ -7,7 +7,7 @@
   # bash and cc by store path. Keep the shell GC-rooted (nix-direnv does this),
   # and after `nix flake update` reinstall toolchains with
   # `elan toolchain uninstall <ver>`, or they break once old paths are collected.
-  description = "wgpu-raw-lean development shell";
+  description = "webgpu-raw-lean development shell";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
