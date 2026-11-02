@@ -1,6 +1,7 @@
 module
 
 public import WebGPU.Raw.CEnum
+public import WebGPU.Raw.Constants
 public import WebGPU.Raw.Enums
 public import WebGPU.Raw.Objects
 public import WebGPU.Raw.Functions

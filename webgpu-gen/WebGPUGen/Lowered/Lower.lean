@@ -150,6 +150,20 @@ def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
     else named r (.bitflag id) .bitflag
   | _ => unsupported
 
+/-! ## Constants -/
+
+/-- A constant, named on both sides, with its value by kind. -/
+def lowerConstant (ctx : DocContext) (c : Common.Constant) :
+    Lowered.Constant where
+  names := bothNames constantName leanName c.name
+  doc   := translateDoc ctx c.doc
+  value := match c.value with
+    | .int n     => .uint64 n
+    | .usizeMax  => .sizeMax
+    | .uint32Max => .uint32 0xFFFFFFFF
+    | .uint64Max => .uint64 0xFFFFFFFFFFFFFFFF
+    | .nan       => .nan
+
 /-! ## Structs -/
 
 /--
@@ -361,6 +375,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
   }
   let mark := markStubs stubs
   {
+    constants := r.constants.map (lowerConstant ctx)
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)
     structs   := r.structs.map (lowerStruct ctx r)

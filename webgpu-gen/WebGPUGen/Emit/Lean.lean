@@ -146,6 +146,44 @@ def signature (s : Signature) : Doc :=
           ++ text s.result)
   alt flat broken
 
+/-! ## Constants -/
+
+/--
+`doc` with the paragraph `note` added, before any link definitions at its end
+(`[name]: url`), which stay last.
+-/
+def addParagraph (doc note : String) : String :=
+  if note.isEmpty then doc else if doc.isEmpty then note else
+  let lines := doc.splitOn "\n"
+  let isLink (line : String) :=
+    line.startsWith "[" && (line.splitOn "]: ").length == 2
+  let prose := lines.takeWhile (!isLink ·)
+  let links := lines.dropWhile (!isLink ·)
+  let prose := (("\n".intercalate prose).dropEndWhile (· == '\n')).toString
+  if links.isEmpty then prose ++ "\n\n" ++ note
+  else prose ++ "\n\n" ++ note ++ "\n\n" ++ "\n".intercalate links
+
+/--
+The constants, as definitions aligned in columns, each with its doc, a blank
+line between each two. A `SIZE_MAX` is the largest `UInt64`, and its doc says
+what it stands for.
+-/
+def constantsDecl (constants : List Lowered.Constant) : Doc :=
+  let rows := constants.map fun c =>
+    let (type, value, note) := match c.value with
+      | .uint32 n => ("UInt32", hex 8 n.toNat, "")
+      | .uint64 n => ("UInt64", hex 16 n.toNat, "")
+      | .sizeMax  => ("UInt64", hex 16 0xFFFFFFFFFFFFFFFF, sizeMaxNote)
+      | .nan      => ("Float32", "0.0 / 0.0", "")
+    (addParagraph c.doc note, ["def", c.names.lean, ":", type, ":=", value])
+  let laidOut := columns (rows.map (·.2))
+  join (hardline ++ hardline) ((rows.zip laidOut).map fun ((doc, _), row) =>
+    docBefore 0 doc ++ text row)
+where
+  sizeMaxNote :=
+    "`SIZE_MAX`: the largest `UInt64`, which the bindings pass as the " ++
+    "largest `size_t` on every platform (32 bits on the web)."
+
 /-! ## Objects -/
 
 /-- An object type, as a `c_object` declaration. -/
@@ -293,9 +331,8 @@ with them.
 -/
 def moduleFile (p : Provenance) (imports doc : List String) (decls : List Doc) :
     String :=
-  let blocks := [
-    Doc.lines (banner p ++ ["module"]),
-    Doc.lines imports,
+  let blocks := [Doc.lines (banner p ++ ["module"])]
+    ++ (if imports.isEmpty then [] else [Doc.lines imports]) ++ [
     Doc.lines (["/-!"] ++ doc ++ ["-/"]),
     text "@[expose] public section",
     text "namespace WebGPU.Raw"
@@ -357,5 +394,16 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "its C shim implements; `docs/Safety.md` gives the rules they follow."
     ]
     ((Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
+
+/-- The module of constants. -/
+def constantsFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  moduleFile p []
+    [
+      "# Constants",
+      "",
+      "Every constant in the spec, such as `wholeSize`, the size that means",
+      "\"to the end of the buffer\"."
+    ]
+    [constantsDecl spec.constants.toList]
 
 end WebGPUGen.Emit.Lean

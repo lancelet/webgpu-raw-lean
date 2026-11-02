@@ -71,8 +71,10 @@ unimplemented.)
   generator cannot classify is `unsupported`, has no type on either side, and
   its function is not bound. *Checked by:* test.
 - **A `size_t` crosses as a `UInt64`** and the shim checks it fits: `size_t` is
-  32 bits on the web. *Checked by:* compile (a probe of every conversion), and
-  test.
+  32 bits on the web. The largest `UInt64` stands for `SIZE_MAX`, both ways:
+  passed to C as `SIZE_MAX` rather than refused, and `SIZE_MAX` from C becomes
+  it; so `wholeMapSize` means the same on every platform. *Checked by:* compile
+  (a probe of every conversion), and test.
 - **An enum C returns can hold a code the bindings do not know**, from an
   implementation's extensions or a newer `webgpu.h`; it is kept, as
   `Except UInt32 E`. *Checked by:* test.

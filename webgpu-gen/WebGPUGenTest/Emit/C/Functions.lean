@@ -93,7 +93,7 @@ def shimText (f : Lowered.Function) : Option String :=
         b_lean_obj_arg other,
         b_lean_obj_arg label
     ) {
-        if (((uint64_t)((size_t)size)) != size) {
+        if ((size != UINT64_MAX) && (((uint64_t)((size_t)size)) != size)) {
             return lean_wgpu_io_error(
                 \"Buffer.doAll: size is too large for a size_t\"
             );
@@ -102,7 +102,7 @@ def shimText (f : Lowered.Function) : Option String :=
             lean_wgpu_buffer_unbox(self),
             (WGPUBool)flag,
             (int32_t)count,
-            (size_t)size,
+            lean_wgpu_size(size),
             (WGPUMode)mode,
             (WGPUBufferUsage)usage,
             lean_wgpu_buffer_unbox_option(other),
@@ -133,15 +133,20 @@ def shimText (f : Lowered.Function) : Option String :=
     (.bool,                   "lean_box(result != 0)"),
     (.uint32,                 "lean_box_uint32(result)"),
     (.uint64,                 "lean_box_uint64(result)"),
+    (.usize,
+      "lean_box_uint64(lean_wgpu_size_to_lean(result))"),
     (.int32,                  "lean_box_uint32((uint32_t)result)"),
     (.float32,                "lean_box_float32(result)"),
     (.float64,                "lean_box_float(result)"),
     (.enum ⟨"WGPUMode", "M"⟩, "lean_box_uint32((uint32_t)result)"),
     (.object buffer.names false, "lean_wgpu_buffer_box(result)")
   ]
+  -- (Compared without spaces or line breaks: a long return breaks.)
+  let squeeze (s : String) := String.ofList (s.toList.filter (!·.isWhitespace))
   results.all fun (v, boxed) =>
     let text := shimText (function #[] (some v))
-    text.any (·.contains ("lean_io_result_mk_ok(" ++ boxed))
+    let expected := squeeze ("lean_io_result_mk_ok(" ++ boxed)
+    text.any fun t => (squeeze t).contains expected
 
 -- An object result that is not optional must not be NULL: if it is, the shim
 -- returns an `IO` error, rather than make a Lean value of nothing.
@@ -219,6 +224,7 @@ def shimText (f : Lowered.Function) : Option String :=
 -- Only the helpers some shim uses are defined: C warns of the others.
 #guard
   let spec : Lowered.Spec := {
+    constants := #[]
     enums     := #[]
     bitflags  := #[]
     structs   := #[]

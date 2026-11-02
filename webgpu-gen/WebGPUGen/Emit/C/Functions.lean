@@ -36,6 +36,18 @@ The C function that views a Lean `Option String`: `none` is the null view.
 -/
 def optionStringViewName : String := "lean_wgpu_option_string_view"
 
+/--
+The C function that converts a size from Lean to a `size_t`: the largest
+`UInt64` stands for `SIZE_MAX`, which is 32 bits on the web.
+-/
+def sizeName : String := "lean_wgpu_size"
+
+/--
+The C function that converts a `size_t` to a Lean size: `SIZE_MAX` is the
+largest `UInt64`.
+-/
+def sizeToLeanName : String := "lean_wgpu_size_to_lean"
+
 /-- The C function that makes an `IO` error with a message. -/
 def ioErrorName : String := "lean_wgpu_io_error"
 
@@ -94,6 +106,32 @@ def helpers : List ((Lowered.Function → Bool) × Decl) := [
         [.call "lean_ctor_get" [.name "option", .lit "0"]]))
     ]
   }),
+  (takes (· == .usize), .function {
+    doc    := "A size from Lean as a `size_t`, checked to fit: the largest \
+      `UInt64` stands for `SIZE_MAX`, which is 32 bits on the web."
+    attrs  := ["static", "inline"]
+    result := "size_t"
+    name   := sizeName
+    params := [⟨"uint64_t", "size"⟩]
+    body   := [
+      .ifElse (.binary "==" (.name "size") (.name "UINT64_MAX"))
+        [.ret (some (.name "SIZE_MAX"))] [],
+      .ret (some (.cast "size_t" (.name "size")))
+    ]
+  }),
+  (takes (· == .usize), .function {
+    doc    := "A `size_t` as a size in Lean: `SIZE_MAX` is the largest \
+      `UInt64`."
+    attrs  := ["static", "inline"]
+    result := "uint64_t"
+    name   := sizeToLeanName
+    params := [⟨"size_t", "size"⟩]
+    body   := [
+      .ifElse (.binary "==" (.name "size") (.name "SIZE_MAX"))
+        [.ret (some (.name "UINT64_MAX"))] [],
+      .ret (some (.cast "uint64_t" (.name "size")))
+    ]
+  }),
   (fun f => !f.notImplementedBy.isEmpty || checksAValue f, .function {
     doc    := "An `IO` error saying `message`, for a check a shim makes, or a \
       function an implementation does not implement."
@@ -129,7 +167,7 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
   | .uint16 | .uint32 | .uint64 | .float32 | .float64 => some (.name x)
   | .int16             => some (.cast "int16_t" (.name x))
   | .int32             => some (.cast "int32_t" (.name x))
-  | .usize             => some (.cast "size_t" (.name x))
+  | .usize             => some (.call sizeName [.name x])
   | .enum names        => some (.cast names.c (.name x))
   | .bitflag names     => some (.cast names.c (.name x))
   | .object names b    => (objectNamed objects names.c).map fun o =>
@@ -142,13 +180,14 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
 
 /--
 A check that must pass before the call, for an argument `x` of the Lean
-function `function`: a `size_t` must fit, or the shim returns an `IO` error
-naming them.
+function `function`: a `size_t` must fit, or be the largest `UInt64`, which
+stands for `SIZE_MAX`; otherwise the shim returns an `IO` error naming them.
 -/
 def argCheck (function x : String) : Value → List Stmt
   | .usize => [
     let roundTrip := Expr.cast "uint64_t" (.cast "size_t" (.name x))
-    .ifElse (.binary "!=" roundTrip (.name x))
+    let notMax := Expr.binary "!=" (.name x) (.name "UINT64_MAX")
+    .ifElse (.binary "&&" notMax (.binary "!=" roundTrip (.name x)))
       [.ret (some (.call ioErrorName [.lit message]))]
       []
   ]
@@ -170,7 +209,8 @@ def resultExpr (objects : List Lowered.Object) : Value → Option Expr
   | .int32          => some (box "lean_box_uint32" (.cast "uint32_t" result))
   | .float32        => some (box "lean_box_float32" result)
   | .float64        => some (box "lean_box_float" result)
-  | .usize          => some (box "lean_box_uint64" (.cast "uint64_t" result))
+  | .usize          =>
+    some (box "lean_box_uint64" (.call sizeToLeanName [result]))
   | .enum _         => some (box "lean_box_uint32" (.cast "uint32_t" result))
   | .bitflag _      => some (box "lean_box_uint64" (.cast "uint64_t" result))
   | .object names b => (objectNamed objects names.c).map fun o =>

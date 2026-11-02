@@ -431,6 +431,32 @@ def resultValue? (methods : String) : Option (Option Value) :=
     "
   (deviceMethods input).map (·.map (·.names.lean)) == some #["Device.«end»"]
 
+/-! ## Constants -/
+
+-- Each kind of constant, named on both sides.
+#guard
+  let input := spec (constants := dedent "
+    - name: whole_size
+      value: uint64_max
+      doc: x
+    - name: limit_u32_undefined
+      value: uint32_max
+      doc: x
+    - name: whole_map_size
+      value: usize_max
+      doc: x
+    - name: depth_clear_value_undefined
+      value: nan
+      doc: x
+    ")
+  (lowerText input).map (·.constants.toList.map fun c => (c.names, c.value))
+    == some [
+      (⟨"WGPU_WHOLE_SIZE", "wholeSize"⟩, .uint64 0xFFFFFFFFFFFFFFFF),
+      (⟨"WGPU_LIMIT_U32_UNDEFINED", "limitU32Undefined"⟩, .uint32 0xFFFFFFFF),
+      (⟨"WGPU_WHOLE_MAP_SIZE", "wholeMapSize"⟩, .sizeMax),
+      (⟨"WGPU_DEPTH_CLEAR_VALUE_UNDEFINED", "depthClearValueUndefined"⟩, .nan)
+    ]
+
 /-! ## Structs -/
 
 /-- A spec with an enum, a bitflag type, a constant, an object and `structs`. -/

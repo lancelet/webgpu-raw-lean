@@ -432,6 +432,43 @@ def printFunction (f : Lowered.Function) : String :=
   (printFunction input).contains "opaque Internal.ComputePassEncoder.«end»"
     && (printFunction input).contains "def ComputePassEncoder.«end» (self"
 
+/-! ## Constants -/
+
+-- A paragraph added to a doc goes before its link definitions, which stay last.
+#guard
+  let links := "[A]: https://a.example\n[B]: https://b.example\n"
+  let doc := "See [A] and [B].\n\n" ++ links
+  addParagraph doc "A note." == "See [A] and [B].\n\nA note.\n\n" ++ links
+    && addParagraph "" "A note." == "A note."
+    && addParagraph "Plain." "" == "Plain."
+    && addParagraph "No final newline." "A note."
+      == "No final newline.\n\nA note."
+
+-- Constants as definitions aligned in columns, a blank line between each two;
+-- a `SIZE_MAX` says what it stands for.
+#guard
+  let input : List Lowered.Constant := [
+    ⟨⟨"WGPU_WHOLE_SIZE", "wholeSize"⟩, "", .uint64 0xFFFFFFFFFFFFFFFF⟩,
+    ⟨⟨"WGPU_LIMIT_U32_UNDEFINED", "limitU32Undefined"⟩, "", .uint32 0xFFFFFFFF⟩,
+    ⟨⟨"WGPU_DEPTH_CLEAR_VALUE_UNDEFINED", "depthClearValueUndefined"⟩, "",
+      .nan⟩,
+    ⟨⟨"WGPU_WHOLE_MAP_SIZE", "wholeMapSize"⟩, "", .sizeMax⟩
+  ]
+  let expected := dedent "
+    def wholeSize                : UInt64  := 0xFFFFFFFFFFFFFFFF
+
+    def limitU32Undefined        : UInt32  := 0xFFFFFFFF
+
+    def depthClearValueUndefined : Float32 := 0.0 / 0.0
+
+    /--
+    `SIZE_MAX`: the largest `UInt64`, which the bindings pass as the largest
+    `size_t` on every platform (32 bits on the web).
+    -/
+    def wholeMapSize             : UInt64  := 0xFFFFFFFFFFFFFFFF
+    "
+  render (constantsDecl input) == expected
+
 /-! ## Joining declarations -/
 
 -- One-line declarations stay together; a longer one has blank lines around it.

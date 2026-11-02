@@ -63,6 +63,10 @@ def checks : List (String × Bool) :=
     ("an unknown code kept",
       (CEnum.decode (runtime 0x7FFF0000) : Except UInt32 TextureFormat)
         matches .error 0x7FFF0000)
+,
+    ("the NaN constant is a NaN", (runtime depthClearValueUndefined).isNaN),
+    ("SIZE_MAX is the largest UInt64",
+      runtime wholeMapSize == 0xFFFF_FFFF_FFFF_FFFF)
   ]
 
 end WebGPURawWebTest

@@ -83,7 +83,8 @@ inductive Value where
   | float64
   /--
   A `size_t`. Lean passes it as a `UInt64`, as WebGPU's JavaScript API does, and
-  the shim checks it fits: `size_t` is 32 bits on the web.
+  the shim checks it fits (`size_t` is 32 bits on the web), except that the
+  largest `UInt64` stands for `SIZE_MAX`, both ways.
   -/
   | usize
   | enum    (names : Names)
@@ -256,6 +257,31 @@ def Function.unsupported (f : Function) : List String :=
     ++ f.args.toList.filterMap (·.value.unsupported?)
     ++ (f.result.bind (·.unsupported?)).toList
 
+/-! ## Constants -/
+
+/-- A constant's value, by its kind, which also gives its type. -/
+inductive ConstantValue where
+  /-- A `uint32_t`: `UINT32_MAX` is `0xFFFFFFFF`. -/
+  | uint32 (n : UInt32)
+  /-- A `uint64_t`. -/
+  | uint64 (n : UInt64)
+  /--
+  `SIZE_MAX`, which is 32 bits on the web and 64 natively. In Lean, a `size_t`
+  is a `UInt64`, so this is its largest value, which stands for `SIZE_MAX`
+  wherever the bindings pass a `size_t`.
+  -/
+  | sizeMax
+  /-- A float that is not a number. -/
+  | nan
+  deriving Repr, DecidableEq
+
+/-- A constant: in C a macro, in Lean a definition. -/
+structure Constant where
+  names : Names
+  doc   : String
+  value : ConstantValue
+  deriving Repr, DecidableEq
+
 /-! ## Structs -/
 
 /--
@@ -354,6 +380,7 @@ structure Object where
 
 /-- The lowered spec. -/
 structure Spec where
+  constants : Array Constant
   enums     : Array Enum
   bitflags  : Array Bitflag
   structs   : Array Struct

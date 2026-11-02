@@ -185,6 +185,7 @@ def probeSource (buffer : WebGPUGen.Lowered.Object) : String :=
     body   := []
   }
   let spec : WebGPUGen.Lowered.Spec := {
+    constants := #[]
     enums     := #[]
     bitflags  := #[]
     structs   := #[]
@@ -390,6 +391,27 @@ def main : IO Unit := do
   let extra := values.keys.filter fun n => !n.endsWith "_Force32" && !names.contains n
   unless extra.isEmpty do
     failWith s!"values in webgpu.h not computed: {extra}"
+
+  -- Every constant is what webgpu.h defines it as.
+  let defines := header.splitOn "\n" |>.filterMap fun line =>
+    match line.trimAscii.toString.splitOn " " with
+    | ["#define", name, value] => some (name, value)
+    | _ => none
+  let wrongConstants := lowered.constants.toList.filterMap fun c =>
+    let expected := match c.value with
+      | .uint32 0xFFFFFFFF => "(UINT32_MAX)"
+      | .uint64 0xFFFFFFFFFFFFFFFF => "(UINT64_MAX)"
+      -- The spec has no plain integer constant: one would need its C type
+      -- checked, so it fails here until then.
+      | .uint64 n | .uint32 n => s!"(an integer constant {n}: check its C type)"
+      | .sizeMax => "(SIZE_MAX)"
+      | .nan => "(NAN)"
+    match defines.lookup c.names.c with
+    | some actual => if actual == expected then none
+      else some s!"{c.names.c}: {actual}, not {expected}"
+    | none => some s!"{c.names.c}: not defined"
+  unless wrongConstants.isEmpty do
+    failWith s!"constants differing from webgpu.h: {wrongConstants}"
 
   -- The lowered model's own C names for structs are declared: array counts
   -- and extensions' SType entries.
