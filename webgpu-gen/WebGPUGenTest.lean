@@ -12,3 +12,4 @@ import WebGPUGenTest.Parsed.File
 import WebGPUGenTest.Parsed.Dump
 import WebGPUGenTest.Resolved.Resolve
 import WebGPUGenTest.Resolved.Unresolve
+import WebGPUGenTest.Lowered.Names

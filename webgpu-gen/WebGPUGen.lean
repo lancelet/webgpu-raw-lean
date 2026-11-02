@@ -17,3 +17,4 @@ import WebGPUGen.Resolved.CheckLemmas
 import WebGPUGen.Resolved.Soundness
 import WebGPUGen.Resolved.Faithfulness
 import WebGPUGen.Resolved.Reverse
+import WebGPUGen.Lowered.Names

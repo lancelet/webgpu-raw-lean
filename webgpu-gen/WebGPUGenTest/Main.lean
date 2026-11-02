@@ -3,13 +3,16 @@ import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Unresolve
+import WebGPUGen.Lowered.Names
 import WebGPUGenTest
 
 /-!
 # Test driver
 
 Reads the vendored spec, decodes it, checks that it re-encodes to the same spec,
-and prints a dump of the result. A decoding failure stops with its path.
+resolves it, checks that every C name generated for it is declared in the vendored
+`webgpu.h`, and prints a dump of the result. A decoding failure stops with its
+path.
 
 Run with `lake test` (or `lake test -- --docs`) inside `webgpu-gen`; the built
 executable `webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere.
@@ -23,6 +26,39 @@ def specPath : IO System.FilePath := do
   let bin := (← IO.appPath).parent.getD "."
   let package := ((bin.parent.bind (·.parent)).bind (·.parent)).getD "."
   return package / ".." / "vendor" / "webgpu-headers" / "webgpu.yml"
+
+/-- The C header upstream generates from the vendored spec, next to it. -/
+def headerPath : IO System.FilePath := do
+  return (← specPath).withFileName "webgpu.h"
+
+open WebGPUGen.Lowered in
+/-- The C names of members or arguments. -/
+def memberNames {Doc} (ps : Array (Parameter Doc)) : List String :=
+  ps.toList.map (memberName ·.name)
+
+open WebGPUGen.Lowered in
+/-- Every C name `webgpu.h` should declare for `s`: types, enum entries and
+flags, constants, functions and methods with their pointer types, and the
+names of members and arguments. -/
+def cNames (s : Spec) : List String :=
+  s.constants.toList.map (constantName ·.name)
+    ++ s.typedefs.toList.map (typeName ·.name)
+    ++ s.enums.toList.flatMap (fun e =>
+      typeName e.name :: e.entries.toList.filterMap (·.map (entryName e.name ·.name)))
+    ++ s.bitflags.toList.flatMap (fun b =>
+      typeName b.name :: b.entries.toList.map (entryName b.name ·.name))
+    ++ s.structs.toList.flatMap (fun st => typeName st.name :: memberNames st.members)
+    ++ s.callbacks.toList.flatMap (fun c =>
+      callbackTypeName c.name :: callbackInfoName c.name :: memberNames c.args)
+    ++ s.functions.toList.flatMap (fun f =>
+      functionName f.name :: functionProcName f.name :: memberNames f.args)
+    ++ s.objects.toList.flatMap (fun o =>
+      typeName o.name :: o.methods.toList.flatMap (fun m =>
+        methodName o.name m.name :: methodProcName o.name m.name :: memberNames m.args))
+
+/-- The identifiers in C source text. -/
+def identifiers (text : String) : Std.HashSet String :=
+  Std.HashSet.ofList (text.splitToList (fun c => !(c.isAlphanum || c == '_')))
 
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
@@ -49,6 +85,15 @@ def main (args : List String) : IO Unit := do
   | .error problems =>
     for p in problems do IO.eprintln p
     failWith s!"{problems.length} problems resolving the spec"
+
+  -- Every C name we generate is declared in upstream's header. This is a check of
+  -- identifiers only, so a short member name such as `label` passes wherever it
+  -- is declared; checking each member inside its own struct comes with the
+  -- lowered model.
+  let declared := identifiers (← IO.FS.readFile (← headerPath))
+  let missing := (cNames spec).filter (!declared.contains ·)
+  unless missing.isEmpty do
+    failWith s!"C names not in webgpu.h: {missing}"
 
   let dump :=
     dumpConstants options spec.constants
