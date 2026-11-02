@@ -163,6 +163,12 @@ Rules that later parts of the bindings must follow, decided in advance:
   callback is re-raised from the `waitAny` or `processEvents` that ran it.
 - Chained structs C returns may hold entries the bindings do not know; those
   are skipped.
+- A struct's string is passed as a view of its bytes, so `""` is `{ptr, 0}`,
+  the empty string, and never the null view; an `Option String` that is `none`
+  is the null view, `{NULL, WGPU_STRLEN}`.
+- A struct C fills in (one whose members C frees, as `SurfaceTexture` or
+  `Limits`) can be built in Lean but is never read as an input: the bindings
+  pass C zeroed memory for it, and read it back.
 
 [abi]: https://lean-lang.org/doc/reference/latest/Run-Time-Code/Foreign-Function-Interface/
 [repr]: https://lean-lang.org/doc/reference/latest/The-Type-System/Inductive-Types/

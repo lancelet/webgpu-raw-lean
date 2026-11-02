@@ -299,6 +299,110 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
 def functionDecls (f : Lowered.Function) : List Doc :=
   (rawDecl f).toList ++ (wrapperDecl f).toList
 
+/-! ## Structs
+
+Each struct the bindings can bind is a Lean structure, its fields aligned as
+`name : Type := default`; a field with no default must be given. A default of
+every byte zero, as a bind group layout entry's unused slots have, is a
+definition of its own, `T.zero`, after the structure `T`.
+
+    structure VertexAttribute where
+      format         : VertexFormat
+      offset         : UInt64       := 0
+      shaderLocation : UInt32       := 0
+-/
+
+/--
+A number as a Lean literal: in hex if it is a large mask of ones, as
+`0xFFFFFFFF`, and otherwise in decimal, as the spec writes `50000000`.
+-/
+def intLiteral (n : Int) : String :=
+  let mask := n ≥ 0x10000 && (n.toNat + 1) &&& n.toNat == 0
+  if mask then hex 0 n.toNat else toString n
+
+/--
+A default, as a Lean term, for a field of the value `v`: `.rgba8Unorm` for an
+enum entry, as the field's type is known.
+-/
+def leanDefault (v : Value) : Lowered.Default → String
+  | .bool b          => if b then "true" else "false"
+  | .int n           => intLiteral n
+  | .float literal   => literal
+  | .constant names  => names.lean
+  -- The field's type is known, so an entry or zero value needs no type name.
+  | .entry _ e       => "." ++ e.lean
+  -- Settled, a zero default is `fields`; unsettled, `.zero` still names the
+  -- value, and fails to elaborate rather than give another if there is none.
+  | .fields _ | .zero  => ".zero"
+  | .nested            => "{}"
+  | .null            => "none"
+  | .empty           => match v with
+    | .array .. => "#[]"
+    | _ => "\"\""
+
+/-- A struct's fields, aligned in columns, each with its doc. -/
+def structFields (s : Lowered.Struct) : Doc :=
+  documentedRows 2 (s.members.toList.filterMap fun m => do
+    let type ← m.value.leanType
+    let cells := [m.names.lean, ":", type]
+    pure (m.doc, cells ++ match m.default with
+      | some d => [":=", leanDefault m.value d]
+      | none   => []))
+
+/-- A struct, as a Lean structure. -/
+def structDecl (s : Lowered.Struct) : Doc :=
+  let header := text s!"structure {s.names.lean} where"
+  docBefore 0 s.doc ++ header
+    ++ (if s.members.isEmpty then nil else indented 2 (structFields s))
+
+/--
+The value of the struct `s` with every byte zero (C's `_wgpu_STRUCT_ZERO_INIT`),
+`T.zero`, given its fields' values.
+-/
+def zeroDecl (s : Lowered.Struct) (fields : List (Names × Lowered.Default)) :
+    Doc :=
+  let doc := s!"`{s.names.lean}` with every byte zero, as C's zero initialiser."
+  docBefore 0 doc
+    ++ text s!"def {s.names.lean}.zero : {s.names.lean} where"
+    ++ indented 2 (Doc.lines (columns ((s.members.toList.zip fields).map
+      fun (m, (n, d)) => [n.lean, ":=", leanDefault m.value d])))
+
+/--
+The zero values the structs' defaults refer to: each struct with its fields'
+values, in the order of `structs`, and after each those its own zero value
+refers to. Its fuel bounds the nesting: structs do not contain themselves.
+-/
+def zeroValues (structs : List Lowered.Struct) :
+    List (Names × List (Names × Lowered.Default)) :=
+  let rec refersTo (s : Lowered.Struct) :
+      Nat → List (Names × Lowered.Default) →
+        List (Names × List (Names × Lowered.Default))
+    | 0, _ => []
+    | fuel + 1, fields =>
+      (s.members.toList.zip fields).flatMap fun (m, (_, d)) =>
+        match m.value, d with
+        | .struct names, .fields inner =>
+          let nested := match structs.find? (·.names.c == names.c) with
+            | some n => refersTo n fuel inner
+            | none   => []
+          (names, inner) :: nested
+        | _, _ => []
+  -- A member with no default refers to no zero value: `.null` stands for none.
+  let used := structs.flatMap fun s =>
+    let defaults := s.members.toList.map fun m =>
+      (m.names, m.default.getD .null)
+    refersTo s (structs.length + 1) defaults
+  used.foldl (init := []) fun acc (n, f) =>
+    if acc.any (·.1.c == n.c) then acc else acc ++ [(n, f)]
+
+/-- The bound structs' declarations, each followed by its zero value if used. -/
+def structDecls (spec : Lowered.Spec) : List Doc :=
+  let bound := boundStructs spec.structs.toList
+  let zeros := zeroValues bound
+  bound.flatMap fun s =>
+    let zero := zeros.find? (·.1.c == s.names.c)
+    [structDecl s] ++ zero.toList.map fun (_, f) => zeroDecl s f
+
 /-! ## Files -/
 
 /--
@@ -405,5 +509,23 @@ def constantsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "\"to the end of the buffer\"."
     ]
     [constantsDecl spec.constants.toList]
+
+/-- The module of structs. -/
+def structsFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  moduleFile p
+    [
+      "public import WebGPU.Raw.Constants",
+      "public import WebGPU.Raw.Enums",
+      "public import WebGPU.Raw.Objects"
+    ]
+    [
+      "# Structs",
+      "",
+      "The structs of `webgpu.h` the bindings can pass so far, as Lean structures,",
+      "with the defaults C's initialisers give: so `{ size := 64 }` is a buffer",
+      "descriptor with every other field at its default. A field with no default",
+      "must be given. Chained structs (`nextInChain`) come later."
+    ]
+    (structDecls spec)
 
 end WebGPUGen.Emit.Lean

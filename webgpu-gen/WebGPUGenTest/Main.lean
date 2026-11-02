@@ -319,6 +319,8 @@ where
     | some (.constant names) => names.c
     | some (.entry _ entry)  => entry.c
     | some .zero             => "_wgpu_STRUCT_ZERO_INIT"
+    -- Lowering writes out a `zero` default's field values.
+    | some (.fields _)       => "_wgpu_STRUCT_ZERO_INIT"
     | some .nested           => match v with
       | .struct names => (initName names.c).getD "?"
       | _ => "?"
@@ -328,6 +330,9 @@ where
     | some .empty            => "WGPU_STRING_VIEW_INIT"
     | none                   => match v with
       | .enum names => s!"_wgpu_ENUM_ZERO_INIT({names.c})"
+      -- Required in Lean, since it needs something given; C still sets it
+      -- to its own defaults.
+      | .struct names => (initName names.c).getD "?"
       | _ => "NULL"
 
 /-- Do the header's initialiser and the expected one agree? -/

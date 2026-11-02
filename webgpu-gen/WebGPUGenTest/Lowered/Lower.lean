@@ -509,7 +509,8 @@ def membersOf (structs name : String) :
     s.members.toList.map fun m => (m.names.lean, m.value, m.default)
 
 -- Members of the shapes the bindings pass, with their defaults: a constant, an
--- enum entry, a flag, a boolean, and a nested struct at its own defaults.
+-- enum entry, a flag, a boolean, and a nested struct with every byte zero,
+-- written out field by field.
 #guard
   let input := dedent "
     - name: descriptor
@@ -548,7 +549,8 @@ def membersOf (structs name : String) :
     ("mode", .enum mode, some (.entry mode ⟨"WGPUMode_Fast", "fast"⟩)),
     ("usage", .bitflag usage, some (.entry usage ⟨"WGPUUsage_Read", "read"⟩)),
     ("mapped", .bool, some (.bool false)),
-    ("inner", .struct ⟨"WGPUInner", "Inner"⟩, some .zero)
+    ("inner", .struct ⟨"WGPUInner", "Inner"⟩,
+      some (.fields [(⟨"n", "n"⟩, .int 0)]))
   ]
 
 -- Structs behind pointers (NULL if optional), arrays of each kind, an optional
@@ -855,5 +857,144 @@ def membersOf (structs name : String) :
     "array<uint32>",
     "array<uint32> (immutable pointer)"
   ]
+
+-- A nested struct at its own defaults stands only if it needs nothing given;
+-- one with a required member makes the member that holds it required too.
+#guard
+  let input := spec
+    (structs := dedent "
+      - name: needy
+        doc: x
+        type: standalone
+        members:
+          - name: buffer
+            doc: x
+            type: object.buffer
+      - name: holder
+        doc: x
+        type: standalone
+        members:
+          - name: needy
+            doc: x
+            type: struct.needy
+      ")
+    (objects := "- name: buffer\n  doc: x\n")
+  let holder := (lowerText input).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Holder")
+  holder.map (·.members.toList.map (·.default)) == some [none]
+
+-- A nested struct with every byte zero needs an entry with the code 0 for each
+-- enum in it; with none, the member is required.
+#guard
+  let input := spec
+    (enums := dedent "
+      - name: speed
+        doc: x
+        entries:
+          - name: slow
+            doc: x
+            value: 1
+      ")
+    (structs := dedent "
+      - name: setting
+        doc: x
+        type: standalone
+        members:
+          - name: speed
+            doc: x
+            type: enum.speed
+            default: slow
+      - name: holder
+        doc: x
+        type: standalone
+        members:
+          - name: setting
+            doc: x
+            type: struct.setting
+            default: zero
+      ")
+  let holder := (lowerText input).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Holder")
+  holder.map (·.members.toList.map (·.default)) == some [none]
+
+-- A struct that holds one with every byte zero, which cannot be, needs that
+-- member given; so a struct that holds it at its own defaults is required too.
+#guard
+  let input := spec
+    (enums := dedent "
+      - name: speed
+        doc: x
+        entries:
+          - name: slow
+            doc: x
+            value: 1
+      ")
+    (structs := dedent "
+      - name: setting
+        doc: x
+        type: standalone
+        members:
+          - name: speed
+            doc: x
+            type: enum.speed
+            default: slow
+      - name: middle
+        doc: x
+        type: standalone
+        members:
+          - name: setting
+            doc: x
+            type: struct.setting
+            default: zero
+      - name: holder
+        doc: x
+        type: standalone
+        members:
+          - name: middle
+            doc: x
+            type: struct.middle
+      ")
+  let holder := (lowerText input).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Holder")
+  holder.map (·.members.toList.map (·.default)) == some [none]
+
+-- Every byte zero: a nullable string is the null string view, `none`, and not
+-- the empty string; a struct in it is its own zero values in turn.
+#guard
+  let input := spec
+    (structs := dedent "
+      - name: inner
+        doc: x
+        type: standalone
+        members:
+          - name: count
+            doc: x
+            type: uint32
+      - name: setting
+        doc: x
+        type: standalone
+        members:
+          - name: label
+            doc: x
+            type: nullable_string
+          - name: inner
+            doc: x
+            type: struct.inner
+      - name: holder
+        doc: x
+        type: standalone
+        members:
+          - name: setting
+            doc: x
+            type: struct.setting
+            default: zero
+      ")
+  let holder := (lowerText input).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Holder")
+  let fields : List (Names × Lowered.Default) := [
+    (⟨"label", "label"⟩, .null),
+    (⟨"inner", "inner"⟩, .fields [(⟨"count", "count"⟩, .int 0)])
+  ]
+  holder.map (·.members.toList.map (·.default)) == some [some (.fields fields)]
 
 end WebGPUGenTest.Lowered.Lower

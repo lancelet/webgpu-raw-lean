@@ -469,6 +469,125 @@ def printFunction (f : Lowered.Function) : String :=
     "
   render (constantsDecl input) == expected
 
+/-! ## Structs -/
+
+/-- A struct of the members given, undocumented and standalone. -/
+def struct (c lean : String) (members : List Member) : Lowered.Struct where
+  names           := ⟨c, lean⟩
+  doc             := ""
+  kind            := .standalone
+  extendedStructs := #[]
+  sType           := none
+  freeMembers     := false
+  members         := members.toArray
+
+/-- An undocumented member named the same on both sides. -/
+def member (name : String) (value : Value) (default : Option Lowered.Default) :
+    Member :=
+  ⟨⟨name, name⟩, "", value, default⟩
+
+-- A struct as a Lean structure, its fields aligned: each default as a Lean
+-- term (an entry or zero value without its type, which the field gives), and
+-- a field with none, which must be given.
+#guard
+  let usage : Names := ⟨"WGPUUsage", "Usage"⟩
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let input := struct "WGPUThing" "Thing" [
+    member "label" (.string false) (some .empty),
+    member "usage" (.bitflag usage)
+      (some (.entry usage ⟨"WGPUUsage_None", "none"⟩)),
+    member "size" .uint64 (some (.constant ⟨"WGPU_WHOLE_SIZE", "wholeSize"⟩)),
+    member "mask" .uint32 (some (.int 0xFFFFFFFF)),
+    member "buffer" (.object bufferNames false) none,
+    member "maybe" (.object bufferNames true) (some .null),
+    member "inner" (.struct inner) (some (.fields [])),
+    member "nested" (.struct inner) (some .nested),
+    member "items" (.array (.struct inner) "itemCount") (some .empty)
+  ]
+  let expected := dedent "
+    structure Thing where
+      label  : String        := \"\"
+      usage  : Usage         := .none
+      size   : UInt64        := wholeSize
+      mask   : UInt32        := 0xFFFFFFFF
+      buffer : Buffer
+      maybe  : Option Buffer := none
+      inner  : Inner         := .zero
+      nested : Inner         := {}
+      items  : Array Inner   := #[]
+    "
+  render (structDecl input) == expected
+
+-- A struct with no members is a structure with no fields.
+#guard
+  let input := struct "WGPUEmpty" "Empty" []
+  render (structDecl input) == "structure Empty where\n"
+
+-- The value of a struct with every byte zero: its fields, aligned.
+#guard
+  let mode : Names := ⟨"WGPUMode", "Mode"⟩
+  let input := struct "WGPUSlot" "Slot" [
+    member "type" (.enum mode) none,
+    member "dynamic" .bool none
+  ]
+  let fields : List (Names × Lowered.Default) := [
+    (⟨"type", "type"⟩, .entry mode ⟨"WGPUMode_NotUsed", "notUsed"⟩),
+    (⟨"dynamic", "dynamic"⟩, .bool false)
+  ]
+  let expected := dedent "
+    /-- `Slot` with every byte zero, as C's zero initialiser. -/
+    def Slot.zero : Slot where
+      type    := .notUsed
+      dynamic := false
+    "
+  render (zeroDecl input fields) == expected
+
+-- The zero values a struct's defaults refer to, at any depth: a zero value
+-- with a struct in it refers to that struct's zero value too.
+#guard
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let middle : Names := ⟨"WGPUMiddle", "Middle"⟩
+  let innerZero : List (Names × Lowered.Default) := [
+    (⟨"count", "count"⟩, .int 0)
+  ]
+  let middleZero : List (Names × Lowered.Default) := [
+    (⟨"inner", "inner"⟩, .fields innerZero)
+  ]
+  let structs := [
+    struct "WGPUInner" "Inner" [member "count" .uint32 none],
+    struct "WGPUMiddle" "Middle" [member "inner" (.struct inner) none],
+    struct "WGPUOuter" "Outer" [
+      member "middle" (.struct middle) (some (.fields middleZero))
+    ]
+  ]
+  (zeroValues structs).map (·.1.lean) == ["Middle", "Inner"]
+
+-- A default of every byte zero not yet settled into its fields' values is
+-- printed as `.zero`, so that it fails to elaborate if there is no `T.zero`,
+-- rather than as `{}`, a different value.
+#guard
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  leanDefault (.struct inner) .zero == ".zero"
+
+-- Integer defaults: decimal, except a large mask of ones, which is in hex.
+#guard
+  intLiteral 0 == "0" && intLiteral 50000000 == "50000000"
+    && intLiteral 0xFFFF == "65535" && intLiteral 0xFFFFFFFF == "0xFFFFFFFF"
+    && intLiteral (-1) == "-1"
+
+-- The structs the bindings can bind, each after those it refers to; one whose
+-- members cannot all be passed is not bound, nor is one that refers to it.
+#guard
+  let a : Names := ⟨"WGPUA", "A"⟩
+  let c : Names := ⟨"WGPUC", "C"⟩
+  let structs := [
+    struct "WGPUB" "B" [member "a" (.struct a) (some .nested)],
+    struct "WGPUA" "A" [member "n" .uint32 (some (.int 0))],
+    struct "WGPUC" "C" [member "x" (.unsupported "callback") none],
+    struct "WGPUD" "D" [member "c" (.structPointer c false) none]
+  ]
+  (boundStructs structs).map (·.names.lean) == ["A", "B"]
+
 /-! ## Joining declarations -/
 
 -- One-line declarations stay together; a longer one has blank lines around it.

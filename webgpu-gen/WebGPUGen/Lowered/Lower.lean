@@ -361,6 +361,80 @@ def markStubs (stubs : List (String × List String)) (f : Lowered.Function) :
   { f with notImplementedBy := stubs.filterMap fun (impl, names) =>
       if names.contains f.names.c then some impl else none }
 
+/-! ## Struct defaults that refer to other structs -/
+
+/--
+The value each member of the struct named `names` has when all its bytes are
+zero (a `zero` default): for an enum or bitflag type its entry whose code is
+0, for a number 0, `false`, an empty string or array, `none` for what is
+optional, and a nested struct's own zero values. None if a member has no such
+value, as an enum with no entry for 0, or an object that is not optional.
+`fuel` bounds the nesting: structs do not contain themselves.
+-/
+def zeroFields (spec : Lowered.Spec) (names : Names) :
+    Nat → Option (List (Names × Lowered.Default))
+  | 0 => none
+  | fuel + 1 => do
+    let s ← spec.structs.find? (·.names.c == names.c)
+    s.members.toList.mapM fun m => do
+      let value ← zeroOf fuel m.value
+      pure (m.names, value)
+where
+  zeroOf (fuel : Nat) : Value → Option Lowered.Default
+    | .bool => some (.bool false)
+    | .uint16 | .uint32 | .uint64 | .int16 | .int32 | .usize => some (.int 0)
+    | .float32 | .float64 => some (.float "0.0")
+    -- A nullable string is the null string view, not the empty string.
+    | .string true => some .null
+    | .string false | .array .. => some .empty
+    | .object _ true | .structPointer _ true => some .null
+    | .enum type => do
+      let e ← spec.enums.find? (·.names.c == type.c)
+      let entry ← e.entries.find? (·.value == 0)
+      pure (.entry type entry.names)
+    | .bitflag type => do
+      let b ← spec.bitflags.find? (·.names.c == type.c)
+      let flag ← b.flags.find? (·.value == 0)
+      pure (.entry type flag.names)
+    | .struct nested => (zeroFields spec nested fuel).map .fields
+    | _ => none
+
+/--
+Whether a struct needs nothing given: each member has a default, and each
+nested at its own defaults needs nothing given either. `fuel` bounds the
+nesting.
+-/
+def complete (spec : Lowered.Spec) (names : Names) : Nat → Bool
+  | 0 => false
+  | fuel + 1 =>
+    match spec.structs.find? (·.names.c == names.c) with
+    | none => false
+    | some s => s.members.all fun m =>
+      match m.default, m.value with
+      | some .nested, .struct nested => complete spec nested fuel
+      | some _, _ => true
+      | none, _ => false
+
+/--
+Settle the defaults that refer to other structs, once all are lowered: first a
+`zero` default becomes its field values (`fields`); then a `nested` one stands
+only if the nested struct, so settled, needs nothing given. Where either cannot
+be, the member has no default, and must be given.
+-/
+def settleStructDefaults (spec : Lowered.Spec) : Lowered.Spec :=
+  let fuel := spec.structs.size + 1
+  let settle (spec : Lowered.Spec) (f : Member → Member) : Lowered.Spec :=
+    { spec with structs := spec.structs.map fun s =>
+        { s with members := s.members.map f } }
+  let zeros := settle spec fun m => match m.default, m.value with
+    | some .zero, .struct nested =>
+      { m with default := (zeroFields spec nested fuel).map .fields }
+    | _, _ => m
+  settle zeros fun m => match m.default, m.value with
+    | some .nested, .struct nested =>
+      if complete zeros nested fuel then m else { m with default := none }
+    | _, _ => m
+
 /--
 Lower a resolved spec. `sections` are the documentation sections its docs may
 refer to, each with its page (`articleSections` reads them from upstream's
@@ -374,7 +448,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
     sections  := Std.HashMap.ofList sections
   }
   let mark := markStubs stubs
-  {
+  settleStructDefaults {
     constants := r.constants.map (lowerConstant ctx)
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)

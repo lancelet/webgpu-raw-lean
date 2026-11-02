@@ -307,13 +307,19 @@ inductive Default where
   `Undefined`.
   -/
   | zero
+  /--
+  A nested struct with the fields given, each at its value: what lowering makes
+  of `zero`, the field values that are all-zero bytes, so that a printer can
+  write them out.
+  -/
+  | fields (values : List (Names × Default))
   /-- A nested struct at its own defaults (its `WGPU_X_INIT`). -/
   | nested
   /-- NULL: an optional object or struct pointer that is absent, `none`. -/
   | null
   /-- An empty array (a count of 0, NULL), or an empty string. -/
   | empty
-  deriving Repr, DecidableEq
+  deriving Repr, BEq
 
 /-- A struct member: how its value crosses, and its default. -/
 structure Member where
@@ -326,7 +332,7 @@ structure Member where
   not optional to NULL.
   -/
   default : Option Default
-  deriving Repr, DecidableEq
+  deriving Repr, BEq
 
 /--
 A struct. `kind` says how it takes part in chaining: an `extensible` struct
@@ -347,7 +353,7 @@ structure Struct where
   /-- Whether C allocates its members, which `wgpuXFreeMembers` frees. -/
   freeMembers     : Bool
   members         : Array Member
-  deriving Repr, DecidableEq
+  deriving Repr, BEq
 
 /--
 What the bindings cannot pass yet among the struct's members: one reason for
@@ -357,6 +363,34 @@ they can.
 def Struct.unsupported (s : Struct) : List String :=
   (if s.kind == .extension && s.sType.isNone then ["no SType entry"] else [])
     ++ s.members.toList.filterMap (·.value.unsupported?)
+
+/--
+The structs a struct's members refer to: by value, by pointer, or in an array.
+-/
+def Struct.references (s : Struct) : List Names :=
+  s.members.toList.filterMap fun m =>
+    match m.value with
+    | .struct names | .structPointer names _ => some names
+    | .array (.struct names) _ => some names
+    | _ => none
+
+/--
+The structs the bindings can bind, in an order in which each comes after the
+structs it refers to: those whose members can all be passed, and whose
+referred structs can be bound too. `fuel` bounds the passes over the structs;
+structs do not refer to themselves.
+-/
+def boundStructs (structs : List Struct) : List Struct :=
+  go structs.length [] (structs.filter (·.unsupported.isEmpty))
+where
+  /-- Bound so far (`done`, in order), and those still waiting (`rest`). -/
+  go : Nat → List Struct → List Struct → List Struct
+    | 0, done, _ => done
+    | fuel + 1, done, rest =>
+      let ready := rest.filter fun s =>
+        s.references.all fun r => done.any (·.names.c == r.c)
+      if ready.isEmpty then done
+      else go fuel (done ++ ready) (rest.filter fun s => !ready.contains s)
 
 /-! ## Objects -/
 
@@ -387,6 +421,6 @@ structure Spec where
   objects   : Array Object
   /-- The functions that belong to no object type, such as `createInstance`. -/
   functions : Array Function
-  deriving Repr, DecidableEq
+  deriving Repr, BEq
 
 end WebGPUGen.Lowered
