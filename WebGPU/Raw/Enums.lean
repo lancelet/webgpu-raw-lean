@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 87fd6b1 (clean)
-  Generated:        2026-11-02 08:54:45 UTC
+  Generator commit: 2c3cfe8 (clean)
+  Generated:        2026-11-02 10:04:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -58,13 +58,13 @@ c_enum BackendType where
   -/
   | undefined = 0x00000000
   | null      = 0x00000001
-  | webgpu    = 0x00000002
+  | webGPU    = 0x00000002
   | d3d11     = 0x00000003
   | d3d12     = 0x00000004
   | metal     = 0x00000005
   | vulkan    = 0x00000006
-  | opengl    = 0x00000007
-  | opengles  = 0x00000008
+  | openGL    = 0x00000007
+  | openGLES  = 0x00000008
 
 c_enum BlendFactor where
   /--
