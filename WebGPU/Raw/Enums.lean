@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: ae7c549 (clean)
-  Generated:        2026-11-02 06:23:55 UTC
+  Generator commit: d9ca1cf (clean)
+  Generated:        2026-11-02 06:48:33 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -20,6 +20,11 @@ import WebGPU.Raw.Internal.CEnum
 
 Every enum and bitflag type in `webgpu.h`, with the codes and values it gives
 them.
+
+Each `c_enum` declares an enum and its `CEnum` instance: `CEnum.toC` gives a
+value's code in `webgpu.h`, and `CEnum.ofC?` the value a code stands for. Each
+bitflag type wraps its bits, with a constant per flag: combine flags with `|||`
+and mask them with `&&&`.
 -/
 
 @[expose] public section
@@ -34,7 +39,9 @@ c_enum AdapterType where
 
 c_enum AddressMode where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined    = 0x00000000
   | clampToEdge  = 0x00000001
@@ -43,7 +50,9 @@ c_enum AddressMode where
 
 c_enum BackendType where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | null      = 0x00000001
@@ -57,7 +66,9 @@ c_enum BackendType where
 
 c_enum BlendFactor where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined         = 0x00000000
   | zero              = 0x00000001
@@ -80,7 +91,9 @@ c_enum BlendFactor where
 
 c_enum BlendOperation where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined       = 0x00000000
   | add             = 0x00000001
@@ -91,12 +104,16 @@ c_enum BlendOperation where
 
 c_enum BufferBindingType where
   /--
-  Indicates that this @ref WGPUBufferBindingLayout member of its parent @ref
-  WGPUBindGroupLayoutEntry is not used. (See also @ref SentinelValues.)
+  Indicates that this `BufferBindingLayout` member of its parent
+  `BindGroupLayoutEntry` is not used. (See also [SentinelValues].)
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | bindingNotUsed  = 0x00000000
   /--
-  `1`. Indicates no value is passed for this argument. See @ref SentinelValues.
+  `1`. Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined       = 0x00000001
   | uniform         = 0x00000002
@@ -110,46 +127,50 @@ c_enum BufferMapState where
 
 /--
 The callback mode controls how a callback for an asynchronous operation may be
-fired. See @ref Asynchronous-Operations for how these are used.
+fired. See [Asynchronous-Operations] for how these are used.
+
+[Asynchronous-Operations]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html
 -/
 c_enum CallbackMode where
   /--
-  Callbacks created with `WGPUCallbackMode_WaitAnyOnly`:
-  - fire when the asynchronous operation's future is passed to a call to @ref
-    wgpuInstanceWaitAny AND the operation has already completed or it completes
-    inside the call to @ref wgpuInstanceWaitAny.
+  Callbacks created with `CallbackMode.waitAnyOnly`:
+  - fire when the asynchronous operation's future is passed to a call to
+    `Instance.waitAny` AND the operation has already completed or it completes
+    inside the call to `Instance.waitAny`.
   -/
   | waitAnyOnly        = 0x00000001
   /--
-  Callbacks created with `WGPUCallbackMode_AllowProcessEvents`:
+  Callbacks created with `CallbackMode.allowProcessEvents`:
   - fire for the same reasons as callbacks created with
-    `WGPUCallbackMode_WaitAnyOnly`
-  - fire inside a call to @ref wgpuInstanceProcessEvents if the asynchronous
-    operation is complete.
+    `CallbackMode.waitAnyOnly`
+  - fire inside a call to `Instance.processEvents` if the asynchronous operation
+    is complete.
   -/
   | allowProcessEvents = 0x00000002
   /--
-  Callbacks created with `WGPUCallbackMode_AllowSpontaneous`:
+  Callbacks created with `CallbackMode.allowSpontaneous`:
   - fire for the same reasons as callbacks created with
-    `WGPUCallbackMode_AllowProcessEvents`
+    `CallbackMode.allowProcessEvents`
   - **may** fire spontaneously on an arbitrary or application thread, when the
     WebGPU implementations discovers that the asynchronous operation is
     complete.
 
   Implementations _should_ fire spontaneous callbacks as soon as possible.
 
-  @note Because spontaneous callbacks may fire at an arbitrary time on an
+  **Note:** Because spontaneous callbacks may fire at an arbitrary time on an
   arbitrary thread, applications should take extra care when acquiring locks or
   mutating state inside the callback. It undefined behavior to re-entrantly call
   into the webgpu.h API if the callback fires while inside the callstack of
-  another webgpu.h function that is not `wgpuInstanceWaitAny` or
-  `wgpuInstanceProcessEvents`.
+  another webgpu.h function that is not `Instance.waitAny` or
+  `Instance.processEvents`.
   -/
   | allowSpontaneous   = 0x00000003
 
 c_enum CompareFunction where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined    = 0x00000000
   | never        = 0x00000001
@@ -163,7 +184,11 @@ c_enum CompareFunction where
 
 c_enum CompilationInfoRequestStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
 
 c_enum CompilationMessageType where
@@ -173,7 +198,9 @@ c_enum CompilationMessageType where
 
 c_enum ComponentSwizzle where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   /-- Force its value to 0. -/
@@ -190,14 +217,14 @@ c_enum ComponentSwizzle where
   | a         = 0x00000006
 
 /--
-Describes how frames are composited with other contents on the screen when @ref
-wgpuSurfacePresent is called.
+Describes how frames are composited with other contents on the screen when
+`Surface.present` is called.
 -/
 c_enum CompositeAlphaMode where
   /--
   Lets the WebGPU implementation choose the best mode (supported, and with the
-  best performance) between @ref WGPUCompositeAlphaMode_Opaque or @ref
-  WGPUCompositeAlphaMode_Inherit.
+  best performance) between `CompositeAlphaMode.«opaque»` or
+  `CompositeAlphaMode.inherit`.
   -/
   | auto            = 0x00000000
   /--
@@ -225,14 +252,20 @@ c_enum CompositeAlphaMode where
 
 c_enum CreatePipelineAsyncStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   | validationError   = 0x00000003
   | internalError     = 0x00000004
 
 c_enum CullMode where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | none      = 0x00000001
@@ -242,7 +275,11 @@ c_enum CullMode where
 c_enum DeviceLostReason where
   | unknown           = 0x00000001
   | destroyed         = 0x00000002
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000003
   | failedCreation    = 0x00000004
 
@@ -258,10 +295,12 @@ c_enum ErrorType where
   | internal    = 0x00000004
   | unknown     = 0x00000005
 
-/-- See @ref WGPURequestAdapterOptions::featureLevel. -/
+/-- See `RequestAdapterOptions.featureLevel`. -/
 c_enum FeatureLevel where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined     = 0x00000000
   /--
@@ -297,7 +336,9 @@ c_enum FeatureName where
 
 c_enum FilterMode where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | nearest   = 0x00000001
@@ -305,7 +346,9 @@ c_enum FilterMode where
 
 c_enum FrontFace where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | ccw       = 0x00000001
@@ -313,31 +356,35 @@ c_enum FrontFace where
 
 c_enum IndexFormat where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | uint16    = 0x00000001
   | uint32    = 0x00000002
 
 c_enum InstanceFeatureName where
-  /-- Enable use of ::wgpuInstanceWaitAny with `timeoutNS > 0`. -/
+  /-- Enable use of `Instance.waitAny` with `timeoutNS > 0`. -/
   | timedWaitAny              = 0x00000001
   /--
-  Enable passing SPIR-V shaders to @ref wgpuDeviceCreateShaderModule, via @ref
-  WGPUShaderSourceSPIRV.
+  Enable passing SPIR-V shaders to `Device.createShaderModule`, via
+  `ShaderSourceSPIRV`.
   -/
   | shaderSourceSPIRV         = 0x00000002
   /--
-  Normally, a @ref WGPUAdapter can only create a single device. If this is
-  available and enabled, then adapters won't immediately expire when they create
-  a device, so can be reused to make multiple devices. They may still expire for
-  other reasons.
+  Normally, a `Adapter` can only create a single device. If this is available
+  and enabled, then adapters won't immediately expire when they create a device,
+  so can be reused to make multiple devices. They may still expire for other
+  reasons.
   -/
   | multipleDevicesPerAdapter = 0x00000003
 
 c_enum LoadOp where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | load      = 0x00000001
@@ -345,14 +392,20 @@ c_enum LoadOp where
 
 c_enum MapAsyncStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   | error             = 0x00000003
   | aborted           = 0x00000004
 
 c_enum MipmapFilterMode where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | nearest   = 0x00000001
@@ -368,13 +421,21 @@ c_enum PopErrorScopeStatus where
   The error scope stack was successfully popped and a result was reported.
   -/
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   /-- The error scope stack could not be popped, because it was empty. -/
   | error             = 0x00000003
 
 c_enum PowerPreference where
-  /-- No preference. (See also @ref SentinelValues.) -/
+  /--
+  No preference. (See also [SentinelValues].)
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
+  -/
   | undefined       = 0x00000000
   | lowPower        = 0x00000001
   | highPerformance = 0x00000002
@@ -384,8 +445,8 @@ c_enum PredefinedColorSpace where
   | displayP3 = 0x00000002
 
 /--
-Describes when and in which order frames are presented on the screen when @ref
-wgpuSurfacePresent is called.
+Describes when and in which order frames are presented on the screen when
+`Surface.present` is called.
 -/
 c_enum PresentMode where
   /-- Present mode is not specified. Use the default. -/
@@ -420,7 +481,9 @@ c_enum PresentMode where
 
 c_enum PrimitiveTopology where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined     = 0x00000000
   | pointList     = 0x00000001
@@ -435,7 +498,11 @@ c_enum QueryType where
 
 c_enum QueueWorkDoneStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   /--
   There was some deterministic error. (Note this is currently never used, but it
@@ -445,14 +512,22 @@ c_enum QueueWorkDoneStatus where
 
 c_enum RequestAdapterStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   | unavailable       = 0x00000003
   | error             = 0x00000004
 
 c_enum RequestDeviceStatus where
   | success           = 0x00000001
-  /-- See @ref CallbackStatuses. -/
+  /--
+  See [CallbackStatuses].
+
+  [CallbackStatuses]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackStatuses
+  -/
   | callbackCancelled = 0x00000002
   | error             = 0x00000003
 
@@ -476,12 +551,16 @@ c_enum SType where
 
 c_enum SamplerBindingType where
   /--
-  Indicates that this @ref WGPUSamplerBindingLayout member of its parent @ref
-  WGPUBindGroupLayoutEntry is not used. (See also @ref SentinelValues.)
+  Indicates that this `SamplerBindingLayout` member of its parent
+  `BindGroupLayoutEntry` is not used. (See also [SentinelValues].)
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | bindingNotUsed = 0x00000000
   /--
-  `1`. Indicates no value is passed for this argument. See @ref SentinelValues.
+  `1`. Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined      = 0x00000001
   | filtering      = 0x00000002
@@ -490,8 +569,10 @@ c_enum SamplerBindingType where
 
 /--
 Status code returned (synchronously) from many operations. Generally indicates
-an invalid input like an unknown enum value or @ref OutStructChainError. Read
-the function's documentation for specific error conditions.
+an invalid input like an unknown enum value or [OutStructChainError]. Read the
+function's documentation for specific error conditions.
+
+[OutStructChainError]: https://webgpu-native.github.io/webgpu-headers/StructChaining.html#OutStructChainError
 -/
 c_enum Status where
   | success = 0x00000001
@@ -499,7 +580,9 @@ c_enum Status where
 
 c_enum StencilOperation where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined      = 0x00000000
   | keep           = 0x00000001
@@ -513,12 +596,16 @@ c_enum StencilOperation where
 
 c_enum StorageTextureAccess where
   /--
-  Indicates that this @ref WGPUStorageTextureBindingLayout member of its parent
-  @ref WGPUBindGroupLayoutEntry is not used. (See also @ref SentinelValues.)
+  Indicates that this `StorageTextureBindingLayout` member of its parent
+  `BindGroupLayoutEntry` is not used. (See also [SentinelValues].)
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | bindingNotUsed = 0x00000000
   /--
-  `1`. Indicates no value is passed for this argument. See @ref SentinelValues.
+  `1`. Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined      = 0x00000001
   | writeOnly      = 0x00000002
@@ -527,13 +614,15 @@ c_enum StorageTextureAccess where
 
 c_enum StoreOp where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | store     = 0x00000001
   | discard   = 0x00000002
 
-/-- The status enum for @ref wgpuSurfaceGetCurrentTexture. -/
+/-- The status enum for `Surface.getCurrentTexture`. -/
 c_enum SurfaceGetCurrentTextureStatus where
   /-- Yay! Everything is good and we can render this frame. -/
   | successOptimal    = 0x00000001
@@ -556,14 +645,19 @@ c_enum SurfaceGetCurrentTextureStatus where
   | lost              = 0x00000005
   /--
   There was some deterministic error (for example, the surface is not
-  configured, or there was an @ref OutStructChainError). Should produce @ref
-  ImplementationDefinedLogging containing details.
+  configured, or there was an [OutStructChainError]). Should produce
+  [ImplementationDefinedLogging] containing details.
+
+  [OutStructChainError]: https://webgpu-native.github.io/webgpu-headers/StructChaining.html#OutStructChainError
+  [ImplementationDefinedLogging]: https://webgpu-native.github.io/webgpu-headers/Errors.html#ImplementationDefinedLogging
   -/
   | error             = 0x00000006
 
 c_enum TextureAspect where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined   = 0x00000000
   | all         = 0x00000001
@@ -572,7 +666,9 @@ c_enum TextureAspect where
 
 c_enum TextureDimension where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | «1d»      = 0x00000001
@@ -581,7 +677,9 @@ c_enum TextureDimension where
 
 c_enum TextureFormat where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined            = 0x00000000
   | r8Unorm              = 0x00000001
@@ -688,12 +786,16 @@ c_enum TextureFormat where
 
 c_enum TextureSampleType where
   /--
-  Indicates that this @ref WGPUTextureBindingLayout member of its parent @ref
-  WGPUBindGroupLayoutEntry is not used. (See also @ref SentinelValues.)
+  Indicates that this `TextureBindingLayout` member of its parent
+  `BindGroupLayoutEntry` is not used. (See also [SentinelValues].)
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | bindingNotUsed    = 0x00000000
   /--
-  `1`. Indicates no value is passed for this argument. See @ref SentinelValues.
+  `1`. Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined         = 0x00000001
   | float             = 0x00000002
@@ -704,7 +806,9 @@ c_enum TextureSampleType where
 
 c_enum TextureViewDimension where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined = 0x00000000
   | «1d»      = 0x00000001
@@ -763,13 +867,15 @@ c_enum VertexFormat where
 
 c_enum VertexStepMode where
   /--
-  Indicates no value is passed for this argument. See @ref SentinelValues.
+  Indicates no value is passed for this argument. See [SentinelValues].
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
   -/
   | undefined  = 0x00000000
   | vertex     = 0x00000001
   | «instance» = 0x00000002
 
-/-- Status returned from a call to ::wgpuInstanceWaitAny. -/
+/-- Status returned from a call to `Instance.waitAny`. -/
 c_enum WaitStatus where
   /-- At least one WGPUFuture completed successfully. -/
   | success  = 0x00000001
@@ -778,8 +884,11 @@ c_enum WaitStatus where
   -/
   | timedOut = 0x00000002
   /--
-  The call was invalid for some reason (see @ref Wait-Any). Should produce @ref
-  ImplementationDefinedLogging containing details.
+  The call was invalid for some reason (see [Wait-Any]). Should produce
+  [ImplementationDefinedLogging] containing details.
+
+  [Wait-Any]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#Wait-Any
+  [ImplementationDefinedLogging]: https://webgpu-native.github.io/webgpu-headers/Errors.html#ImplementationDefinedLogging
   -/
   | error    = 0x00000003
 
@@ -803,16 +912,16 @@ namespace BufferUsage
 
 def none         : BufferUsage := ⟨0x0000000000000000⟩
 /--
-The buffer can be *mapped* on the CPU side in *read* mode (using @ref
-WGPUMapMode_Read).
+The buffer can be *mapped* on the CPU side in *read* mode (using
+`MapMode.read`).
 -/
 def mapRead      : BufferUsage := ⟨0x0000000000000001⟩
 /--
-The buffer can be *mapped* on the CPU side in *write* mode (using @ref
-WGPUMapMode_Write).
+The buffer can be *mapped* on the CPU side in *write* mode (using
+`MapMode.write`).
 
-@note This usage is **not** required to set `mappedAtCreation` to `true` in @ref
-WGPUBufferDescriptor.
+**Note:** This usage is **not** required to set `mappedAtCreation` to `true` in
+`BufferDescriptor`.
 -/
 def mapWrite     : BufferUsage := ⟨0x0000000000000002⟩
 /-- The buffer can be used as the *source* of a GPU-side copy operation. -/
