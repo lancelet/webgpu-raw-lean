@@ -59,11 +59,17 @@ jobs:
           build: true
           test: true
 
-      # The generated files must be what the generator makes now: only the
-      # banner's commit and time may differ.
+      # The generated files must come from a committed generator (their
+      # banners say "(clean)", not "(dirty)"), and be what the generator makes
+      # now: only the banner's commit and time may differ.
       - name: Check the generated files are up to date
         if: runner.os == 'Linux'
         run: |
+          if grep -rn 'Generator commit: .* (dirty)' WebGPU c/generated; then
+            echo "Generated from uncommitted changes: commit the generator," \
+              "then regenerate and commit the generated files." >&2
+            exit 1
+          fi
           (cd webgpu-gen && lake exe webgpu-gen generate)
           git diff --exit-code -I '^  Generator commit:' -I '^  Generated:' \
             -- WebGPU c/generated
