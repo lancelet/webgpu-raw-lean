@@ -29,7 +29,8 @@
             pkgs.curl # vendor/*/fetch.sh
             pkgs.unzip # vendor/wgpu-native/fetch.sh
             pkgs.shellcheck # checks the shell scripts
-            # the web build (web/build.sh); CI uses the Emscripten SDK instead
+            # the web build (web/build.sh); CI uses the Emscripten SDK, at the
+            # version in web/emscripten-version, which this should match
             pkgs.emscripten
             pkgs.cmake
             pkgs.gnumake

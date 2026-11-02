@@ -104,7 +104,8 @@ jobs:
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
   # web/emscripten-version (and cmake and make), then run web/build.sh. The
-  # self-test runs under Node, and the page is published to GitHub Pages.
+  # self-test runs under Node and in a browser, and the page is published to
+  # GitHub Pages.
   web:
     name: web
     runs-on: ubuntu-latest
@@ -115,32 +116,41 @@ jobs:
         id: emscripten
         run: echo "version=$(cat web/emscripten-version)" >> "$GITHUB_OUTPUT"
 
-      # The Emscripten SDK: emcc, em++, emar and emcmake.
-      - uses: mymindstorm/setup-emsdk@v14
+      # The Emscripten SDK, at that version: emcc, em++, emar and emcmake.
+      - uses: emscripten-core/setup-emsdk@v16
         with:
           version: ${{ steps.emscripten.outputs.version }}
           actions-cache-folder: emsdk-cache
 
-      - uses: actions/setup-node@v4
+      # Node, to run the self-test; any recent version will do.
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
 
       # Lean's standard CI action, here only to install elan (and through it
-      # the toolchain lean-toolchain names); web/build.sh runs Lake itself.
+      # the toolchain lean-toolchain names): web/build.sh runs Lake itself.
+      # Its Lake cache is the native build's, so this job leaves it alone.
       - uses: leanprover/lean-action@v1
         with:
           auto-config: false
           build: false
           test: false
+          use-github-cache: false
 
-      # CI only: what web/build.sh builds once per Lean version (Lean's runtime,
-      # Init and libuv for WebAssembly), kept between runs.
-      - uses: actions/cache@v4
+      # CI only: what web/build.sh builds once per Lean version and setup
+      # (Lean's runtime, Init and libuv for WebAssembly), Emscripten's own
+      # cache, and the sources fetched for them, kept between runs.
+      - uses: actions/cache@v5
         with:
           path: |
             .lake/web/v*
             .lake/web/emscripten-cache
-          key: web-${{ hashFiles('lean-toolchain', 'web/build.sh', 'web/emscripten-version', 'web/include/**', 'vendor/lean4/fetch.sh', 'vendor/libuv/fetch.sh') }}
+            vendor/lean4/v*
+            vendor/libuv/v*
+          key: >-
+            web-${{ hashFiles('lean-toolchain', 'web/build.sh',
+            'web/emscripten-version', 'web/include/**',
+            'vendor/lean4/fetch.sh', 'vendor/libuv/fetch.sh') }}
 
       - name: Build for the web
         run: web/build.sh
@@ -152,14 +162,17 @@ jobs:
       - name: Check the page in a browser
         run: web/check-page.sh
 
-      - uses: actions/upload-pages-artifact@v3
+      # CI only: the built site, for the pages job to publish.
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: .lake/web/site
 
   # Publishes the web build to GitHub Pages, from main only.
   pages:
     name: pages
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [build, web]
     runs-on: ubuntu-latest
     # One deployment at a time; a newer one waits rather than cancels.
@@ -174,4 +187,4 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

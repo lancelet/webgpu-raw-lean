@@ -84,12 +84,16 @@
       output.appendChild(span);
     };
     if (!("gpu" in navigator)) {
-      status.textContent = "This browser has no WebGPU: the bindings' " +
-        "check may fail.";
+      status.textContent = "This browser has no WebGPU. The checks here do " +
+        "not need it, but drawing will.";
     }
     Module = {
       print: line,
       printErr: line,
+      onAbort: (what) => {
+        status.textContent = `The program stopped: ${what}`;
+        status.className = "fail";
+      },
       onExit: (code) => {
         status.textContent = code === 0
           ? "All checks passed."
