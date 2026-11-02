@@ -46,6 +46,11 @@ theorem indexOf_spec {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Arr
   have hidx : indexOf key xs k = i.val := by simp [indexOf, hi]
   exact ⟨hidx ▸ i.isLt, by simp only [hidx]; exact (indexOf?_some hi).1⟩
 
+/-- When some item has key `k`, `indexOf` gives a position in range. -/
+theorem indexOf_lt {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array α} {k : β}
+    (h : ∃ x ∈ xs, key x = k) : indexOf key xs k < xs.size :=
+  (indexOf_spec h).1
+
 /-! ## `eachAt` -/
 
 /-- `eachAt` reports nothing exactly when the check reports nothing for each

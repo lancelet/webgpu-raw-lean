@@ -14,3 +14,4 @@ import WebGPUGen.Resolved.WellFormed
 import WebGPUGen.Resolved.Unresolve
 import WebGPUGen.Resolved.Lemmas
 import WebGPUGen.Resolved.CheckLemmas
+import WebGPUGen.Resolved.Soundness
