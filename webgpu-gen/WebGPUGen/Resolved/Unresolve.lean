@@ -10,10 +10,11 @@ entry it points at, and each flag value becomes the parsed `value` and
 `unresolve` is total. Where a well-formed spec could not reach (an ID out of
 range, or an entry default whose name the parsed spec could not write), it uses
 a placeholder; theorems about `unresolve` assume `WellFormed`, which rules the
-placeholders out. Two are planned:
+placeholders out:
 
 * faithfulness: `unresolve (build s) = s` when `check s = []`;
-* the reverse direction: `resolve (unresolve r) = .ok r` when `WellFormed r`.
+* the reverse direction: `check (unresolve r) = []` when `WellFormed r`, and
+  (planned) `resolve (unresolve r) = .ok r`.
 -/
 
 namespace WebGPUGen.Resolved

@@ -46,6 +46,16 @@ theorem indexOf_spec {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Arr
   have hidx : indexOf key xs k = i.val := by simp [indexOf, hi]
   exact ⟨hidx ▸ i.isLt, by simp only [hidx]; exact (indexOf?_some hi).1⟩
 
+/-- When the keys are distinct, looking up the key at position `j` finds `j`. -/
+theorem indexOf?_of_nodup {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array α}
+    (h : (xs.toList.map key).Nodup) {j : Nat} (lt : j < xs.size) :
+    indexOf? key xs (key xs[j]) = some ⟨j, lt⟩ := by
+  unfold indexOf?
+  rw [Array.findFinIdx?_eq_some_iff]
+  refine ⟨by simp, fun i hi heq => ?_⟩
+  rw [List.nodup_iff_pairwise_ne, List.pairwise_iff_getElem] at h
+  exact h i j (by simp) (by simpa using lt) hi (by simpa using heq)
+
 /-- When some item has key `k`, `indexOf` gives a position in range. -/
 theorem indexOf_lt {α β} [BEq β] [LawfulBEq β] {key : α → β} {xs : Array α} {k : β}
     (h : ∃ x ∈ xs, key x = k) : indexOf key xs k < xs.size :=
