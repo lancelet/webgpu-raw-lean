@@ -3,6 +3,7 @@ import WebGPUGen.Parsed.Codec
 import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Unresolve
+import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.Names
 import WebGPUGenTest
 
@@ -10,9 +11,9 @@ import WebGPUGenTest
 # Test driver
 
 Reads the vendored spec, decodes it, checks that it re-encodes to the same spec,
-resolves it, checks that every C name generated for it is declared in the vendored
-`webgpu.h`, and prints a dump of the result. A decoding failure stops with its
-path.
+and resolves it. Then checks the C names and the enum and flag values generated
+for it against the vendored `webgpu.h`, and prints a dump of the result. A
+decoding failure stops with its path.
 
 Run with `lake test` (or `lake test -- --docs`) inside `webgpu-gen`; the built
 executable `webgpu-gen/.lake/build/bin/webgpu-gen-test` also works from anywhere.
@@ -60,6 +61,30 @@ def cNames (s : Spec) : List String :=
 def identifiers (text : String) : Std.HashSet String :=
   Std.HashSet.ofList (text.splitToList (fun c => !(c.isAlphanum || c == '_')))
 
+/-- The values `webgpu.h` gives enum entries and flags, by C name, from lines such
+as `    WGPUFeatureLevel_Core = 0x00000002,` and
+`static const WGPUBufferUsage WGPUBufferUsage_MapRead = 0x0000000000000001;`. -/
+def headerValues (text : String) : Std.HashMap String Nat :=
+  (text.splitOn "\n").foldl (init := {}) fun values line =>
+    match line.splitOn " = 0x" with
+    | [lhs, rhs] =>
+      let name := ((lhs.splitOn " ").getLast?).getD ""
+      let digits := rhs.toList.takeWhile fun c => c.isDigit || ('A' ≤ c && c ≤ 'F')
+      match WebGPUGen.Yaml.parseInt? ("0x" ++ String.ofList digits) with
+      | some v => values.insert name v.toNat
+      | none   => values
+    | _ => values
+
+open WebGPUGen.Lowered WebGPUGen.Resolved in
+/-- The value of every enum entry and flag in `r`, by C name. -/
+def computedValues (r : WebGPUGen.Resolved.Spec) : List (String × Nat) :=
+  let enums := r.enums.toList.flatMap fun e =>
+    e.entries.toList.zipIdx.filterMap fun (slot, i) =>
+      slot.map fun entry => (entryName e.name entry.name, (enumValue r i entry).toNat)
+  let flags := r.bitflags.toList.flatMap fun b =>
+    b.entries.toList.zipIdx.map fun (f, i) => (entryName b.name f.name, (flagValue b i).toNat)
+  enums ++ flags
+
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
 def main (args : List String) : IO Unit := do
@@ -77,23 +102,37 @@ def main (args : List String) : IO Unit := do
 
   -- Every reference must resolve; warnings are printed but do not fail.
   for w in WebGPUGen.Resolved.warnings spec do IO.eprintln s!"warning: {w}"
-  match WebGPUGen.Resolved.resolve spec with
-  | .ok r =>
-    -- Unresolving gives back the parsed spec, as faithfulness will prove.
-    unless WebGPUGen.Resolved.unresolve r == spec do
-      failWith "unresolving the resolved spec did not give back the parsed spec"
-  | .error problems =>
-    for p in problems do IO.eprintln p
-    failWith s!"{problems.length} problems resolving the spec"
+  let resolved ← match WebGPUGen.Resolved.resolve spec with
+    | .ok r => pure r
+    | .error problems => do
+      for p in problems do IO.eprintln p
+      failWith s!"{problems.length} problems resolving the spec"
+  -- Unresolving gives back the parsed spec, as faithfulness proves for every spec.
+  unless WebGPUGen.Resolved.unresolve resolved == spec do
+    failWith "unresolving the resolved spec did not give back the parsed spec"
 
   -- Every C name we generate is declared in upstream's header. This is a check of
   -- identifiers only, so a short member name such as `label` passes wherever it
   -- is declared; checking each member inside its own struct comes with the
   -- lowered model.
-  let declared := identifiers (← IO.FS.readFile (← headerPath))
+  let header ← IO.FS.readFile (← headerPath)
+  let declared := identifiers header
   let missing := (cNames spec).filter (!declared.contains ·)
   unless missing.isEmpty do
     failWith s!"C names not in webgpu.h: {missing}"
+
+  -- Every enum entry and flag has the value upstream's header gives it.
+  let values := headerValues header
+  let computed := computedValues resolved
+  let wrong := computed.filter fun (name, v) => values.get? name != some v
+  unless wrong.isEmpty do
+    failWith s!"values differing from webgpu.h: {wrong}"
+  -- And every value the header gives is one we compute, except the `_Force32`
+  -- entry upstream adds to each enum to make it 32 bits wide.
+  let names := Std.HashSet.ofList (computed.map (·.1))
+  let extra := values.keys.filter fun n => !n.endsWith "_Force32" && !names.contains n
+  unless extra.isEmpty do
+    failWith s!"values in webgpu.h not computed: {extra}"
 
   let dump :=
     dumpConstants options spec.constants
