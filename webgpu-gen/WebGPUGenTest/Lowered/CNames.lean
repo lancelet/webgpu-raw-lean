@@ -1,4 +1,4 @@
-import WebGPUGen.Lowered.Names
+import WebGPUGen.Lowered.CNames
 import WebGPUGenTest.Check
 
 /-!
@@ -9,7 +9,7 @@ name is copied from the header. The test driver also checks that every name
 generated for the real spec is declared in `webgpu.h`.
 -/
 
-namespace WebGPUGenTest.Lowered.Names
+namespace WebGPUGenTest.Lowered.CNames
 open WebGPUGen.Common WebGPUGen.Lowered
 
 /-! ## Helpers
@@ -98,4 +98,4 @@ def converts {α} (f : α → String) (cases : List (α × String)) : Bool :=
   (("adapter", "request_device"), "WGPUProcAdapterRequestDevice")
 ]
 
-end WebGPUGenTest.Lowered.Names
+end WebGPUGenTest.Lowered.CNames

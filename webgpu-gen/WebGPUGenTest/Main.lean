@@ -4,7 +4,7 @@ import WebGPUGen.Parsed.Dump
 import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Unresolve
 import WebGPUGen.Resolved.Values
-import WebGPUGen.Lowered.Names
+import WebGPUGen.Lowered.CNames
 import WebGPUGenTest
 
 /-!

@@ -18,4 +18,5 @@ import WebGPUGen.Resolved.Soundness
 import WebGPUGen.Resolved.Faithfulness
 import WebGPUGen.Resolved.Reverse
 import WebGPUGen.Resolved.Values
-import WebGPUGen.Lowered.Names
+import WebGPUGen.Lowered.CNames
+import WebGPUGen.Lowered.LeanNames
