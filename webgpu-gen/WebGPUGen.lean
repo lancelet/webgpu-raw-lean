@@ -12,3 +12,4 @@ import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Rules
 import WebGPUGen.Resolved.WellFormed
 import WebGPUGen.Resolved.Unresolve
+import WebGPUGen.Resolved.Lemmas
