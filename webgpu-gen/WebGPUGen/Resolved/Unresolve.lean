@@ -13,8 +13,7 @@ a placeholder; theorems about `unresolve` assume `WellFormed`, which rules the
 placeholders out:
 
 * faithfulness: `unresolve (build s) = s` when `check s = []`;
-* the reverse direction: `check (unresolve r) = []` when `WellFormed r`, and
-  (planned) `resolve (unresolve r) = .ok r`.
+* the reverse direction: `resolve (unresolve r) = .ok r` when `WellFormed r`.
 -/
 
 namespace WebGPUGen.Resolved
