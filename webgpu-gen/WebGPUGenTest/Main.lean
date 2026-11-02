@@ -48,9 +48,15 @@ def headerPath : IO System.FilePath := do
   return (← specPath).withFileName "webgpu.h"
 
 open WebGPUGen.Lowered in
-/-- The C names of members or arguments. -/
+/--
+The C names of members or arguments, with the count that goes with each array.
+-/
 def memberNames {Doc} (ps : Array (Parameter Doc)) : List String :=
-  ps.toList.map (memberName ·.name)
+  ps.toList.flatMap fun p =>
+    let count := match p.type with
+      | .refArray .. | .primitive (.array _) => [arrayCountName p.name]
+      | _ => []
+    memberName p.name :: count
 
 open WebGPUGen.Lowered in
 /--
@@ -108,14 +114,21 @@ def repeated (names : List String) : List String :=
 
 /--
 Lean names that clash in the lowered spec: type names shared by two types (enum,
-bitflag or object), entry or flag names shared within one type, function and
-method names shared by two functions, and argument names shared within one
-function.
+bitflag, object or struct), entry or flag names shared within one type, function
+and method names shared by two functions, argument names shared within one
+function, and member names shared within one struct or taken by its chain.
 -/
 def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
   let types :=
     l.enums.toList.map (·.names.lean) ++ l.bitflags.toList.map (·.names.lean)
       ++ l.objects.toList.map (·.names.lean)
+      ++ l.structs.toList.map (·.names.lean)
+  -- Member names shared within a struct, and any taken by what the printer adds
+  -- to every chained struct.
+  let members := l.structs.toList.map fun s =>
+    let names := s.members.toList.map (·.names.lean)
+    (repeated names ++ names.filter (["nextInChain", "chain"].contains ·)).map
+      (s.names.lean ++ "." ++ ·)
   let functions :=
     l.functions.toList ++ l.objects.toList.flatMap (·.methods.toList)
   let args := functions.map fun f =>
@@ -126,6 +139,7 @@ def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
     (repeated (b.flags.toList.map (·.names.lean))).map (b.names.lean ++ "." ++ ·)
   repeated types ++ enums.flatten ++ flags.flatten
     ++ repeated (functions.map (·.names.lean)) ++ args.flatten
+    ++ members.flatten
 
 open WebGPUGen.Emit.C in
 /--
@@ -173,6 +187,7 @@ def probeSource (buffer : WebGPUGen.Lowered.Object) : String :=
   let spec : WebGPUGen.Lowered.Spec := {
     enums     := #[]
     bitflags  := #[]
+    structs   := #[]
     objects   := #[buffer]
     functions := functions.toArray
   }
@@ -234,6 +249,92 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
         return some errors
     return none
 
+/--
+The header's initialisers: for each `WGPU_X_INIT` macro, its struct's C name
+and each member's initialiser, as written (`/*.size=*/WGPU_WHOLE_SIZE`).
+-/
+def headerInits (header : String) : List (String × List (String × String)) :=
+  let step (acc : List (String × List (String × String))) (line : String) :=
+    let line := line.trimAscii.toString
+    -- A macro starts a struct; a nested one, as an extension's chain, does not.
+    let parts := line.splitOn "_wgpu_MAKE_INIT_STRUCT("
+    match line.startsWith "#define WGPU_", parts with
+    | true, [_, rest] => (rest.takeWhile (· != ',') |>.toString, []) :: acc
+    | _, _ =>
+      match acc, line.splitOn "/*." with
+      | (s, members) :: more, [_, rest] =>
+        match rest.splitOn "=*/" with
+        | [name, value] =>
+          let value := (value.splitOn " _wgpu_COMMA").head!.trimAscii.toString
+          let value := (value.dropSuffix "\\").trimAscii.toString
+          (s, members ++ [(name, value)]) :: more
+        | _ => acc
+      | _, _ => acc
+  ((header.splitOn "\n").foldl step []).reverse
+
+/-- A number as C writes it, in decimal or hex, if it is one. -/
+def cNumber? (text : String) : Option Nat :=
+  if text.startsWith "0x" then
+    (text.drop 2).foldl (init := some 0) fun acc c => acc.bind fun n =>
+      if c.isDigit then some (16 * n + (c.toNat - '0'.toNat))
+      else if 'A' ≤ c.toUpper && c.toUpper ≤ 'F' then
+        some (16 * n + (c.toUpper.toNat - 'A'.toNat + 10))
+      else none
+  else text.toNat?
+
+/--
+A float as C or the spec writes it, normalised for comparison: `32.f`, `32.0`
+and `32.` are all `32.`.
+-/
+def floatText (text : String) : String :=
+  let text := (text.dropSuffix "f").toString
+  match text.splitOn "." with
+  | [whole, fraction] =>
+    whole ++ "." ++ (fraction.dropEndWhile (· == '0')).toString
+  | _ => text
+
+open WebGPUGen.Lowered in
+/--
+The initialisers C's `WGPU_X_INIT` gives each member of `s`, by the lowered
+model: what the header should say, member by member. An array is two members,
+its count and its pointer. Members the bindings cannot pass are left out.
+`initName` gives a nested struct's initialiser macro.
+-/
+def expectedInits (initName : String → Option String)
+    (s : WebGPUGen.Lowered.Struct) :
+    List (String × String) :=
+  s.members.toList.flatMap fun m =>
+    match m.value with
+    | .unsupported _ => []
+    | .array _ count => [(count, "0"), (m.names.c, "NULL")]
+    | v => [(m.names.c, render v m.default)]
+where
+  render (v : WebGPUGen.Lowered.Value) :
+      Option WebGPUGen.Lowered.Default → String
+    | some (.bool true)      => "WGPU_TRUE"
+    | some (.bool false)     => "WGPU_FALSE"
+    | some (.int n)          => toString n
+    | some (.float text)     => floatText text
+    | some (.constant names) => names.c
+    | some (.entry _ entry)  => entry.c
+    | some .zero             => "_wgpu_STRUCT_ZERO_INIT"
+    | some .nested           => match v with
+      | .struct names => (initName names.c).getD "?"
+      | _ => "?"
+    | some .null             => match v with
+      | .string _ => "WGPU_STRING_VIEW_INIT"
+      | _ => "NULL"
+    | some .empty            => "WGPU_STRING_VIEW_INIT"
+    | none                   => match v with
+      | .enum names => s!"_wgpu_ENUM_ZERO_INIT({names.c})"
+      | _ => "NULL"
+
+/-- Do the header's initialiser and the expected one agree? -/
+def initsAgree (header expected : String) : Bool :=
+  header == expected
+    || (cNumber? header).isSome && cNumber? header == cNumber? expected
+    || floatText header == expected
+
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
 def main : IO Unit := do
@@ -289,6 +390,36 @@ def main : IO Unit := do
   let extra := values.keys.filter fun n => !n.endsWith "_Force32" && !names.contains n
   unless extra.isEmpty do
     failWith s!"values in webgpu.h not computed: {extra}"
+
+  -- The lowered model's own C names for structs are declared: array counts
+  -- and extensions' SType entries.
+  let structNames := lowered.structs.toList.flatMap fun s =>
+    s.sType.toList.map (·.c) ++ s.members.toList.filterMap fun m =>
+      match m.value with
+      | .array _ count => some count
+      | _ => none
+  let undeclared := structNames.filter (!declared.contains ·)
+  unless undeclared.isEmpty do
+    failWith s!"lowered struct names not in webgpu.h: {undeclared}"
+
+  -- Every struct member's default is the one webgpu.h's initialiser gives it.
+  let inits := headerInits header
+  let initName (c : String) : Option String :=
+    resolved.structs.toList.find? (WebGPUGen.Lowered.typeName ·.name == c)
+      |>.map fun s => WebGPUGen.Lowered.constantName s.name ++ "_INIT"
+  let wrongDefaults := lowered.structs.toList.flatMap fun s =>
+    match inits.lookup s.names.c with
+    | none => [s!"{s.names.c}: no initialiser in webgpu.h"]
+    | some members =>
+      (expectedInits initName s).filterMap fun (name, expected) =>
+      match members.lookup name with
+      | some actual =>
+        if initsAgree actual expected then none
+        else some s!"{s.names.c}.{name}: {actual}, not {expected}"
+      | none => some s!"{s.names.c}.{name}: not in its initialiser"
+  unless wrongDefaults.isEmpty do
+    let lines := "\n".intercalate wrongDefaults
+    failWith s!"defaults differing from webgpu.h:\n{lines}"
 
   -- Lean names do not clash.
   let clashes := leanClashes lowered

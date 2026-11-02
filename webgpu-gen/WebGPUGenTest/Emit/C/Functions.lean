@@ -221,6 +221,7 @@ def shimText (f : Lowered.Function) : Option String :=
   let spec : Lowered.Spec := {
     enums     := #[]
     bitflags  := #[]
+    structs   := #[]
     objects   := #[]
     functions := #[function #[arg "label" (.string false)] none]
   }

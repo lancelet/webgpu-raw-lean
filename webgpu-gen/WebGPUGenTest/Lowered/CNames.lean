@@ -82,6 +82,14 @@ def converts {α} (f : α → String) (cases : List (α × String)) : Bool :=
   ("next_in_chain", "nextInChain")
 ]
 
+-- An array's count: the name made singular as upstream does, then `Count`.
+#guard converts arrayCountName [
+  ("bind_group_layouts", "bindGroupLayoutCount"),
+  ("entries", "entryCount"),
+  ("required_features", "requiredFeatureCount"),
+  ("view_formats", "viewFormatCount")
+]
+
 #guard converts functionName [
   ("create_instance", "wgpuCreateInstance")
 ]

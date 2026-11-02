@@ -75,6 +75,20 @@ def constantName (n : Name) : String := "WGPU_" ++ constantCase n.text
 /-- A struct member or argument: `next_in_chain` is `nextInChain`. -/
 def memberName (n : Name) : String := camelCase n.text
 
+/--
+A plural name made singular, as upstream does (`Singularize` in its gen.go):
+`entries` is `entry`, and otherwise a final `s` is dropped.
+-/
+def singularize (s : String) : String :=
+  if s == "entries" then "entry" else (s.dropSuffix "s").toString
+
+/--
+The count member or argument that goes with an array: `bind_group_layouts` is
+`bindGroupLayoutCount`, the `size_t` before the pointer `bindGroupLayouts`.
+-/
+def arrayCountName (n : Name) : String :=
+  camelCase (singularize n.text) ++ "Count"
+
 /-- A free function: `create_instance` is `wgpuCreateInstance`. -/
 def functionName (f : Name) : String := "wgpu" ++ pascalCase f.text
 

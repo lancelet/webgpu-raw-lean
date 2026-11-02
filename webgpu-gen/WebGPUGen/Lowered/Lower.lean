@@ -150,6 +150,155 @@ def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
     else named r (.bitflag id) .bitflag
   | _ => unsupported
 
+/-! ## Structs -/
+
+/--
+An array's element of a primitive type: a number or a `Bool`. (A string array
+is not passed yet.)
+-/
+def elementValue : ArrayElement → Value
+  | .bool    => .bool
+  | .uint16  => .uint16
+  | .uint32  => .uint32
+  | .uint64  => .uint64
+  | .usize   => .usize
+  | .int16   => .int16
+  | .int32   => .int32
+  | .float32 => .float32
+  | .float64 => .float64
+  | .string  => .unsupported "array<string>"
+
+/--
+How a struct member crosses. As for an argument, only the shapes the bindings
+handle are passed, and a member with ownership stated is not; beyond those, a
+struct by value, a struct behind an immutable pointer (NULL if optional), an
+array behind an immutable pointer, and a `float64_supertype`, which C holds as
+a `double`. An array may not be optional.
+-/
+def memberValue (r : Resolved.Spec) (p : Parameter String) : Value :=
+  let unsupported := Value.unsupported (describe p.type p.pointer)
+  if p.passedWithOwnership.isSome then unsupported else
+  match p.pointer, p.type with
+  | none, .primitive (.scalar .float64Supertype) =>
+    if p.optional then unsupported else .float64
+  | none, .primitive (.scalar s) =>
+    if p.optional then unsupported else scalarValue p.type s
+  | none, .named (.enum id) =>
+    if p.optional then unsupported else named r (.enum id) .enum
+  | none, .named (.bitflag id) =>
+    if p.optional then unsupported else named r (.bitflag id) .bitflag
+  | none, .named (.object id) => named r (.object id) (.object · p.optional)
+  | none, .named (.struct id) =>
+    if p.optional then unsupported else structNamed id .struct
+  | some .immutable, .named (.struct id) =>
+    structNamed id (.structPointer · p.optional)
+  | some .immutable, .arrayOf (.enum id) =>
+    if p.optional then unsupported
+    else named r (.enum id) fun names => .array (.enum names) count
+  | some .immutable, .arrayOf (.struct id) =>
+    if p.optional then unsupported
+    else structNamed id fun names => .array (.struct names) count
+  | some .immutable, .arrayOf (.object id) =>
+    if p.optional then unsupported
+    else named r (.object id) fun names => .array (.object names false) count
+  | some .immutable, .primitive (.array e) =>
+    match elementValue e with
+    | .unsupported what => .unsupported what
+    | element => if p.optional then unsupported else .array element count
+  | _, _ => unsupported
+where
+  count := arrayCountName p.name
+  structNamed (id : Id .struct) (value : Names → Value) : Value :=
+    match r.structs[id.idx]? with
+    | some s => value (bothNames typeName leanTypeName s.name)
+    | none   => .unsupported "a reference out of range"
+
+/--
+A member's default, naming what it refers to on both sides; none if it refers
+to nothing in range, which a well-formed spec never does.
+-/
+def lowerDefault (r : Resolved.Spec) : Resolved.Default → Option Lowered.Default
+  | .bool b         => some (.bool b)
+  | .int n          => some (.int n)
+  | .float text _   => some (.float text)
+  | .zero           => some .zero
+  | .constant id    => r.constants[id.idx]?.map fun c =>
+    .constant (bothNames constantName leanName c.name)
+  | .entry (.enumEntry e i) => do
+    let enum ← r.enums[e.idx]?
+    let entry ← (← enum.entries[i.idx]?)
+    pure (.entry (bothNames typeName leanTypeName enum.name)
+      (bothNames (entryName enum.name) leanName entry.name))
+  | .entry (.flag b i) => do
+    let bitflag ← r.bitflags[b.idx]?
+    let flag ← bitflag.entries[i.idx]?
+    pure (.entry (bothNames typeName leanTypeName bitflag.name)
+      (bothNames (entryName bitflag.name) leanName flag.name))
+
+/--
+The default C's initialiser gives a member the spec gives none, by upstream's
+rules (`DefaultValue` in its gen.go): zero for a number, `false`, an empty
+array or string, a nested struct at its own defaults, `none` for an optional
+object or pointer; for an enum its `undefined` entry, and for a bitflag type its
+`none` flag. None where those give no valid value, so the member is required:
+an enum with no `undefined` entry (C would set a code no entry has), or an
+object or pointer that is not optional (C would set NULL).
+-/
+def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
+    Value → Option Lowered.Default
+  | .bool                       => some (.bool false)
+  | .uint16 | .uint32 | .uint64 | .int16 | .int32 | .usize => some (.int 0)
+  | .float32 | .float64         => some (.float "0.0")
+  | .string false | .array ..   => some .empty
+  | .string true                => some .null
+  | .object _ nullable          => if nullable then some .null else none
+  | .structPointer _ nullable   => if nullable then some .null else none
+  | .struct _                   => some .nested
+  | .enum _ => match p.type with
+    | .named (.enum id) => do
+      let e ← r.enums[id.idx]?
+      let entries := e.entries.toList.filterMap fun slot => slot
+      let entry ← entries.find? (·.name.text == "undefined")
+      pure (.entry (bothNames typeName leanTypeName e.name)
+        (bothNames (entryName e.name) leanName entry.name))
+    | _ => none
+  | .bitflag _ => match p.type with
+    | .named (.bitflag id) => do
+      let b ← r.bitflags[id.idx]?
+      let flag ← b.entries.toList.find? (·.name.text == "none")
+      pure (.entry (bothNames typeName leanTypeName b.name)
+        (bothNames (entryName b.name) leanName flag.name))
+    | _ => none
+  | .unsupported _ => none
+
+/--
+A struct, named on both sides, with how each member crosses and its default,
+the spec's or else upstream's (`implicitDefault`).
+-/
+def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
+    Lowered.Struct where
+  names           := bothNames typeName leanTypeName s.name
+  doc             := translateDoc ctx s.doc
+  kind            := s.kind
+  extendedStructs := s.extendedStructs.filterMap fun id =>
+    r.structs[id.idx]?.map (bothNames typeName leanTypeName ·.name)
+  sType           := if s.kind != .extension then none else do
+    -- The entry of the `s_type` enum named after the struct.
+    let sTypes ← r.enums.find? (·.name.text == "s_type")
+    let entries := sTypes.entries.toList.filterMap fun slot => slot
+    let entry ← entries.find? (·.name.text == s.name.text)
+    pure (bothNames (entryName sTypes.name) leanName entry.name)
+  freeMembers     := s.freeMembers
+  members         := s.members.map fun m =>
+    let value := memberValue r m
+    {
+      names   := bothNames memberName leanName m.name
+      doc     := translateDoc ctx m.doc
+      value   := value
+      default := (m.default.bind (lowerDefault r)).orElse fun _ =>
+        implicitDefault r m value
+    }
+
 /-! ## Functions and objects -/
 
 /--
@@ -214,6 +363,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
   {
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)
+    structs   := r.structs.map (lowerStruct ctx r)
     objects   := r.objects.map fun o =>
       let lowered := lowerObject ctx r o
       { lowered with methods := lowered.methods.map mark }

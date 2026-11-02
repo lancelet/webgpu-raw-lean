@@ -215,7 +215,7 @@ Defects found in review, each tested before it was fixed. -/
         b_lean_obj_arg self
     ) {
     }"
-  Doc.pretty 80 (function input) == expected.dropRightWhile (· == '\n')
+  Doc.pretty 80 (function input) == (expected.dropEndWhile (· == '\n')).toString
 
 /-! ## A whole file -/
 

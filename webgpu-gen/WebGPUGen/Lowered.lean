@@ -1,3 +1,5 @@
+import WebGPUGen.Common
+
 /-!
 # The lowered model
 
@@ -9,9 +11,9 @@ decide nothing themselves, so the two sides agree by construction.
 It holds no references: everything that varies with the spec is spelt out.
 Text that never varies, such as the `_Force32` entry upstream adds to every C
 enum, is the printers' own. The model grows block by block; so far it has enums,
-bitflags, object types, and functions and methods with how each of their values
-crosses between Lean and C, and not yet structs, callbacks, or the spec's own
-name, copyright and doc.
+bitflags, structs (each member with its default), object types, and functions
+and methods, with how each of their values crosses between Lean and C; not yet
+callbacks, or the spec's own name, copyright and doc.
 -/
 
 namespace WebGPUGen.Lowered
@@ -90,6 +92,15 @@ inductive Value where
   | object  (names : Names) (nullable : Bool)
   /-- A string, as a `WGPUStringView`; `none` in Lean is the null view. -/
   | string  (nullable : Bool)
+  /-- A struct, by value: in Lean, a structure. -/
+  | struct  (names : Names)
+  /-- A struct behind a pointer; `none` in Lean is a NULL pointer. -/
+  | structPointer (names : Names) (nullable : Bool)
+  /--
+  An array: in C, a count (`size_t`, named `count`, as `arrayCountName` names
+  it) and a pointer to the elements; in Lean, an `Array`.
+  -/
+  | array   (element : Value) (count : String)
   | unsupported (what : String)
   deriving Repr, DecidableEq
 
@@ -111,6 +122,11 @@ def Value.leanType : Value → Option String
   | .bitflag names     => names.lean
   | .object names b    => if b then s!"Option {names.lean}" else names.lean
   | .string b          => if b then "Option String" else "String"
+  | .struct names      => names.lean
+  | .structPointer names b =>
+    if b then s!"Option {names.lean}" else names.lean
+  | .array element _   => element.leanType.map fun t =>
+    if t.contains ' ' then s!"Array ({t})" else s!"Array {t}"
   | .unsupported _     => none
 
 /--
@@ -139,6 +155,9 @@ def Value.cType : Value → Option String
   | .bitflag names     => names.c
   | .object names _    => names.c
   | .string _          => "WGPUStringView"
+  | .struct names      => names.c
+  | .structPointer names _ => s!"{names.c} const *"
+  | .array element _   => element.cType.map (· ++ " const *")
   | .unsupported _     => none
 
 /-! ### Across the boundary
@@ -155,11 +174,13 @@ Whether the value crosses as a Lean object (`lean_object *`): borrowed (`@&`)
 as an argument, and owned as a result.
 -/
 def Value.isObject : Value → Bool
-  | .object .. | .string _ => true
+  | .object .. | .string _ | .struct _ | .structPointer .. | .array .. => true
   | _                      => false
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
+  -- Not passed to functions yet: their shims come with descriptors.
+  | .struct _ | .structPointer .. | .array .. => none
   | .enum _    => "UInt32"
   | .bitflag _ => "UInt64"
   | v          => v.leanType
@@ -182,11 +203,14 @@ def Value.abiCType : Value → Option String
   | .bitflag _       => "uint64_t"
   | .object ..       => "b_lean_obj_arg"
   | .string _        => "b_lean_obj_arg"
+  | .struct _ | .structPointer .. | .array .. => none
   | .unsupported _   => none
 
 /-- What the bindings cannot pass yet, if anything. -/
 def Value.unsupported? : Value → Option String
   | .unsupported what => some what
+  -- An array is no more passable than its elements.
+  | .array element _   => element.unsupported?
   | _                 => none
 
 /-! ## Functions -/
@@ -232,6 +256,82 @@ def Function.unsupported (f : Function) : List String :=
     ++ f.args.toList.filterMap (·.value.unsupported?)
     ++ (f.result.bind (·.unsupported?)).toList
 
+/-! ## Structs -/
+
+/--
+A member's default: the value C's `WGPU_X_INIT` initialiser gives it, from the
+spec's `default` or else from upstream's rules for a member without one, with
+what it names on both sides.
+-/
+inductive Default where
+  | bool     (b : Bool)
+  | int      (n : Int)
+  /-- A floating-point number, as the spec writes it: `0.0`, `32.0`. -/
+  | float    (text : String)
+  /-- A constant: `WGPU_WHOLE_SIZE`, `wholeSize`. -/
+  | constant (names : Names)
+  /--
+  An entry of the enum or bitflag type `type`: `WGPUBlendFactor_One`, `one`.
+  -/
+  | entry    (type entry : Names)
+  /--
+  A nested struct with every byte zero (upstream's `_wgpu_STRUCT_ZERO_INIT`),
+  not at its own defaults: so an enum in it has the code 0, as when a
+  bind group layout's unused slot has the type `BindingNotUsed` rather than
+  `Undefined`.
+  -/
+  | zero
+  /-- A nested struct at its own defaults (its `WGPU_X_INIT`). -/
+  | nested
+  /-- NULL: an optional object or struct pointer that is absent, `none`. -/
+  | null
+  /-- An empty array (a count of 0, NULL), or an empty string. -/
+  | empty
+  deriving Repr, DecidableEq
+
+/-- A struct member: how its value crosses, and its default. -/
+structure Member where
+  names   : Names
+  doc     : String
+  value   : Value
+  /--
+  None if the member has no valid default, so must be given: as when C's
+  initialiser would set an enum to a code no entry has, or an object that is
+  not optional to NULL.
+  -/
+  default : Option Default
+  deriving Repr, DecidableEq
+
+/--
+A struct. `kind` says how it takes part in chaining: an `extensible` struct
+starts with a chain pointer, to which `extension` structs (those whose
+`extendedStructs` name it) attach.
+-/
+structure Struct where
+  names           : Names
+  doc             : String
+  kind            : Common.StructKind
+  /-- The structs an extension attaches to: the spec's `extends`. -/
+  extendedStructs : Array Names
+  /--
+  For an extension, the entry of the `SType` enum that marks it in a chain:
+  `WGPUSType_ShaderSourceWGSL`, `shaderSourceWGSL`.
+  -/
+  sType           : Option Names
+  /-- Whether C allocates its members, which `wgpuXFreeMembers` frees. -/
+  freeMembers     : Bool
+  members         : Array Member
+  deriving Repr, DecidableEq
+
+/--
+What the bindings cannot pass yet among the struct's members: one reason for
+each, and one if it is an extension with no `SType` entry to mark it. None if
+they can.
+-/
+def Struct.unsupported (s : Struct) : List String :=
+  (if s.kind == .extension && s.sType.isNone then ["no SType entry"] else [])
+    ++ s.members.toList.filterMap (·.value.unsupported?)
+
 /-! ## Objects -/
 
 /--
@@ -256,6 +356,7 @@ structure Object where
 structure Spec where
   enums     : Array Enum
   bitflags  : Array Bitflag
+  structs   : Array Struct
   objects   : Array Object
   /-- The functions that belong to no object type, such as `createInstance`. -/
   functions : Array Function

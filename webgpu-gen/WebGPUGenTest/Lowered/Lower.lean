@@ -431,4 +431,403 @@ def resultValue? (methods : String) : Option (Option Value) :=
     "
   (deviceMethods input).map (·.map (·.names.lean)) == some #["Device.«end»"]
 
+/-! ## Structs -/
+
+/-- A spec with an enum, a bitflag type, a constant, an object and `structs`. -/
+def structSpec (structs : String) : String :=
+  spec
+    (constants := dedent "
+      - name: whole_size
+        value: uint64_max
+        doc: x
+      ")
+    (enums := dedent "
+      - name: mode
+        doc: x
+        entries:
+          - name: undefined
+            doc: x
+          - name: fast
+            doc: x
+      ")
+    (bitflags := dedent "
+      - name: usage
+        doc: x
+        entries:
+          - name: none
+            doc: x
+          - name: read
+            doc: x
+      ")
+    (structs := dedent "
+      - name: inner
+        doc: x
+        type: standalone
+        members:
+          - name: n
+            doc: x
+            type: uint32
+            default: 0
+      " ++ structs)
+    (objects := "- name: buffer\n  doc: x\n")
+
+/-- The struct named `name` of the lowered `structSpec structs`, if any. -/
+def lowerStructNamed (structs name : String) : Option Lowered.Struct :=
+  (lowerText (structSpec structs)).bind fun l =>
+    l.structs.toList.find? (·.names.lean == name)
+
+/-- Each member of that struct: its Lean name, value and default. -/
+def membersOf (structs name : String) :
+    Option (List (String × Value × Option Lowered.Default)) :=
+  (lowerStructNamed structs name).map fun s =>
+    s.members.toList.map fun m => (m.names.lean, m.value, m.default)
+
+-- Members of the shapes the bindings pass, with their defaults: a constant, an
+-- enum entry, a flag, a boolean, and a nested struct at its own defaults.
+#guard
+  let input := dedent "
+    - name: descriptor
+      doc: x
+      type: extensible
+      members:
+        - name: label
+          doc: x
+          type: string_with_default_empty
+        - name: size
+          doc: x
+          type: uint64
+          default: constant.whole_size
+        - name: mode
+          doc: x
+          type: enum.mode
+          default: fast
+        - name: usage
+          doc: x
+          type: bitflag.usage
+          default: read
+        - name: mapped
+          doc: x
+          type: bool
+          default: false
+        - name: inner
+          doc: x
+          type: struct.inner
+          default: zero
+    "
+  let mode : Names := ⟨"WGPUMode", "Mode"⟩
+  let usage : Names := ⟨"WGPUUsage", "Usage"⟩
+  membersOf input "Descriptor" == some [
+    ("label", .string false, some .empty),
+    ("size", .uint64, some (.constant ⟨"WGPU_WHOLE_SIZE", "wholeSize"⟩)),
+    ("mode", .enum mode, some (.entry mode ⟨"WGPUMode_Fast", "fast"⟩)),
+    ("usage", .bitflag usage, some (.entry usage ⟨"WGPUUsage_Read", "read"⟩)),
+    ("mapped", .bool, some (.bool false)),
+    ("inner", .struct ⟨"WGPUInner", "Inner"⟩, some .zero)
+  ]
+
+-- Structs behind pointers (NULL if optional), arrays of each kind, an optional
+-- object, and a `float64_supertype`, which C holds as a `double`.
+#guard
+  let input := dedent "
+    - name: holder
+      doc: x
+      type: standalone
+      members:
+        - name: one
+          doc: x
+          type: struct.inner
+          pointer: immutable
+        - name: maybe
+          doc: x
+          type: struct.inner
+          pointer: immutable
+          optional: true
+        - name: inners
+          doc: x
+          type: array<struct.inner>
+          pointer: immutable
+        - name: modes
+          doc: x
+          type: array<enum.mode>
+          pointer: immutable
+        - name: buffers
+          doc: x
+          type: array<object.buffer>
+          pointer: immutable
+        - name: counts
+          doc: x
+          type: array<uint32>
+          pointer: immutable
+        - name: buffer
+          doc: x
+          type: object.buffer
+          optional: true
+        - name: red
+          doc: x
+          type: float64_supertype
+    "
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let buffer : Names := ⟨"WGPUBuffer", "Buffer"⟩
+  (membersOf input "Holder").map (·.map (·.2.1)) == some [
+    .structPointer inner false,
+    .structPointer inner true,
+    .array (.struct inner) "innerCount",
+    .array (.enum ⟨"WGPUMode", "Mode"⟩) "modeCount",
+    .array (.object buffer false) "bufferCount",
+    .array .uint32 "countCount",
+    .object buffer true,
+    .float64
+  ]
+
+-- What the bindings cannot pass yet is said: an output string, a callback,
+-- untyped memory, an optional number.
+#guard
+  let input := dedent "
+    - name: unsure
+      doc: x
+      type: standalone
+      members:
+        - name: message
+          doc: x
+          type: out_string
+        - name: handle
+          doc: x
+          type: c_void
+          pointer: mutable
+        - name: depth
+          doc: x
+          type: nullable_float32
+    "
+  (lowerStructNamed input "Unsure").map (·.unsupported) == some [
+    "out_string",
+    "c_void (mutable pointer)",
+    "nullable_float32"
+  ]
+
+-- An extension names the structs it attaches to; a struct whose members C
+-- allocates says so.
+#guard
+  let input := dedent "
+    - name: base
+      doc: x
+      type: extensible
+      free_members: true
+    - name: extra
+      doc: x
+      type: extension
+      extends:
+        - base
+    "
+  let base := lowerStructNamed input "Base"
+  let extra := lowerStructNamed input "Extra"
+  base.map (·.freeMembers) == some true
+    && extra.map (·.extendedStructs) == some #[⟨"WGPUBase", "Base"⟩]
+    && extra.map (·.kind) == some .extension
+
+-- The value types of the new shapes, on both sides. (A unit test of `leanType`:
+-- lowering never makes an array of optional objects; the case checks that an
+-- element type with spaces is parenthesised.)
+#guard
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let buffer : Names := ⟨"WGPUBuffer", "Buffer"⟩
+  (Value.structPointer inner true).leanType == some "Option Inner"
+    && (Value.structPointer inner false).cType == some "WGPUInner const *"
+    && (Value.array (.object buffer false) "n").leanType == some "Array Buffer"
+    && (Value.array (.object buffer true) "n").leanType
+      == some "Array (Option Buffer)"
+    && (Value.array .uint32 "n").cType == some "uint32_t const *"
+
+-- The spec's number defaults: an integer, a quoted one (as hex), a float.
+#guard
+  let input := dedent "
+    - name: numbers
+      doc: x
+      type: standalone
+      members:
+        - name: count
+          doc: x
+          type: uint32
+          default: 1
+        - name: mask
+          doc: x
+          type: uint32
+          default: \"0xFFFFFFFF\"
+        - name: bias
+          doc: x
+          type: float32
+          default: 32.0
+    "
+  (membersOf input "Numbers").map (·.map (·.2.2)) == some [
+    some (.int 1),
+    some (.int 0xFFFFFFFF),
+    some (.float "32.0")
+  ]
+
+-- With no default in the spec, a member has the one C's initialiser gives it
+-- (upstream's rules): an enum its `undefined` entry; a bitflag type `none`;
+-- zero, an empty array or string, `none` for what is optional, and a nested
+-- struct at its own defaults.
+#guard
+  let input := dedent "
+    - name: implicit
+      doc: x
+      type: standalone
+      members:
+        - name: mode
+          doc: x
+          type: enum.mode
+        - name: usage
+          doc: x
+          type: bitflag.usage
+        - name: count
+          doc: x
+          type: uint32
+        - name: ratio
+          doc: x
+          type: float32
+        - name: on
+          doc: x
+          type: bool
+        - name: label
+          doc: x
+          type: string_with_default_empty
+        - name: name
+          doc: x
+          type: nullable_string
+        - name: buffer
+          doc: x
+          type: object.buffer
+          optional: true
+        - name: inner
+          doc: x
+          type: struct.inner
+        - name: modes
+          doc: x
+          type: array<enum.mode>
+          pointer: immutable
+    "
+  let mode : Names := ⟨"WGPUMode", "Mode"⟩
+  let usage : Names := ⟨"WGPUUsage", "Usage"⟩
+  (membersOf input "Implicit").map (·.map (·.2.2)) == some [
+    some (.entry mode ⟨"WGPUMode_Undefined", "undefined"⟩),
+    some (.entry usage ⟨"WGPUUsage_None", "none"⟩),
+    some (.int 0),
+    some (.float "0.0"),
+    some (.bool false),
+    some .empty,
+    some .null,
+    some .null,
+    some .nested,
+    some .empty
+  ]
+
+-- No valid default, so the member must be given: an enum with no `undefined`
+-- entry (C would set a code no entry has), an object that is not optional, a
+-- struct pointer that is not optional (C would set NULL).
+#guard
+  let input := dedent "
+    - name: required
+      doc: x
+      type: standalone
+      members:
+        - name: speed
+          doc: x
+          type: enum.speed
+        - name: buffer
+          doc: x
+          type: object.buffer
+        - name: inner
+          doc: x
+          type: struct.inner
+          pointer: immutable
+    "
+  let speedSpec := spec
+    (enums := dedent "
+      - name: speed
+        doc: x
+        entries:
+          - name: slow
+            doc: x
+      ")
+    (structs := dedent "
+      - name: inner
+        doc: x
+        type: standalone
+      " ++ input)
+    (objects := "- name: buffer\n  doc: x\n")
+  let required := (lowerText speedSpec).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Required")
+  required.map (·.members.toList.map (·.default)) == some [none, none, none]
+
+-- An extension carries the `SType` entry named after it; one with none is not
+-- passed.
+#guard
+  let input := spec
+    (enums := dedent "
+      - name: s_type
+        doc: x
+        entries:
+          - name: marked
+            doc: x
+      ")
+    (structs := dedent "
+      - name: base
+        doc: x
+        type: extensible
+      - name: marked
+        doc: x
+        type: extension
+        extends:
+          - base
+      - name: unmarked
+        doc: x
+        type: extension
+        extends:
+          - base
+      ")
+  let structs := (lowerText input).map (·.structs.toList)
+  let find (name : String) := structs.bind (·.find? (·.names.lean == name))
+  (find "Marked").map (·.sType) == some (some ⟨"WGPUSType_Marked", "marked"⟩)
+    && (find "Marked").map (·.unsupported) == some []
+    && (find "Unmarked").map (·.unsupported) == some ["no SType entry"]
+    && (find "Base").map (·.sType) == some none
+
+-- More of what is not passed yet: an array of strings, an optional struct by
+-- value, an optional double, an array not behind a pointer, and an optional
+-- array. (Ownership stated on a member does not resolve at all.)
+#guard
+  let input := dedent "
+    - name: unsure
+      doc: x
+      type: standalone
+      members:
+        - name: names
+          doc: x
+          type: array<string>
+          pointer: immutable
+        - name: maybe
+          doc: x
+          type: struct.inner
+          optional: true
+        - name: red
+          doc: x
+          type: float64_supertype
+          optional: true
+        - name: bare
+          doc: x
+          type: array<uint32>
+        - name: some
+          doc: x
+          type: array<uint32>
+          pointer: immutable
+          optional: true
+    "
+  (lowerStructNamed input "Unsure").map (·.unsupported) == some [
+    "array<string>",
+    "struct",
+    "float64_supertype",
+    "array<uint32>",
+    "array<uint32> (immutable pointer)"
+  ]
+
 end WebGPUGenTest.Lowered.Lower
