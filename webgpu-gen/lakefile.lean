@@ -17,6 +17,10 @@ checks that need IO. Run with `lake test` from this directory.
 -/
 lean_lib WebGPUGenTest
 
+/-- The generator: `lake exe webgpu-gen generate` writes the generated bindings. -/
+lean_exe «webgpu-gen» where
+  root := `Main
+
 @[test_driver]
 lean_exe «webgpu-gen-test» where
   root := `WebGPUGenTest.Main

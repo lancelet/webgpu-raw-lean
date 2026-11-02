@@ -18,3 +18,4 @@ import WebGPUGenTest.Lowered.LeanNames
 import WebGPUGenTest.Lowered.Lower
 import WebGPUGenTest.Emit.Layout
 import WebGPUGenTest.Emit.Lean
+import WebGPUGenTest.Source

@@ -17,4 +17,9 @@ for f in webgpu.yml webgpu.h schema.json LICENSE; do
   curl -fsSL "$base/$f" -o "$dir/$f"
 done
 
+# Where these files came from, for the banner of every generated file.
+printf 'repo: %s\ncommit: %s\n' \
+  "https://github.com/webgpu-native/webgpu-headers" "$WEBGPU_HEADERS_COMMIT" \
+  > "$dir/SOURCE"
+
 echo "Fetched webgpu-headers @ $WEBGPU_HEADERS_COMMIT"
