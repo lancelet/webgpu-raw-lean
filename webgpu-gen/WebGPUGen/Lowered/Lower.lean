@@ -51,8 +51,10 @@ def lowerBitflag (ctx : DocContext) (b : Resolved.Bitflag) : Lowered.Bitflag whe
 
 /-- An object type, named on both sides. -/
 def lowerObject (ctx : DocContext) (o : Resolved.Object) : Lowered.Object where
-  names := bothNames typeName leanTypeName o.name
-  doc   := translateDoc ctx o.doc
+  names   := bothNames typeName leanTypeName o.name
+  doc     := translateDoc ctx o.doc
+  release := methodName o.name ⟨"release", by decide⟩
+  shim    := "lean_wgpu_" ++ o.name.text
 
 /-! ## The whole spec -/
 

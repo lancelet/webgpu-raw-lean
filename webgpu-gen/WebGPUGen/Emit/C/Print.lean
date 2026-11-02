@@ -88,38 +88,85 @@ decreasing_by
   all_goals omega
 
 /--
-A function: its comment, then its signature, then its body. Two or more
+A function's signature: its result type, name and parameters. Two or more
 parameters are always laid out as a table of types and names, one per line.
 -/
-def function (f : Function) : Doc :=
-  let doc := if f.doc.isEmpty then nil else comment f.doc ++ hardline
+def signature (f : Function) : Doc :=
   let head := " ".intercalate (f.attrs ++ [f.result, f.name])
   let params := match f.params with
-    | []  => text "(void) "
-    | [p] => text ("(" ++ p.type ++ " " ++ p.name ++ ") ")
+    | []  => text "(void)"
+    | [p] => text ("(" ++ p.type ++ " " ++ p.name ++ ")")
     | ps  =>
       let rows := ps.zipIdx.map fun (p, i) =>
         [p.type, if i + 1 == ps.length then p.name else p.name ++ ","]
-      text "(" ++ nest 4 (hardline ++ table rows) ++ hardline ++ text ") "
-  doc ++ text head ++ params ++ block (f.body.map stmt)
+      text "(" ++ nest 4 (hardline ++ table rows) ++ hardline ++ text ")"
+  text head ++ params
+
+/-- A function's comment, if it has one, on the lines before it. -/
+def docBefore (f : Function) : Doc :=
+  if f.doc.isEmpty then nil else comment f.doc ++ hardline
+
+/-- A function: its comment, its signature, then its body. -/
+def function (f : Function) : Doc :=
+  docBefore f ++ signature f ++ text " " ++ block (f.body.map stmt)
+
+/-- A function's declaration, as in a header: its comment and signature. -/
+def prototype (f : Function) : Doc :=
+  docBefore f ++ signature f ++ text ";"
 
 /-- A top-level declaration. -/
 def decl : Decl → Doc
-  | .include header => text ("#include <" ++ header ++ ">")
-  | .function f     => function f
+  | .pragma t                        => text ("#pragma " ++ t)
+  | .include header                  => text ("#include <" ++ header ++ ">")
+  | .includeLocal header             => text ("#include \"" ++ header ++ "\"")
+  | .variable attrs type name init   =>
+    text (" ".intercalate (attrs ++ [type, name]))
+      ++ (match init with | some e => text " = " ++ expr e | none => nil) ++ text ";"
+  | .prototype f                     => prototype f
+  | .function f                      => function f
+
+/-- Declarations of one kind that stay together, with no blank line between. -/
+def Decl.together : Decl → Decl → Bool
+  | .include _,      .include _      => true
+  | .include _,      .includeLocal _ => true
+  | .includeLocal _, .include _      => true
+  | .includeLocal _, .includeLocal _ => true
+  | .variable ..,    .variable ..    => true
+  | _,               _               => false
 
 /--
-A C file: its declarations, with includes together and a blank line around
-each function.
+Declarations that stay together, in runs: each run is one declaration, or
+several that `Decl.together` keeps together.
+-/
+def runs (decls : List Decl) : List (List Decl) :=
+  decls.foldl (init := []) fun acc d =>
+    match acc.getLast? with
+    | some run =>
+      if run.getLast?.any (Decl.together · d) then acc.dropLast ++ [run ++ [d]]
+      else acc ++ [[d]]
+    | none => [[d]]
+
+/--
+A run of declarations, one per line. A run of variables is aligned: their names
+end, and their `=` signs start, in one column.
+-/
+def run (decls : List Decl) : Doc :=
+  let heads := decls.map fun
+    | .variable attrs type name _ => some (" ".intercalate (attrs ++ [type, name]))
+    | _                           => none
+  if heads.all (·.isSome) then
+    let widest := (heads.map fun h => (h.getD "").length).foldl max 0
+    join hardline ((decls.zip heads).map fun
+      | (.variable _ _ _ (some e), some h) =>
+        text (padRight widest h ++ " = ") ++ expr e ++ text ";"
+      | (_, h) => text ((h.getD "") ++ ";"))
+  else join hardline (decls.map decl)
+
+/--
+A C file: its declarations, with a blank line between each two, except that
+includes stay together, and so do variables, aligned.
 -/
 def file (decls : List Decl) : String :=
-  -- Each declaration with the one before it; the first has none, so is kept
-  -- apart from nothing.
-  let docs := (decls.zip (none :: decls.map some)).map fun (d, previous) =>
-    match d, previous with
-    | _, none                         => decl d
-    | .include _, some (.include _)   => hardline ++ decl d
-    | _, _                            => hardline ++ hardline ++ decl d
-  pretty width (join nil docs) ++ "\n"
+  pretty width (join (hardline ++ hardline) ((runs decls).map run)) ++ "\n"
 
 end WebGPUGen.Emit.C

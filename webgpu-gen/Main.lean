@@ -7,11 +7,12 @@ Generates the Lean bindings from the vendored spec:
 
     lake exe webgpu-gen generate
 
-writes `WebGPU/Raw/Enums.lean` and `WebGPU/Raw/Objects.lean` in the bindings
-package. Each file starts with a banner recording when it was generated, from
-which commit of this repository (and whether it had uncommitted changes), and
-which spec it was generated from.
-A spec with problems stops the generator before anything is written.
+writes the bindings' generated Lean modules (`WebGPU/Raw/Enums.lean`,
+`WebGPU/Raw/Objects.lean`) and C shims (`c/generated/objects.h` and `.c`). Each
+file starts with a banner recording when it was generated, from which commit of
+this repository (and whether it had uncommitted changes), and which spec it was
+generated from. A spec with problems stops the generator before anything is
+written.
 -/
 
 open WebGPUGen
@@ -76,12 +77,14 @@ def generate : IO Unit := do
   let root ← repoRoot
   let spec ← loadSpec root
   let p ← provenance root
+  let lean := root / "WebGPU" / "Raw"
+  let c := root / "c" / "generated"
+  IO.FS.createDirAll c
   let files := [
-    ("Enums.lean",   Emit.Lean.enumsFile p spec),
-    ("Objects.lean", Emit.Lean.objectsFile p spec)
-  ]
-  for (name, text) in files do
-    let path := root / "WebGPU" / "Raw" / name
+    (lean / "Enums.lean",   Emit.Lean.enumsFile p spec),
+    (lean / "Objects.lean", Emit.Lean.objectsFile p spec)
+  ] ++ (Emit.C.objectsFiles p spec).map fun (name, text) => (c / name, text)
+  for (path, text) in files do
     IO.FS.writeFile path text
     IO.println s!"wrote {path}"
 

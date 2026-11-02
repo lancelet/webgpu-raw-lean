@@ -68,8 +68,16 @@ structure Function where
 
 /-- A top-level part of a C file. -/
 inductive Decl where
-  /-- `#include <header>`. -/
+  /-- `#pragma text`. -/
+  | pragma (text : String)
+  /-- `#include <header>`, for a header on the include path. -/
   | include (header : String)
+  /-- `#include "header"`, for a header beside the file. -/
+  | includeLocal (header : String)
+  /-- A variable: `static T name = init;`. -/
+  | variable (attrs : List String) (type name : String) (init : Option Expr)
+  /-- A function's declaration without its body, as in a header. -/
+  | prototype (f : Function)
   /-- A function definition. -/
   | function (f : Function)
   deriving Repr, Inhabited

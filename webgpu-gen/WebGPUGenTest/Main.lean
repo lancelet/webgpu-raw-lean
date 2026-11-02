@@ -6,6 +6,7 @@ import WebGPUGen.Resolved.Unresolve
 import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.Lower
+import WebGPUGen.Emit.C.Objects
 import WebGPUGenTest
 
 /-!
@@ -106,6 +107,38 @@ def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
     (repeated (b.flags.toList.map (·.names.lean))).map (b.names.lean ++ "." ++ ·)
   repeated types ++ enums.flatten ++ flags.flatten
 
+/--
+Compile the generated C shims, with warnings as errors, against the vendored
+`webgpu.h` (at `headerPath`) and Lean's `lean.h`, with Lean's own C compiler.
+Only compiling, not linking: nothing here needs wgpu-native.
+-/
+def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
+    IO (Option String) :=
+  IO.FS.withTempDir fun dir => do
+    IO.FS.createDirAll (dir / "webgpu")
+    IO.FS.writeFile (dir / "webgpu" / "webgpu.h") (← IO.FS.readFile header)
+    let provenance : WebGPUGen.Emit.Provenance := {
+      generator    := "webgpu-gen-test"
+      time         := ""
+      commit       := ""
+      dirty        := false
+      source       := ""
+      sourceRepo   := ""
+      sourceCommit := ""
+      sourceDate   := ""
+      pinnedBy     := ""
+    }
+    for (name, text) in WebGPUGen.Emit.C.objectsFiles provenance spec do
+      IO.FS.writeFile (dir / name) text
+    let leanPrefix := (← IO.Process.output { cmd := "lean", args := #["--print-prefix"] }).stdout
+    let leanc := System.FilePath.mk leanPrefix.trimAscii.toString / "bin" / "leanc"
+    let out ← IO.Process.output {
+      cmd  := leanc.toString
+      args := #["-c", "-std=c11", "-Wall", "-Wextra", "-Werror", "-I", dir.toString,
+        (dir / "objects.c").toString, "-o", (dir / "objects.o").toString]
+    }
+    return if out.exitCode == 0 then none else some out.stderr
+
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
 def main (args : List String) : IO Unit := do
@@ -160,6 +193,10 @@ def main (args : List String) : IO Unit := do
   let clashes := leanClashes lowered
   unless clashes.isEmpty do
     failWith s!"Lean names that clash: {clashes}"
+
+  -- The generated C shims compile.
+  if let some errors ← compileShims lowered (← headerPath) then
+    failWith s!"the generated C shims do not compile:\n{errors}"
 
   let dump :=
     dumpConstants options spec.constants

@@ -163,9 +163,11 @@ structure Provenance where
 
 /--
 The banner that starts every generated file, as a block comment: a loud warning,
-then where the file came from, one field per line.
+then where the file came from, one field per line. The comment is Lean's,
+`/-` … `-/`, unless other delimiters are given, such as C's.
 -/
-def banner (p : Provenance) : List String :=
+def banner (p : Provenance) (opening : String := "/-") (closing : String := "-/") :
+    List String :=
   let rule := String.ofList (List.replicate width '=')
   let fields := columns [
     ["  Generator:",        p.generator],
@@ -177,6 +179,6 @@ def banner (p : Provenance) : List String :=
     ["  Source date:",      p.sourceDate],
     ["  Source pinned by:", p.pinnedBy]
   ]
-  ["/-", rule, "  GENERATED FILE: DO NOT EDIT BY HAND", ""] ++ fields ++ [rule, "-/"]
+  [opening, rule, "  GENERATED FILE: DO NOT EDIT BY HAND", ""] ++ fields ++ [rule, closing]
 
 end WebGPUGen.Emit

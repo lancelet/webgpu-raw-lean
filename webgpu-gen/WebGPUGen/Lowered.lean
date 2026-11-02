@@ -59,10 +59,17 @@ structure Bitflag where
 
 /-! ## Objects -/
 
-/-- A WebGPU object type: in C a handle, in Lean an opaque type. -/
+/--
+A WebGPU object type: in C a handle, in Lean an opaque type. The C side boxes a
+handle as a Lean value, with a finalizer that releases it.
+-/
 structure Object where
-  names : Names
-  doc   : String
+  names   : Names
+  doc     : String
+  /-- The C function that releases a reference: `wgpuDeviceRelease`. -/
+  release : String
+  /-- The prefix of the shim's C names for it: `lean_wgpu_device`. -/
+  shim    : String
   deriving Repr, DecidableEq
 
 /-! ## The whole spec -/
