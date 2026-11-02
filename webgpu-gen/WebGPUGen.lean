@@ -22,3 +22,4 @@ import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.LeanNames
 import WebGPUGen.Lowered
 import WebGPUGen.Lowered.Lower
+import WebGPUGen.Emit.Layout
