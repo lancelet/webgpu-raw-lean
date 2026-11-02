@@ -1,8 +1,9 @@
-# Builds and tests the generator and the bindings on Linux, macOS and Windows.
+# Builds and tests the generator and the bindings on Linux, macOS and Windows,
+# and for the web as WebAssembly; publishes the web build to GitHub Pages.
 #
 # To build yourself, do what each step's comment says, in a POSIX shell (on
-# Windows, Git Bash). Nothing here needs a GPU yet: the bindings' test program
-# only loads them.
+# Windows, Git Bash). Nothing here needs a GPU: the tests create an instance and
+# call functions on it, which needs none.
 name: CI
 
 on:
@@ -99,3 +100,78 @@ jobs:
       - name: Check the shims agree with Lean's ABI
         if: runner.os == 'Linux'
         run: scripts/check-abi.sh
+
+  # The web build: Lean, the bindings and the self-test as WebAssembly. To
+  # build it yourself: install the Emscripten SDK at the version in
+  # web/emscripten-version (and cmake and make), then run web/build.sh. The
+  # self-test runs under Node, and the page is published to GitHub Pages.
+  web:
+    name: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read the Emscripten version
+        id: emscripten
+        run: echo "version=$(cat web/emscripten-version)" >> "$GITHUB_OUTPUT"
+
+      # The Emscripten SDK: emcc, em++, emar and emcmake.
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: ${{ steps.emscripten.outputs.version }}
+          actions-cache-folder: emsdk-cache
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Lean's standard CI action, here only to install elan (and through it
+      # the toolchain lean-toolchain names); web/build.sh runs Lake itself.
+      - uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: false
+          test: false
+
+      # CI only: what web/build.sh builds once per Lean version (Lean's runtime,
+      # Init and libuv for WebAssembly), kept between runs.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .lake/web/v*
+            .lake/web/emscripten-cache
+          key: web-${{ hashFiles('lean-toolchain', 'web/build.sh', 'web/emscripten-version', 'web/include/**', 'vendor/lean4/fetch.sh', 'vendor/libuv/fetch.sh') }}
+
+      - name: Build for the web
+        run: web/build.sh
+
+      - name: Run the self-test under Node
+        run: node .lake/web/site/webgpu-raw-web-test.js
+
+      # The page around it, in headless Chrome (installed on GitHub's runners).
+      - name: Check the page in a browser
+        run: web/check-page.sh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .lake/web/site
+
+  # Publishes the web build to GitHub Pages, from main only.
+  pages:
+    name: pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build, web]
+    runs-on: ubuntu-latest
+    # One deployment at a time; a newer one waits rather than cancels.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

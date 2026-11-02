@@ -145,3 +145,10 @@ the bindings, linked against the shims and wgpu-native. Run with `lake test`.
 @[test_driver]
 lean_exe «webgpu-raw-test» where
   root := `WebGPURawTest.Main
+
+/--
+The web self-test (`WebGPURawWebTest/SelfTest.lean`): Lake compiles it to C,
+which `web/build.sh` compiles to WebAssembly with the test helpers.
+-/
+lean_lib WebGPURawWebTest where
+  moreLinkObjs := #[testHelpers]
