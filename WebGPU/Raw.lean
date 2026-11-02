@@ -2,6 +2,7 @@ module
 
 public import WebGPU.Raw.CEnum
 public import WebGPU.Raw.Enums
+public import WebGPU.Raw.Objects
 
 /-!
 # WebGPU, raw
