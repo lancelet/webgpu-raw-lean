@@ -75,41 +75,73 @@ def bitflagDecl (b : Lowered.Bitflag) : List String :=
     ]
     ++ ["", s!"end {type}"]
 
-/-! ## The file -/
+/-! ## Objects -/
+
+/-- An object type, as a `c_object` declaration. -/
+def objectDecl (o : Lowered.Object) : List String :=
+  docComment 0 o.doc ++ [s!"c_object {o.names.lean}"]
+
+/-! ## Files -/
 
 /--
-The module of enums and bitflag types: the banner, the imports, then each
-declaration, separated by blank lines.
+Declarations one after another, with a blank line between them, except that
+consecutive one-line declarations stay together.
 -/
-def enumsFile (p : Provenance) (spec : Lowered.Spec) : String :=
-  let decls := spec.enums.toList.map enumDecl ++ spec.bitflags.toList.map bitflagDecl
+def joinDecls (decls : List (List String)) : List String :=
+  (decls.zip ([] :: decls)).flatMap fun (decl, previous) =>
+    if previous.isEmpty || (decl.length == 1 && previous.length == 1) then decl
+    else "" :: decl
+
+/--
+A generated module: the banner, the module header with its imports, the module
+doc, then the declarations in `WebGPU.Raw`, laid out by `joinDecls`. Its
+declarations are public, and its definitions exposed, so that users can compute
+with them.
+-/
+def moduleFile (p : Provenance) (imports doc : List String) (decls : List (List String)) :
+    String :=
   let lines :=
     banner p
-      ++ [
-        "module",
-        "",
-        "public import WebGPU.Raw.CEnum",
-        "import WebGPU.Raw.Internal.CEnum",
-        "",
-        "/-!",
-        "# Enums and bitflags",
-        "",
-        "Every enum and bitflag type in `webgpu.h`, with the codes and values it gives",
-        "them.",
-        "",
-        "Each `c_enum` declares an enum and its `CEnum` instance: `CEnum.toC` gives a",
-        "value's code in `webgpu.h`, and `CEnum.ofC?` the value a code stands for. Each",
-        "bitflag type wraps its bits, with a constant per flag: combine flags with `|||`",
-        "and mask them with `&&&`.",
-        "-/",
-        "",
-        "@[expose] public section",
-        "",
-        "namespace WebGPU.Raw",
-        ""
-      ]
-      ++ [""].intercalate decls
+      ++ ["module", ""] ++ imports ++ [""]
+      ++ ["/-!"] ++ doc ++ ["-/", ""]
+      ++ ["@[expose] public section", "", "namespace WebGPU.Raw", ""]
+      ++ joinDecls decls
       ++ ["", "end WebGPU.Raw", "", "end"]
   "\n".intercalate lines ++ "\n"
+
+/-- The module of enums and bitflag types. -/
+def enumsFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  moduleFile p
+    [
+      "public import WebGPU.Raw.CEnum",
+      "import WebGPU.Raw.Internal.CEnum"
+    ]
+    [
+      "# Enums and bitflags",
+      "",
+      "Every enum and bitflag type in `webgpu.h`, with the codes and values it gives",
+      "them.",
+      "",
+      "Each `c_enum` declares an enum and its `CEnum` instance: `CEnum.toC` gives a",
+      "value's code in `webgpu.h`, and `CEnum.ofC?` the value a code stands for. Each",
+      "bitflag type wraps its bits, with a constant per flag: combine flags with `|||`",
+      "and mask them with `&&&`."
+    ]
+    (spec.enums.toList.map enumDecl ++ spec.bitflags.toList.map bitflagDecl)
+
+/-- The module of object types. -/
+def objectsFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  moduleFile p
+    [
+      "import WebGPU.Raw.Internal.CObject"
+    ]
+    [
+      "# Objects",
+      "",
+      "Every object type in `webgpu.h`. Each `c_object` declares an opaque type: Lean",
+      "code can hold a handle to the object and pass it on, but only the C side can",
+      "make one or look inside it."
+    ]
+    (spec.objects.toList.map objectDecl)
 
 end WebGPUGen.Emit.Lean

@@ -8,8 +8,8 @@ decide nothing themselves, so the two sides agree by construction.
 
 It holds no references: everything that varies with the spec is spelt out.
 Text that never varies, such as the `_Force32` entry upstream adds to every C
-enum, is the printers' own. The model grows block by block; so far it has enums
-and bitflags, and not yet the spec's own name, copyright and doc.
+enum, is the printers' own. The model grows block by block; so far it has enums,
+bitflags and object types, and not yet the spec's own name, copyright and doc.
 -/
 
 namespace WebGPUGen.Lowered
@@ -57,12 +57,21 @@ structure Bitflag where
   flags    : Array Flag
   deriving Repr, DecidableEq
 
+/-! ## Objects -/
+
+/-- A WebGPU object type: in C a handle, in Lean an opaque type. -/
+structure Object where
+  names : Names
+  doc   : String
+  deriving Repr, DecidableEq
+
 /-! ## The whole spec -/
 
 /-- The lowered spec. -/
 structure Spec where
   enums    : Array Enum
   bitflags : Array Bitflag
+  objects  : Array Object
   deriving Repr, DecidableEq
 
 end WebGPUGen.Lowered

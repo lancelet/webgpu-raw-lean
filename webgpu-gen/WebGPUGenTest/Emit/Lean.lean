@@ -87,6 +87,46 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
   ((lowerText input).bind (·.bitflags[0]?)).map (text ∘ bitflagDecl) == some expected
 
 
+/-! ## Objects -/
+
+-- One `c_object` declaration per object type, with its doc if it has one.
+#guard
+  let input := spec (objects := dedent "
+    - name: adapter
+      doc: TODO
+      methods: []
+    - name: query_set
+      doc: A set of queries.
+      methods: []
+    ")
+  let expected := dedent "
+    c_object Adapter
+    /-- A set of queries. -/
+    c_object QuerySet
+    "
+  (lowerText input).map (fun l => text (l.objects.toList.flatMap objectDecl)) == some expected
+
+/-! ## Joining declarations -/
+
+-- One-line declarations stay together; a longer one has blank lines around it.
+#guard
+  let input := [
+    ["c_object Adapter"],
+    ["c_object BindGroup"],
+    ["/-- A device. -/", "c_object Device"],
+    ["c_object Queue"]
+  ]
+  let expected := dedent "
+    c_object Adapter
+    c_object BindGroup
+
+    /-- A device. -/
+    c_object Device
+
+    c_object Queue
+    "
+  text (joinDecls input) == expected
+
 /-! ## The whole file -/
 
 -- The banner, the module header and imports, then each declaration: an enum

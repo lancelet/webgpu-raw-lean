@@ -89,13 +89,23 @@ def fillGroup (room : Nat) (group : List String) : List String :=
   else fill room room ws
 
 /--
+Is `text` a placeholder rather than documentation? The spec writes `TODO` for
+most entries it has not documented yet, and sometimes for a paragraph of a doc.
+-/
+def isPlaceholder (text : String) : Bool :=
+  let text := text.trimAscii.toString
+  text.isEmpty || text == "TODO"
+
+/--
 `text`'s paragraphs filled to `room` characters, with a blank line between
 paragraphs.
 -/
 def reflow (room : Nat) (text : String) : List String :=
   let paragraphs := (text.splitOn "\n\n").map fun p =>
     ((p.splitOn "\n").map (·.trimAscii.toString)).filter (!·.isEmpty)
-  let filled := (paragraphs.filter (!·.isEmpty)).map fun p =>
+  -- A placeholder paragraph is left out, as a placeholder doc is.
+  let paragraphs := paragraphs.filter fun p => !isPlaceholder ("\n".intercalate p)
+  let filled := paragraphs.map fun p =>
     (groups p).flatMap (fillGroup room)
   [""].intercalate filled
 
@@ -110,14 +120,6 @@ def escapeComment (text : String) : String :=
   (text.replace "/-" "/\\-").replace "-/" "-\\/"
 
 /--
-Is `doc` a placeholder rather than documentation? The spec writes `TODO` for
-most entries it has not documented yet.
--/
-def isPlaceholder (doc : String) : Bool :=
-  let text := doc.trimAscii.toString
-  text.isEmpty || text == "TODO"
-
-/--
 `doc` as a doc comment indented by `indent` spaces, in the form Lean's own
 library uses: on one line if it fits, and otherwise with `/--` and `-/` on lines
 of their own around the text, wrapped to the line width. No lines at all for a
@@ -127,6 +129,7 @@ def docComment (indent : Nat) (doc : String) : List String :=
   if isPlaceholder doc then [] else
   let pad := String.ofList (List.replicate indent ' ')
   match reflow (width - indent) (escapeComment doc) with
+  | [] => []  -- only placeholder paragraphs
   | [line] =>
     if indent + 4 + line.length + 3 ≤ width then [pad ++ "/-- " ++ line ++ " -/"]
     else [pad ++ "/--", pad ++ line, pad ++ "-/"]

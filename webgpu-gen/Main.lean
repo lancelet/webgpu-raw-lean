@@ -7,9 +7,10 @@ Generates the Lean bindings from the vendored spec:
 
     lake exe webgpu-gen generate
 
-writes `WebGPU/Raw/Enums.lean` in the bindings package. Each file starts with a
-banner recording when it was generated, from which commit of this repository
-(and whether it had uncommitted changes), and which spec it was generated from.
+writes `WebGPU/Raw/Enums.lean` and `WebGPU/Raw/Objects.lean` in the bindings
+package. Each file starts with a banner recording when it was generated, from
+which commit of this repository (and whether it had uncommitted changes), and
+which spec it was generated from.
 A spec with problems stops the generator before anything is written.
 -/
 
@@ -75,9 +76,14 @@ def generate : IO Unit := do
   let root ← repoRoot
   let spec ← loadSpec root
   let p ← provenance root
-  let path := root / "WebGPU" / "Raw" / "Enums.lean"
-  IO.FS.writeFile path (Emit.Lean.enumsFile p spec)
-  IO.println s!"wrote {path}"
+  let files := [
+    ("Enums.lean",   Emit.Lean.enumsFile p spec),
+    ("Objects.lean", Emit.Lean.objectsFile p spec)
+  ]
+  for (name, text) in files do
+    let path := root / "WebGPU" / "Raw" / name
+    IO.FS.writeFile path text
+    IO.println s!"wrote {path}"
 
 def main (args : List String) : IO UInt32 := do
   match args with

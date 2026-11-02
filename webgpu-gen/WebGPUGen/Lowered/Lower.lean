@@ -47,6 +47,13 @@ def lowerBitflag (ctx : DocContext) (b : Resolved.Bitflag) : Lowered.Bitflag whe
     value := flagValue b i
   }
 
+/-! ## Objects -/
+
+/-- An object type, named on both sides. -/
+def lowerObject (ctx : DocContext) (o : Resolved.Object) : Lowered.Object where
+  names := bothNames typeName leanTypeName o.name
+  doc   := translateDoc ctx o.doc
+
 /-! ## The whole spec -/
 
 /--
@@ -62,6 +69,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := []) : Lower
   {
     enums    := r.enums.map (lowerEnum ctx r)
     bitflags := r.bitflags.map (lowerBitflag ctx)
+    objects  := r.objects.map (lowerObject ctx)
   }
 
 end WebGPUGen.Lowered

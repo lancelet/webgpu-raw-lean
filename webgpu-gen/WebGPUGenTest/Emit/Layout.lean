@@ -103,6 +103,18 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 -- A placeholder is left out altogether.
 #guard docComment 2 "TODO\n" == []
 
+-- So is a placeholder paragraph, and a doc made only of them.
+#guard
+  let input := dedent "
+    TODO
+
+    Releasing the last ref also destroys it.
+    "
+  let expected := "/-- Releasing the last ref also destroys it. -/\n"
+  text (docComment 0 input) == expected
+
+#guard docComment 0 "TODO\n\nTODO\n" == []
+
 -- Comment delimiters in the text are escaped, so they cannot end the comment
 -- early or open a nested one.
 #guard
