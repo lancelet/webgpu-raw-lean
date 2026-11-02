@@ -1,4 +1,5 @@
 import WebGPUGen.Lowered
+import WebGPUGen.Lowered.CNames
 import WebGPUGen.Emit.Layout
 
 /-!
@@ -81,6 +82,23 @@ def bitflagDecl (b : Lowered.Bitflag) : List String :=
 def objectDecl (o : Lowered.Object) : List String :=
   docComment 0 o.doc ++ [s!"c_object {o.names.lean}"]
 
+/--
+The bindings' start-up: registers the object types' classes on the C side,
+before a program's `main` runs. `builtin_initialize`, unlike `initialize`, does
+not run when the compiler imports the module, where there is no C code to call.
+-/
+def objectsStartup : List String := [
+  "namespace Internal",
+  "",
+  "/-- Register the object types' classes, so the C side can box handles. -/",
+  s!"@[extern \"{objectsInitName}\"]",
+  "private opaque startObjects : IO Unit",
+  "",
+  "builtin_initialize startObjects",
+  "",
+  "end Internal"
+]
+
 /-! ## Files -/
 
 /--
@@ -142,6 +160,6 @@ def objectsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "code can hold a handle to the object and pass it on, but only the C side can",
       "make one or look inside it."
     ]
-    (spec.objects.toList.map objectDecl)
+    (spec.objects.toList.map objectDecl ++ [objectsStartup])
 
 end WebGPUGen.Emit.Lean

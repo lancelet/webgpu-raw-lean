@@ -27,19 +27,26 @@ def device : Lowered.Object := {
   shim    := "lean_wgpu_device"
 }
 
+/-- The queue object type, as lowering gives it. -/
+def queue : Lowered.Object := {
+  names   := {
+    c    := "WGPUQueue"
+    lean := "Queue"
+  }
+  doc     := ""
+  release := "wgpuQueueRelease"
+  shim    := "lean_wgpu_queue"
+}
+
 /-! ## The header -/
 
--- What other shims include: registering the classes, boxing and unboxing.
+-- What other shims include: boxing and unboxing.
 #guard
   let expected := dedent "
     #pragma once
 
     #include <lean/lean.h>
     #include <webgpu/webgpu.h>
-
-    // Register the external class of every object type. Called once, when the
-    // bindings are loaded, before any object is boxed.
-    void lean_wgpu_register_object_classes(void);
 
     // A Lean `Device` owning the reference `handle`, which it releases when Lean
     // frees it.
@@ -52,10 +59,10 @@ def device : Lowered.Object := {
 
 /-! ## The source -/
 
--- A class per object type whose finalizer releases the handle; boxing takes the
--- reference, unboxing borrows it. Boxing stops the program, loudly, on a NULL
--- handle (whose release would crash) or before the classes are registered (a
--- value without a class would crash when freed): regression tests, both.
+-- A class per object type, registered by the bindings' start-up, whose
+-- finalizer releases the handle; boxing takes the reference, and stops the
+-- program on a NULL handle (a regression test: releasing NULL crashes) or
+-- before start-up; unboxing borrows it.
 #guard
   let expected := dedent "
     #include \"objects.h\"
@@ -76,13 +83,14 @@ def device : Lowered.Object := {
         wgpuDeviceRelease((WGPUDevice)data);
     }
 
-    // Register the external class of every object type. Called once, when the
-    // bindings are loaded, before any object is boxed.
-    void lean_wgpu_register_object_classes(void) {
+    // The bindings' start-up, run by Lean when a program using them starts:
+    // register every object type's external class.
+    LEAN_EXPORT lean_obj_res lean_wgpu_objects_init(void) {
         lean_wgpu_device_class = lean_register_external_class(
             lean_wgpu_device_finalize,
             lean_wgpu_visit_nothing
         );
+        return lean_io_result_mk_ok(lean_box(0));
     }
 
     // A Lean `Device` owning the reference `handle`, which it releases when Lean
@@ -93,7 +101,7 @@ def device : Lowered.Object := {
         }
         if (lean_wgpu_device_class == NULL) {
             lean_internal_panic(
-                \"lean_wgpu_device_box: object classes not registered\"
+                \"lean_wgpu_device_box: before the bindings started\"
             );
         }
         return lean_alloc_external(lean_wgpu_device_class, handle);
@@ -108,15 +116,6 @@ def device : Lowered.Object := {
 
 -- Several object types: their class variables stay together, aligned.
 #guard
-  let queue : Lowered.Object := {
-    names   := {
-      c    := "WGPUQueue"
-      lean := "Queue"
-    }
-    doc     := ""
-    release := "wgpuQueueRelease"
-    shim    := "lean_wgpu_queue"
-  }
   let expected := dedent "
     static lean_external_class * lean_wgpu_device_class = NULL;
     static lean_external_class * lean_wgpu_queue_class  = NULL;

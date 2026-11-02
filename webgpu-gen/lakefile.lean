@@ -9,6 +9,7 @@ package WebGPUGen where
 require L4YAML from git
   "https://github.com/nasa-jpl/L4YAML" @ "c558fda35b06e05a93078c6c12c18ea598b9ea47" -- v0.5.2
 
+@[default_target]
 lean_lib WebGPUGen
 
 /--
@@ -18,6 +19,7 @@ checks that need IO. Run with `lake test` from this directory.
 lean_lib WebGPUGenTest
 
 /-- The generator: `lake exe webgpu-gen generate` writes the generated bindings. -/
+@[default_target]
 lean_exe «webgpu-gen» where
   root := `Main
 

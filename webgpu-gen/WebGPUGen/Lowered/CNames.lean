@@ -89,4 +89,12 @@ def functionProcName (f : Name) : String := "WGPUProc" ++ pascalCase f.text
 def methodProcName (object method : Name) : String :=
   "WGPUProc" ++ pascalCase object.text ++ pascalCase method.text
 
+/-! ## The bindings' own names -/
+
+/--
+The C function that starts the bindings: it registers the object types' classes.
+The Lean side runs it, with `builtin_initialize`, when a program starts.
+-/
+def objectsInitName : String := "lean_wgpu_objects_init"
+
 end WebGPUGen.Lowered

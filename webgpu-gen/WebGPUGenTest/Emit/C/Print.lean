@@ -57,7 +57,7 @@ open WebGPUGen.Emit WebGPUGen.Emit.C
         return 0;
     }
     "
-  Doc.pretty 80 (stmt input) ++ "\n" == expected
+  Doc.pretty 80 (stmt 0 input) ++ "\n" == expected
 
 /-! ## Functions -/
 
@@ -123,7 +123,7 @@ Defects found in review, each tested before it was fixed. -/
     ]),
     ("format", .call "lean_wgpu_texture_format_to_c" [.name "format"])
   ]))
-  ((Doc.pretty 80 (stmt input)).splitOn "\n").all (·.length ≤ 80)
+  ((Doc.pretty 80 (stmt 0 input)).splitOn "\n").all (·.length ≤ 80)
 
 -- And it is laid out as a person would: nested, aligned at each level.
 #guard
@@ -147,7 +147,7 @@ Defects found in review, each tested before it was fixed. -/
         .format = lean_wgpu_texture_format_to_c(format),
     };
     "
-  Doc.pretty 80 (stmt input) ++ "\n" == expected
+  Doc.pretty 80 (stmt 0 input) ++ "\n" == expected
 
 -- An operand that is an operation or a cast keeps its parentheses; before,
 -- none were printed, changing the meaning.
@@ -178,10 +178,18 @@ Defects found in review, each tested before it was fixed. -/
   }
   Doc.pretty 80 (function input) == "static void nothing(void) {\n}"
 
+-- A comment in a nested block is wrapped to the width that is left after its
+-- indentation; before, it was wrapped as if it were not indented, and passed
+-- the width.
+#guard
+  let words := "If another thread registered it first, use its class; ours goes unused."
+  let input := Stmt.ifElse (.name "a") [.ifElse (.name "b") [.comment words] []] []
+  ((Doc.pretty 80 (stmt 0 input)).splitOn "\n").all (·.length ≤ 80)
+
 -- A comment keeps its paragraphs apart with an empty comment line.
 #guard
   let input := Stmt.comment "First.\n\nSecond."
-  Doc.pretty 80 (stmt input) == "// First.\n//\n// Second."
+  Doc.pretty 80 (stmt 0 input) == "// First.\n//\n// Second."
 
 /-! ## A whole file -/
 

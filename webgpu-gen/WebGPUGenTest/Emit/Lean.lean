@@ -106,6 +106,23 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     "
   (lowerText input).map (fun l => text (l.objects.toList.flatMap objectDecl)) == some expected
 
+-- The start-up that registers the object classes: a `builtin_initialize`, so
+-- that the compiler does not run it when it imports the module (a regression
+-- test: a plain `initialize` crashed every build importing the bindings).
+#guard
+  let expected := dedent "
+    namespace Internal
+
+    /-- Register the object types' classes, so the C side can box handles. -/
+    @[extern \"lean_wgpu_objects_init\"]
+    private opaque startObjects : IO Unit
+
+    builtin_initialize startObjects
+
+    end Internal
+    "
+  text objectsStartup == expected
+
 /-! ## Joining declarations -/
 
 -- One-line declarations stay together; a longer one has blank lines around it.

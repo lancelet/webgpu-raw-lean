@@ -60,26 +60,29 @@ decreasing_by
     | have := List.sizeOf_lt_of_mem ‹_ ∈ _›; simp_all; omega
     | omega
 
-/-- A comment: each line of `s`, after `//`, wrapped to the line width. -/
-def comment (s : String) : Doc :=
-  lines ((reflow (width - 3) s).map fun line => if line.isEmpty then "//" else "// " ++ line)
+/--
+A comment: each line of `s`, after `//`, wrapped to the width left on a line
+indented `indent` spaces.
+-/
+def comment (indent : Nat) (s : String) : Doc :=
+  lines ((reflow (width - indent - 3) s).map fun line => if line.isEmpty then "//" else "// " ++ line)
 
 /-- Statements in braces, indented; no statements, just the braces. -/
 def block (body : List Doc) : Doc :=
   if body.isEmpty then text "{" ++ hardline ++ text "}"
   else text "{" ++ nest 4 (hardline ++ join hardline body) ++ hardline ++ text "}"
 
-/-- A statement. -/
-def stmt : Stmt → Doc
+/-- A statement, nested `depth` blocks deep: each indents four spaces. -/
+def stmt (depth : Nat) : Stmt → Doc
   | .decl type name none       => text (type ++ " " ++ name ++ ";")
   | .decl type name (some e)   => text (type ++ " " ++ name ++ " = ") ++ expr e ++ text ";"
   | .expr e                    => expr e ++ text ";"
   | .ret none                  => text "return;"
   | .ret (some e)              => text "return " ++ expr e ++ text ";"
-  | .comment t                 => comment t
+  | .comment t                 => comment (4 * depth) t
   | .ifElse cond thenBody elseBody =>
-    let thenDoc := block (thenBody.attach.map fun ⟨s, _⟩ => stmt s)
-    let elseDoc := block (elseBody.attach.map fun ⟨s, _⟩ => stmt s)
+    let thenDoc := block (thenBody.attach.map fun ⟨s, _⟩ => stmt (depth + 1) s)
+    let elseDoc := block (elseBody.attach.map fun ⟨s, _⟩ => stmt (depth + 1) s)
     text "if (" ++ expr cond ++ text ") " ++ thenDoc
       ++ (if elseBody.isEmpty then nil else text " else " ++ elseDoc)
 decreasing_by
@@ -104,11 +107,11 @@ def signature (f : Function) : Doc :=
 
 /-- A function's comment, if it has one, on the lines before it. -/
 def docBefore (f : Function) : Doc :=
-  if f.doc.isEmpty then nil else comment f.doc ++ hardline
+  if f.doc.isEmpty then nil else comment 0 f.doc ++ hardline
 
 /-- A function: its comment, its signature, then its body. -/
 def function (f : Function) : Doc :=
-  docBefore f ++ signature f ++ text " " ++ block (f.body.map stmt)
+  docBefore f ++ signature f ++ text " " ++ block (f.body.map (stmt 1))
 
 /-- A function's declaration, as in a header: its comment and signature. -/
 def prototype (f : Function) : Doc :=

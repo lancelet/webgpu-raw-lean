@@ -26,7 +26,9 @@
         default = pkgs.mkShell {
           packages = [
             pkgs.elan # installs the Lean toolchain named in lean-toolchain
-            pkgs.curl # vendor/webgpu-headers/fetch.sh
+            pkgs.curl # vendor/*/fetch.sh
+            pkgs.unzip # vendor/wgpu-native/fetch.sh
+            pkgs.shellcheck # checks the shell scripts
             pkgs.git
           ];
         };

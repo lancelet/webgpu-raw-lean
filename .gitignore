@@ -1,2 +1,4 @@
 .direnv/
 .lake/
+# Downloaded by vendor/wgpu-native/fetch.sh
+/vendor/wgpu-native/*/

@@ -1,0 +1,86 @@
+# Builds and tests the generator and the bindings on Linux, macOS and Windows.
+#
+# To build yourself, do what each step's comment says, in a POSIX shell (on
+# Windows, Git Bash). Nothing here needs a GPU yet: the bindings' test program
+# only loads them.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # Not a build step: checks the shell scripts the build uses.
+      - name: Check the shell scripts
+        if: runner.os == 'Linux'
+        run: shellcheck vendor/*/fetch.sh scripts/*.sh
+
+      # Fetch the prebuilt wgpu-native release for this platform, into
+      # vendor/wgpu-native/<platform>/.
+      - name: Fetch wgpu-native
+        run: vendor/wgpu-native/fetch.sh
+
+      # Programs find wgpu_native.dll through PATH on Windows; on Linux and
+      # macOS the build records where the library is.
+      - name: Put wgpu-native on PATH (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          lib="$GITHUB_WORKSPACE\\vendor\\wgpu-native\\windows-x86_64\\lib"
+          echo "$lib" >> "$GITHUB_PATH"
+
+      # Lean's standard CI action. It installs elan (which installs the Lean
+      # toolchain named in `lean-toolchain`), then runs, in webgpu-gen/:
+      #
+      #     lake build
+      #     lake test
+      #
+      # The generator is only needed to regenerate the bindings: users of the
+      # bindings can skip this step and the next.
+      - name: Build and test the generator
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: webgpu-gen
+          auto-config: false
+          build: true
+          test: true
+
+      # The generated files must be what the generator makes now: only the
+      # banner's commit and time may differ.
+      - name: Check the generated files are up to date
+        if: runner.os == 'Linux'
+        run: |
+          (cd webgpu-gen && lake exe webgpu-gen generate)
+          git diff --exit-code -I '^  Generator commit:' -I '^  Generated:' \
+            -- WebGPU c/generated
+
+      # Runs, at the repository root:
+      #
+      #     lake build
+      #     lake test
+      - name: Build and test the bindings
+        uses: leanprover/lean-action@v1
+        with:
+          auto-config: false
+          build: true
+          test: true
+
+      # Not a build step: checks that the build rebuilds the C shims when a
+      # header they include changes.
+      - name: Check header edits rebuild the shims
+        if: runner.os == 'Linux'
+        run: scripts/check-shim-rebuild.sh
