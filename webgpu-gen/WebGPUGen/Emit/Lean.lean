@@ -98,6 +98,51 @@ def bitflagDecl (b : Lowered.Bitflag) : Doc :=
       ++ [instances, text s!"end {type}"]
   docBefore 0 b.doc ++ join (hardline ++ hardline) blocks
 
+/-! ## Signatures -/
+
+/-- An explicit parameter: its name and its type. -/
+structure Binder where
+  name : String
+  type : String
+
+/-- A declaration's head: its keyword, its name, its parameters and its type. -/
+structure Signature where
+  keyword : String
+  name    : String
+  binders : List Binder
+  result  : String
+
+/--
+A signature on one line if it fits, counting the text before and after it on
+that line, and otherwise broken: each parameter on a line of its own, their `:`
+aligned, and the result type on the line after the last, all indented four
+spaces.
+
+    opaque Device.createBuffer
+        (device     : @& Device)
+        (descriptor : @& BufferDescriptor) :
+        IO Buffer
+
+The result type on a line of its own, after a `:` ending the line before, is
+how Lean's style guides move it; the parameters, one per line and aligned, are
+this project's layout (Lean's guides fill them several to a line). A parameter
+or result type is never broken itself, so a very long one makes its line longer
+than the width.
+-/
+def signature (s : Signature) : Doc :=
+  let head := s.keyword ++ " " ++ s.name
+  let params := s.binders.map fun b => s!" ({b.name} : {b.type})"
+  let flat := text (head ++ String.join params ++ " : " ++ s.result)
+  let cells := s.binders.map fun b => ["(" ++ b.name, ": " ++ b.type ++ ")"]
+  let rows := columns cells
+  let broken := match rows.getLast? with
+    | none      => text (head ++ " :") ++ indented 4 (text s.result)
+    | some last =>
+      text head
+        ++ indented 4 (Doc.lines (rows.dropLast ++ [last ++ " :"]) ++ hardline
+          ++ text s.result)
+  alt flat broken
+
 /-! ## Objects -/
 
 /-- An object type, as a `c_object` declaration. -/

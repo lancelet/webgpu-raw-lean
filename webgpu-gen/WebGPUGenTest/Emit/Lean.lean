@@ -154,6 +154,144 @@ def printBitflag (input : String) : Option String :=
   printBitflag input == some expected
 
 
+/-! ## Signatures -/
+
+-- A signature that fits stays on one line.
+#guard
+  let input : Signature := {
+    keyword := "opaque"
+    name    := "Device.release"
+    binders := [⟨"device", "Device"⟩]
+    result  := "IO Unit"
+  }
+  let expected := "opaque Device.release (device : Device) : IO Unit\n"
+  render (signature input) == expected
+
+-- One that does not has a parameter per line, their `:` aligned, and the result
+-- type after them, all indented four spaces.
+#guard
+  let input : Signature := {
+    keyword := "opaque"
+    name    := "Device.createBuffer"
+    binders := [⟨"device", "@& Device"⟩, ⟨"descriptor", "@& BufferDescriptor"⟩]
+    result  := "IO Buffer"
+  }
+  let expected := dedent "
+    opaque Device.createBuffer
+        (device     : @& Device)
+        (descriptor : @& BufferDescriptor) :
+        IO Buffer
+    "
+  render (signature input) == expected
+
+-- It breaks only past 80 columns: at 80 it fits.
+#guard
+  let fill (n : Nat) := String.ofList (List.replicate n 'a')
+  let at80 : Signature := {
+    keyword := "def"
+    name    := fill 64
+    binders := [⟨"x", "T"⟩]
+    result  := "R"
+  }
+  let at81 := { at80 with name := fill 65 }
+  (render (signature at80)).length == 81
+    && ((render (signature at81)).splitOn "\n").length == 4
+
+-- With no parameters, a signature too long for one line puts its type on the
+-- next.
+#guard
+  let input : Signature := {
+    keyword := "opaque"
+    name    := String.ofList (List.replicate 70 'a')
+    binders := []
+    result  := "IO Unit"
+  }
+  let expected := "opaque " ++ input.name ++ " :\n    IO Unit\n"
+  render (signature input) == expected
+
+-- After its doc comment, a signature still fits on one line: the comment's line
+-- break does not break the signature.
+#guard
+  let input : Signature := {
+    keyword := "opaque"
+    name    := "Device.release"
+    binders := [⟨"device", "Device"⟩]
+    result  := "IO Unit"
+  }
+  let expected := dedent "
+    /-- Release the device. -/
+    opaque Device.release (device : Device) : IO Unit
+    "
+  render (docBefore 0 "Release the device." ++ signature input) == expected
+
+-- Text after it on the same line counts: 78 columns and ` :=` make 81, so it
+-- breaks, and the ` :=` follows the result type.
+#guard
+  let input : Signature := {
+    keyword := "def"
+    name    := String.ofList (List.replicate 62 'a')
+    binders := [⟨"x", "T"⟩]
+    result  := "R"
+  }
+  let expected := "def " ++ input.name ++ "\n    (x : T) :\n    R :=\n"
+  render (signature input ++ .text " :=") == expected
+
+-- So does text before it: `private ` pushes a 76-column signature past 80.
+#guard
+  let input : Signature := {
+    keyword := "def"
+    name    := String.ofList (List.replicate 60 'a')
+    binders := [⟨"x", "T"⟩]
+    result  := "R"
+  }
+  let expected := "private def " ++ input.name ++ "\n    (x : T) :\n    R\n"
+  render (.text "private " ++ signature input) == expected
+
+-- A parameter is never broken itself: a very long type makes its line longer
+-- than 80 columns.
+#guard
+  let long := String.ofList (List.replicate 80 'T')
+  let input : Signature := {
+    keyword := "opaque"
+    name    := "f"
+    binders := [⟨"x", long⟩]
+    result  := "IO Unit"
+  }
+  let expected := "opaque f\n    (x : " ++ long ++ ") :\n    IO Unit\n"
+  render (signature input) == expected
+
+-- (`_root_`: inside this namespace, `Lean` alone names the printer's module.)
+open _root_.Lean in
+/-- Does `src` parse as one Lean command? -/
+def parsesAsCommand (src : String) : CoreM Bool := do
+  return (Parser.runParserCategory (← getEnv) `command src).isOk
+
+-- Each layout is Lean that parses: on one line, broken with parameters (and
+-- `@&`), and broken without them.
+#eval show Lean.CoreM Unit from do
+  let fits : Signature := {
+    keyword := "opaque"
+    name    := "Device.release"
+    binders := [⟨"device", "Device"⟩]
+    result  := "IO Unit"
+  }
+  let broken : Signature := {
+    keyword := "opaque"
+    name    := "Device.createBuffer"
+    binders := [⟨"device", "@& Device"⟩, ⟨"descriptor", "@& BufferDescriptor"⟩]
+    result  := "IO Buffer"
+  }
+  let bare : Signature := {
+    keyword := "opaque"
+    name    := String.ofList (List.replicate 70 'a')
+    binders := []
+    result  := "IO Unit"
+  }
+  for s in [fits, broken, bare] do
+    let src := "@[extern \"f\"]\n" ++ render (signature s)
+    unless (← parsesAsCommand src) do
+      throwError "does not parse as Lean:\n{src}"
+
 /-! ## Objects -/
 
 -- One `c_object` declaration per object type, with its doc if it has one.
