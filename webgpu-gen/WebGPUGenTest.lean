@@ -15,3 +15,4 @@ import WebGPUGenTest.Resolved.Unresolve
 import WebGPUGenTest.Resolved.Values
 import WebGPUGenTest.Lowered.CNames
 import WebGPUGenTest.Lowered.LeanNames
+import WebGPUGenTest.Lowered.Lower

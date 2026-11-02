@@ -20,3 +20,5 @@ import WebGPUGen.Resolved.Reverse
 import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.LeanNames
+import WebGPUGen.Lowered
+import WebGPUGen.Lowered.Lower

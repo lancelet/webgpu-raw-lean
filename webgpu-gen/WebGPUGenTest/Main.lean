@@ -5,6 +5,7 @@ import WebGPUGen.Resolved.Resolve
 import WebGPUGen.Resolved.Unresolve
 import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.CNames
+import WebGPUGen.Lowered.Lower
 import WebGPUGenTest
 
 /-!
@@ -41,7 +42,7 @@ open WebGPUGen.Lowered in
 /-- Every C name `webgpu.h` should declare for `s`: types, enum entries and
 flags, constants, functions and methods with their pointer types, and the
 names of members and arguments. -/
-def cNames (s : Spec) : List String :=
+def cNames (s : WebGPUGen.Parsed.Spec) : List String :=
   s.constants.toList.map (constantName ·.name)
     ++ s.typedefs.toList.map (typeName ·.name)
     ++ s.enums.toList.flatMap (fun e =>
@@ -75,15 +76,27 @@ def headerValues (text : String) : Std.HashMap String Nat :=
       | none   => values
     | _ => values
 
-open WebGPUGen.Lowered WebGPUGen.Resolved in
-/-- The value of every enum entry and flag in `r`, by C name. -/
-def computedValues (r : WebGPUGen.Resolved.Spec) : List (String × Nat) :=
-  let enums := r.enums.toList.flatMap fun e =>
-    e.entries.toList.zipIdx.filterMap fun (slot, i) =>
-      slot.map fun entry => (entryName e.name entry.name, (enumValue r i entry).toNat)
-  let flags := r.bitflags.toList.flatMap fun b =>
-    b.entries.toList.zipIdx.map fun (f, i) => (entryName b.name f.name, (flagValue b i).toNat)
+/-- The value of every enum entry and flag in the lowered spec, by C name. -/
+def computedValues (l : WebGPUGen.Lowered.Spec) : List (String × Nat) :=
+  let enums := l.enums.toList.flatMap fun e =>
+    e.entries.toList.map fun entry => (entry.names.c, entry.value.toNat)
+  let flags := l.bitflags.toList.flatMap fun b =>
+    b.flags.toList.map fun flag => (flag.names.c, flag.value.toNat)
   enums ++ flags
+
+/-- The names that occur more than once in `names`. -/
+def repeated (names : List String) : List String :=
+  (names.filter fun n => names.count n > 1).eraseDups
+
+/-- Lean names that clash in the lowered spec: type names shared by two types,
+and entry or flag names shared within one type. -/
+def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
+  let types := l.enums.toList.map (·.names.lean) ++ l.bitflags.toList.map (·.names.lean)
+  let enums := l.enums.toList.map fun e =>
+    (repeated (e.entries.toList.map (·.names.lean))).map (e.names.lean ++ "." ++ ·)
+  let flags := l.bitflags.toList.map fun b =>
+    (repeated (b.flags.toList.map (·.names.lean))).map (b.names.lean ++ "." ++ ·)
+  repeated types ++ enums.flatten ++ flags.flatten
 
 def failWith {α} (message : String) : IO α := throw (IO.userError s!"FAIL: {message}")
 
@@ -123,7 +136,8 @@ def main (args : List String) : IO Unit := do
 
   -- Every enum entry and flag has the value upstream's header gives it.
   let values := headerValues header
-  let computed := computedValues resolved
+  let lowered := WebGPUGen.Lowered.lower resolved
+  let computed := computedValues lowered
   let wrong := computed.filter fun (name, v) => values.get? name != some v
   unless wrong.isEmpty do
     failWith s!"values differing from webgpu.h: {wrong}"
@@ -133,6 +147,11 @@ def main (args : List String) : IO Unit := do
   let extra := values.keys.filter fun n => !n.endsWith "_Force32" && !names.contains n
   unless extra.isEmpty do
     failWith s!"values in webgpu.h not computed: {extra}"
+
+  -- Lean names do not clash.
+  let clashes := leanClashes lowered
+  unless clashes.isEmpty do
+    failWith s!"Lean names that clash: {clashes}"
 
   let dump :=
     dumpConstants options spec.constants
