@@ -21,6 +21,7 @@ import WebGPUGen.Resolved.Values
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.LeanNames
 import WebGPUGen.Lowered
+import WebGPUGen.Lowered.Docs
 import WebGPUGen.Lowered.Lower
 import WebGPUGen.Emit.Layout
 import WebGPUGen.Emit.Lean

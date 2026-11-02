@@ -15,6 +15,7 @@ import WebGPUGenTest.Resolved.Unresolve
 import WebGPUGenTest.Resolved.Values
 import WebGPUGenTest.Lowered.CNames
 import WebGPUGenTest.Lowered.LeanNames
+import WebGPUGenTest.Lowered.Docs
 import WebGPUGenTest.Lowered.Lower
 import WebGPUGenTest.Emit.Layout
 import WebGPUGenTest.Emit.Lean

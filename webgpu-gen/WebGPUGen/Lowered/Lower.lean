@@ -1,6 +1,7 @@
 import WebGPUGen.Lowered
 import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.LeanNames
+import WebGPUGen.Lowered.Docs
 import WebGPUGen.Resolved.Values
 
 /-!
@@ -24,33 +25,43 @@ def bothNames (c lean : Name → String) (n : Name) : Names :=
 An enum, with the value of each entry. The entry at position `i` keeps the value
 position `i` gives it, though reserved slots are left out.
 -/
-def lowerEnum (r : Resolved.Spec) (e : Common.Enum) : Lowered.Enum where
+def lowerEnum (ctx : DocContext) (r : Resolved.Spec) (e : Common.Enum) : Lowered.Enum where
   names    := bothNames typeName leanTypeName e.name
-  doc      := e.doc
+  doc      := translateDoc ctx e.doc
   extended := e.extended
   entries  := e.entries.zipIdx.filterMap fun (slot, i) =>
     slot.map fun entry => {
       names := bothNames (entryName e.name) leanName entry.name
-      doc   := entry.doc
+      doc   := translateDoc ctx entry.doc
       value := enumValue r i entry
     }
 
 /-- A bitflag type, with the value of each flag. -/
-def lowerBitflag (b : Resolved.Bitflag) : Lowered.Bitflag where
+def lowerBitflag (ctx : DocContext) (b : Resolved.Bitflag) : Lowered.Bitflag where
   names    := bothNames typeName leanTypeName b.name
-  doc      := b.doc
+  doc      := translateDoc ctx b.doc
   extended := b.extended
   flags    := b.entries.mapIdx fun i flag => {
     names := bothNames (entryName b.name) leanName flag.name
-    doc   := flag.doc
+    doc   := translateDoc ctx flag.doc
     value := flagValue b i
   }
 
 /-! ## The whole spec -/
 
-/-- Lower a resolved spec. -/
-def lower (r : Resolved.Spec) : Lowered.Spec where
-  enums    := r.enums.map (lowerEnum r)
-  bitflags := r.bitflags.map lowerBitflag
+/--
+Lower a resolved spec. `sections` are the documentation sections its docs may
+refer to, each with its page (`articleSections` reads them from upstream's
+articles).
+-/
+def lower (r : Resolved.Spec) (sections : List (String × String) := []) : Lowered.Spec :=
+  let ctx : DocContext := {
+    leanNames := leanNamesOfC r
+    sections  := Std.HashMap.ofList sections
+  }
+  {
+    enums    := r.enums.map (lowerEnum ctx r)
+    bitflags := r.bitflags.map (lowerBitflag ctx)
+  }
 
 end WebGPUGen.Lowered

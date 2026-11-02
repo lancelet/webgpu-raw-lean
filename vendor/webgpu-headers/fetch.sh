@@ -17,6 +17,15 @@ for f in webgpu.yml webgpu.h schema.json LICENSE; do
   curl -fsSL "$base/$f" -o "$dir/$f"
 done
 
+# Upstream's articles, which define the documentation pages the spec's docs
+# refer to (`@ref SentinelValues`); the generator links those references to them.
+mkdir -p "$dir/articles"
+for f in "Asynchronous Operations" BufferMapping Errors Extensions \
+    FloatingPointNumbers Multithreading Ownership SentinelValues Strings \
+    StructChaining Surfaces index; do
+  curl -fsSL "$base/doc/articles/$(echo "$f" | sed 's/ /%20/g').md" -o "$dir/articles/$f.md"
+done
+
 # Where these files came from, for the banner of every generated file.
 printf 'repo: %s\ncommit: %s\n' \
   "https://github.com/webgpu-native/webgpu-headers" "$WEBGPU_HEADERS_COMMIT" \

@@ -90,7 +90,8 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 /-! ## The whole file -/
 
 -- The banner, the module header and imports, then each declaration: an enum
--- whose entry has a multi-line doc, and a documented bitflag type.
+-- whose entry's doc links a documentation section, and a documented bitflag
+-- type.
 #guard
   let input := spec
     (enums := dedent "
@@ -144,6 +145,11 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     Every enum and bitflag type in `webgpu.h`, with the codes and values it gives
     them.
+
+    Each `c_enum` declares an enum and its `CEnum` instance: `CEnum.toC` gives a
+    value's code in `webgpu.h`, and `CEnum.ofC?` the value a code stands for. Each
+    bitflag type wraps its bits, with a constant per flag: combine flags with `|||`
+    and mask them with `&&&`.
     -/
 
     @[expose] public section
@@ -152,7 +158,9 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     c_enum FeatureLevel where
       /--
-      Indicates no value is passed for this argument. See @ref SentinelValues.
+      Indicates no value is passed for this argument. See [SentinelValues].
+
+      [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
       -/
       | undefined = 0x00000000
       | core      = 0x00000001
@@ -176,6 +184,7 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
     end
     "
-  (lowerText input).map (enumsFile provenance) == some expected
+  let sections := [("SentinelValues", "SentinelValues")]
+  (lowerText input sections).map (enumsFile provenance) == some expected
 
 end WebGPUGenTest.Emit.Lean

@@ -17,10 +17,11 @@ open WebGPUGenTest.Resolved.Resolve (spec resolveText)
 
 Scaffolding for the tests below; these are not tests themselves. -/
 
-/-- Resolve and lower a spec file. -/
-def lowerText (input : String) : Option Lowered.Spec :=
+/-- Resolve and lower a spec file, with the documentation sections given. -/
+def lowerText (input : String) (sections : List (String × String) := []) :
+    Option Lowered.Spec :=
   match resolveText input with
-  | .ok r    => some (lower r)
+  | .ok r    => some (lower r sections)
   | .error _ => none
 
 /-! ## Enums -/

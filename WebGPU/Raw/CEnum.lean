@@ -6,6 +6,10 @@ module
 Every WebGPU enum value has a code in `webgpu.h`. `CEnum` gives both directions,
 and the two laws that make them a bidirectional map: a value's code decodes to
 the value, and a code decodes only to the value that has it.
+
+Every enum in the bindings (`WebGPU.Raw.Enums`) has an instance, so
+`CEnum.toC TextureFormat.rgba8Unorm` is that format's code, and
+`CEnum.ofC? n : Option TextureFormat` is the format with code `n`, if any.
 -/
 
 public section

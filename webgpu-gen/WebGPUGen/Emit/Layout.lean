@@ -57,19 +57,30 @@ def words (text : String) : List String :=
   (text.splitToList Char.isWhitespace).filter (!·.isEmpty)
 
 /--
+Is `line` a Markdown link reference definition, `[label]: url`? It is kept as
+written, on a line of its own.
+-/
+def isLinkDefinition (line : String) : Bool :=
+  line.startsWith "[" && (line.splitOn "]: ").length > 1
+
+/--
 A paragraph's lines in groups: one per list item (a line starting `- ` and the
-lines after it), and one for any lines before the first item.
+lines after it), one per link definition, and one for any other lines before
+the first of those.
 -/
 def groups (lines : List String) : List (List String) :=
   lines.foldl (init := []) fun acc line =>
-    if line.startsWith "- " || acc.isEmpty then acc ++ [[line]]
-    else acc.dropLast ++ [acc.getLastD [] ++ [line]]
+    let last := acc.getLastD []
+    if line.startsWith "- " || isLinkDefinition line || acc.isEmpty
+      || isLinkDefinition (last.headD "") then acc ++ [[line]]
+    else acc.dropLast ++ [last ++ [line]]
 
 /--
 A group filled to `room` characters. A list item's later lines are indented
 under its text.
 -/
 def fillGroup (room : Nat) (group : List String) : List String :=
+  if isLinkDefinition (group.headD "") then group else
   let ws := words (" ".intercalate group)
   if (group.headD "").startsWith "- " then
     match fill room (room - 2) ws with

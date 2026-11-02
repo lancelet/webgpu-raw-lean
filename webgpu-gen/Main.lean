@@ -58,8 +58,12 @@ def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
   let parsed ← match (Parsed.Spec.codec.decode node).run with
     | .ok parsed => pure parsed
     | .error e   => throw (IO.userError (toString e))
+  -- The documentation sections the spec's docs refer to, from upstream's articles.
+  let articles ← (root / "vendor/webgpu-headers/articles").readDir
+  let sections ← articles.toList.flatMapM fun entry => do
+    return Lowered.articleSections (← IO.FS.readFile entry.path)
   match Resolved.resolve parsed with
-  | .ok resolved => return Lowered.lower resolved
+  | .ok resolved => return Lowered.lower resolved sections
   | .error problems =>
     for p in problems do IO.eprintln p
     throw (IO.userError s!"{problems.length} problems in the spec")

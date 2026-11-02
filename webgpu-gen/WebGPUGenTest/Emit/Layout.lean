@@ -82,6 +82,24 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
     "
   text (docComment 0 input) == expected
 
+-- A link definition keeps a line of its own, as written, even past 80 columns:
+-- a URL cannot be broken.
+#guard
+  let input := dedent "
+    Indicates no value is passed for this argument. See [SentinelValues] for
+    more.
+
+    [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
+    "
+  let expected := dedent "
+    /--
+    Indicates no value is passed for this argument. See [SentinelValues] for more.
+
+    [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
+    -/
+    "
+  text (docComment 0 input) == expected
+
 -- A placeholder is left out altogether.
 #guard docComment 2 "TODO\n" == []
 
