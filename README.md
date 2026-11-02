@@ -12,3 +12,5 @@
 [platforms-badge]: https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-555?style=flat-square
 [headers]: https://github.com/webgpu-native/webgpu-headers
 [headers-badge]: https://img.shields.io/badge/webgpu--headers-673658b-6f42c1?style=flat-square
+
+Status: WIP: approximately 32% complete.

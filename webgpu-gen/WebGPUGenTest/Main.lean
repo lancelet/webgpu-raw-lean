@@ -97,16 +97,25 @@ def repeated (names : List String) : List String :=
   (names.filter fun n => names.count n > 1).eraseDups
 
 /--
-Lean names that clash in the lowered spec: type names shared by two types, and
-entry or flag names shared within one type.
+Lean names that clash in the lowered spec: type names shared by two types (enum,
+bitflag or object), entry or flag names shared within one type, function and
+method names shared by two functions, and argument names shared within one
+function.
 -/
 def leanClashes (l : WebGPUGen.Lowered.Spec) : List String :=
-  let types := l.enums.toList.map (·.names.lean) ++ l.bitflags.toList.map (·.names.lean)
+  let types :=
+    l.enums.toList.map (·.names.lean) ++ l.bitflags.toList.map (·.names.lean)
+      ++ l.objects.toList.map (·.names.lean)
+  let functions :=
+    l.functions.toList ++ l.objects.toList.flatMap (·.methods.toList)
+  let args := functions.map fun f =>
+    (repeated (f.args.toList.map (·.names.lean))).map (f.names.lean ++ " " ++ ·)
   let enums := l.enums.toList.map fun e =>
     (repeated (e.entries.toList.map (·.names.lean))).map (e.names.lean ++ "." ++ ·)
   let flags := l.bitflags.toList.map fun b =>
     (repeated (b.flags.toList.map (·.names.lean))).map (b.names.lean ++ "." ++ ·)
   repeated types ++ enums.flatten ++ flags.flatten
+    ++ repeated (functions.map (·.names.lean)) ++ args.flatten
 
 /--
 Compile the generated C shims, with warnings as errors, against the vendored

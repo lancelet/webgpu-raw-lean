@@ -57,6 +57,16 @@ def isIdent (env : Environment) (text : String) : Bool :=
   ("WGSL_language_feature_name", "wgslLanguageFeatureName")
 ]
 
+-- A first word upstream writes in mixed case keeps its later capitals: only an
+-- all-capitals first word is an acronym to lower. (A regression test: these
+-- were `opengl`, `opengles`, `workgroupcountx` and `webgpu`.)
+#guard converts leanName [
+  ("openGL", "openGL"),
+  ("openGLES", "openGLES"),
+  ("workgroupCountX", "workgroupCountX"),
+  ("WebGPU", "webGPU")
+]
+
 -- Names Lean cannot read as identifiers are quoted: a leading digit, or a
 -- keyword. All four keywords here are real spec names.
 #guard converts leanName [

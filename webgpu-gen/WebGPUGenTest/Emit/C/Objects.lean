@@ -18,24 +18,28 @@ Scaffolding for the tests below; these are not tests themselves. -/
 
 /-- The device object type, as lowering gives it. -/
 def device : Lowered.Object := {
-  names   := {
+  names    := {
     c    := "WGPUDevice"
     lean := "Device"
   }
-  doc     := ""
-  release := "wgpuDeviceRelease"
-  shim    := "lean_wgpu_device"
+  doc      := ""
+  release  := "wgpuDeviceRelease"
+  shim     := "lean_wgpu_device"
+  extended := false
+  methods  := #[]
 }
 
 /-- The queue object type, as lowering gives it. -/
 def queue : Lowered.Object := {
-  names   := {
+  names    := {
     c    := "WGPUQueue"
     lean := "Queue"
   }
-  doc     := ""
-  release := "wgpuQueueRelease"
-  shim    := "lean_wgpu_queue"
+  doc      := ""
+  release  := "wgpuQueueRelease"
+  shim     := "lean_wgpu_queue"
+  extended := false
+  methods  := #[]
 }
 
 /-! ## The header -/

@@ -10,7 +10,8 @@ the C names closely, so a Lean name is easy to find in `webgpu.h` and its docs:
 * everything else in camelCase with the first word in lower case, and the rest
   as upstream writes it: `create_buffer` is `createBuffer`, `BC1_RGBA_unorm` is
   `bc1RGBAUnorm`. Acronyms after the first word keep their capitals, as Lean
-  writes `toUInt64` and `toUTF8`.
+  writes `toUInt64` and `toUTF8`, and so does a first word upstream writes in
+  mixed case: `openGL`, `workgroupCountX`.
 
 A name Lean cannot read as an identifier is quoted with `«»`, Lean's standard
 escape for identifiers: one that starts with a digit (`2D` is `«2d»`), and one
@@ -86,10 +87,21 @@ def quoteIdent (s : String) : String :=
 
 /-! ## Names -/
 
-/-- `s` with its first word, up to the first underscore, in lower case. -/
+/--
+`s` with its first word, up to the first underscore, starting in lower case. A
+word with no lower-case letters is an acronym, lowered whole (`BC1` is `bc1`);
+one upstream writes in mixed case keeps its later capitals (`openGL`). A mixed
+word starting with an acronym would lower only its first letter (`WGSLFeature`
+would be `wGSLFeature`); the spec has none.
+-/
 def lowerFirstWord (s : String) : String :=
   let (first, rest) := s.toList.span (· != '_')
-  String.ofList (first.map Char.toLower ++ rest)
+  let lowered := if first.any Char.isLower then
+      match first with
+      | []      => []
+      | c :: cs => c.toLower :: cs
+    else first.map Char.toLower
+  String.ofList (lowered ++ rest)
 
 /-- A type: `texture_format` is `TextureFormat`. -/
 def leanTypeName (n : Name) : String := quoteIdent (pascalCase n.text)
