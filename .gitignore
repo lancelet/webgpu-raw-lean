@@ -5,3 +5,5 @@
 # Downloaded by vendor/lean4/fetch.sh and vendor/libuv/fetch.sh
 /vendor/lean4/*/
 /vendor/libuv/*/
+# CI only: the Emscripten SDK, cached by setup-emsdk
+/emsdk-cache/

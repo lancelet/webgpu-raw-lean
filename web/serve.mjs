@@ -16,7 +16,8 @@ const types = {
 
 http.createServer((request, response) => {
   const url = new URL(request.url, "http://localhost");
-  const file = path.join(root, url.pathname === "/" ? "index.html" : url.pathname);
+  const name = url.pathname === "/" ? "index.html" : url.pathname;
+  const file = path.join(root, name);
   // Nothing outside the directory.
   if (!file.startsWith(root + path.sep)) {
     response.writeHead(403);
@@ -33,4 +34,6 @@ http.createServer((request, response) => {
     response.writeHead(200, { "content-type": type });
     response.end(data);
   });
-}).listen(port, () => console.log(`Serving ${root} at http://localhost:${port}/`));
+}).listen(port, () => {
+  console.log(`Serving ${root} at http://localhost:${port}/`);
+});

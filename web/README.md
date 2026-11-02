@@ -10,9 +10,9 @@ this builds a self-test, which CI runs under Node and publishes to
 Lean has published no WebAssembly build since v4.15, and its WebAssembly CI is
 disabled. This build is a workaround: it assembles what Lean would otherwise
 ship. It works for Lean v4.31.0, but each Lean upgrade can break it, and how
-long it will keep working is unknown. The same route (Lean's C, compiled with
-Emscripten) is the one every project running compiled Lean in the browser
-takes; there is no maintained alternative yet.
+long it will keep working is unknown. It takes the route (Lean's C, compiled
+with Emscripten) that other projects running compiled Lean in the browser have
+taken; we know of no maintained alternative.
 
 ## Building
 
@@ -31,7 +31,7 @@ reports that all checks passed; CI runs both checks.
 
 ## What it does
 
-`build.sh` builds, once per Lean version, into `.lake/web/<version>/`:
+`build.sh` builds:
 
 - **Lean's runtime**, compiled from Lean's source at the version in
   `lean-toolchain` (`vendor/lean4/fetch.sh`), with `include/lean/config.h` in
@@ -42,8 +42,10 @@ reports that all checks passed; CI runs both checks.
 - **libuv**, which the runtime uses, at the version and with the patch Lean's
   own WebAssembly build uses (`vendor/libuv/fetch.sh`).
 
+These are cached under `.lake/web/<version>-<stamp>/`, the stamp being of
+everything they are built with, so a change to any of it builds them again.
 Then Lake compiles the bindings and the self-test to C, and `build.sh`
-compiles that C, the generated shims and `main.c`, and links them.
+compiles that C and the generated shims, and links them.
 
 ## What to know
 
@@ -51,9 +53,9 @@ compiles that C, the generated shims and `main.c`, and links them.
   4.29 and later silently miscompile static constants on 32-bit targets
   ([lean4#15816]; fixed after v4.31.0). The self-test checks this: without
   the flag, a name literal no longer equals the same name built at run time.
-- **Single-threaded.** WebAssembly here has no threads, so `main.c` runs the
-  program on its own thread rather than through Lean's generated `main`, which
-  starts one. A `Task` runs without a thread of its own.
+- **Single-threaded.** The runtime is built without threads: a `Task` runs at
+  once, on the thread that starts it, but `IO.Promise` and `IO.CancelToken`
+  stop the program.
 - **WebAssembly exceptions** (`-fwasm-exceptions`), for the runtime's C++.
 - **Not built:** the runtime's `uv/` sources, which back `Std.Internal.UV`
   and whose WebAssembly stubs do not compile in v4.31.0 ([lean4#15181]).
@@ -61,7 +63,8 @@ compiles that C, the generated shims and `main.c`, and links them.
   and `lean_io_create_tempdir` disagree with the C Lean generates for them
   ([lean4#16089]; fixed after v4.31.0); the linker warns of both. Nothing here
   calls them.
-- **wasm32, not wasm64:** Safari does not support 64-bit WebAssembly memory.
+- **wasm32, not wasm64:** stable Safari does not support 64-bit WebAssembly
+  memory.
 
 [emdawnwebgpu]: https://dawn.googlesource.com/dawn/+/refs/heads/main/src/emdawnwebgpu/
 [pages]: https://lancelet.github.io/webgpu-raw-lean/
