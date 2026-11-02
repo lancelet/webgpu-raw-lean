@@ -11,15 +11,17 @@ The C shims need a C compiler with the C library's headers (`webgpu.h`
 includes `<math.h>`), which Lean's bundled compiler lacks: the build uses `cc`,
 or the compiler `CC` names. On Windows, use MinGW's: `CC=gcc`.
 
-Programs built here find wgpu-native where `fetch.sh` put it: on Linux and
-macOS, the link records its directory (an rpath), so a program moved elsewhere
-needs `LD_LIBRARY_PATH` or the library beside it; on Windows, programs find
-`wgpu_native.dll` through `PATH`, so add `vendor/wgpu-native/windows-<arch>/lib`
-to it before running them.
+Every program that imports the bindings, in this package or one depending on
+it, is linked with the shims and wgpu-native. Programs built here find
+wgpu-native at run time by a path relative to themselves, so the checkout can
+move. Elsewhere, a program needs wgpu-native on its library path: on Linux and
+macOS, an rpath or `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH`; on Windows,
+`wgpu_native.dll` on `PATH` (for programs built here too:
+`vendor/wgpu-native/windows-<arch>/lib`).
 
-A package that depends on this one gets the C shims, but not how to link
-wgpu-native, since Lake does not pass `moreLinkArgs` on to dependents: for now,
-it must give the same link arguments as `wgpuLinkArgs` itself.
+Nothing here records an absolute path: Lake keeps the configuration it
+elaborated from this file, and a path in it would go stale when the checkout
+moved.
 -/
 
 /-- The `vendor/wgpu-native/<platform>` directory name for the build host. -/
@@ -32,38 +34,42 @@ def wgpuPlatform : String :=
   else if System.Platform.isOSX then s!"macos-{arch}"
   else s!"linux-{arch}"
 
-/-- Where this platform's wgpu-native release is. -/
-def wgpuDir (pkgDir : FilePath) : FilePath :=
-  pkgDir / "vendor" / "wgpu-native" / wgpuPlatform
+/-- Where this platform's wgpu-native release is, in the package at `dir`. -/
+def wgpuDir (dir : FilePath) : FilePath :=
+  dir / "vendor" / "wgpu-native" / wgpuPlatform
 
 /--
-How to link wgpu-native: its shared library, with its directory recorded as an
-rpath, so programs run in place without setting a library path.
+Where programs built here (in `.lake/build/bin/`) find wgpu-native at run time:
+an rpath relative to the program itself. (Windows has no rpath.)
 -/
-def wgpuLinkArgs (pkgDir : FilePath) : Array String :=
-  let lib := (wgpuDir pkgDir / "lib").toString
-  if System.Platform.isWindows then #[s!"-L{lib}", "-lwgpu_native"]
-  else #[s!"-L{lib}", "-lwgpu_native", s!"-Wl,-rpath,{lib}"]
+def wgpuRpath : Array String :=
+  let lib := s!"../../../vendor/wgpu-native/{wgpuPlatform}/lib"
+  if System.Platform.isWindows then #[]
+  else if System.Platform.isOSX then #[s!"-Wl,-rpath,@executable_path/{lib}"]
+  else #[s!"-Wl,-rpath,$ORIGIN/{lib}"]
 
 package WebGPURaw where
   leanOptions  := #[⟨`autoImplicit, false⟩]
-  moreLinkArgs := wgpuLinkArgs __dir__
+  moreLinkArgs := wgpuRpath
 
 /--
-The bindings. Modules under `WebGPU.Raw.Internal` are helpers for the generated
-code: the bindings import them privately, so users never see them.
+wgpu-native's shared library, from `fetch.sh`. Programs that link it are linked
+again when it changes.
 -/
-@[default_target]
-lean_lib WebGPURaw where
-  roots := #[`WebGPU.Raw]
+target wgpuNative pkg : Dynlib := do
+  let dir := wgpuDir pkg.dir
+  let file := dir / "lib" / nameToSharedLib "wgpu_native"
+  unless ← file.pathExists do
+    error s!"no wgpu-native in {dir}: run vendor/wgpu-native/fetch.sh first"
+  return (← inputBinFile file).map fun path => { path, name := "wgpu_native" }
 
 /--
 The C shims, generated into `c/generated/` by `webgpu-gen`: every `.c` file
 there, compiled with the system C compiler (`cc`, or `CC`) into one static
-library linked into programs that use the bindings. Each is rebuilt when it,
-or any header beside it or in wgpu-native's `include/webgpu/`, changes.
+library. Each is rebuilt when it, or any header beside it or in wgpu-native's
+`include/webgpu/`, changes.
 -/
-extern_lib wgpushim pkg := do
+target wgpuShim pkg : FilePath := do
   let sources := pkg.dir / "c" / "generated"
   let wgpuInclude := wgpuDir pkg.dir / "include"
   unless ← wgpuInclude.isDir do
@@ -88,6 +94,17 @@ extern_lib wgpushim pkg := do
     buildO (pkg.buildDir / "c" / s!"{stem}.o") srcJob
       includes (#["-O2"] ++ pic) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
+
+/--
+The bindings. Modules under `WebGPU.Raw.Internal` are helpers for the generated
+code: the bindings import them privately, so users never see them. Programs
+that import the bindings are linked with the shims and wgpu-native.
+-/
+@[default_target]
+lean_lib WebGPURaw where
+  roots        := #[`WebGPU.Raw]
+  moreLinkObjs := #[wgpuShim]
+  moreLinkLibs := #[wgpuNative]
 
 /-- Tests. `#guard` checks run while this library builds. -/
 lean_lib WebGPURawTest
