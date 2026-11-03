@@ -48,7 +48,12 @@ bindings prove, in Lean:
   each an offset and what C fills it in from, for one C walker
   (`WebGPU/Raw/Internal/Reloc.lean`, `c/reloc.c`). For every struct with a
   table, both widths, it is proved that its relocations are exactly its
-  pointers, that the bytes C reads are their serialization, and that its index
-  finds its table. That the targets agree with the table is to be proved.
+  pointers, each within the struct, that the bytes C reads are their
+  serialization, and that its index finds its table. And the walker is
+  specified in Lean (`walk`), which C implements (by review and test): for
+  every such struct, both widths, it is proved that walking its table over its
+  bytes takes exactly its targets, each of the kind its relocation needs, a
+  nested struct's by its own table: so C never meets a target of the wrong
+  kind, nor runs out of them.
 
-Status: WIP: approximately 64% complete.
+Status: WIP: approximately 65% complete.

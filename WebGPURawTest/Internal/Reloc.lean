@@ -34,6 +34,63 @@ open WebGPU.Raw WebGPU.Raw.Reloc
   let kinds := [Kind.string, .optString, .object, .optObject, .block 0, .null]
   kinds.map Kind.code == [0, 1, 2, 3, 4, 5]
 
+/-! ## The walk
+
+The Lean specification of the walker (`walk`) refuses what C must not meet,
+and takes, of what it accepts, exactly the targets, a block's by its table. -/
+
+/--
+Tables for the walk: a struct of 8 bytes, a string (table 0); and one of 16,
+a null pointer and a block of table 0 (table 1).
+-/
+def specs : Array Spec := #[
+  (8,  [⟨0, .string⟩]),
+  (16, [⟨0, .null⟩, ⟨8, .block 0⟩])
+]
+
+/-- `n` bytes of zeros. -/
+def zerosOf (n : Nat) : ByteArray := ⟨Array.replicate n 0⟩
+
+/-- They are `n` bytes. -/
+theorem size_zerosOf (n : Nat) : (zerosOf n).size = n := by
+  simp [zerosOf, ByteArray.size]
+
+-- A string takes a string.
+example : walk specs 0 8 [.string "a"] = some [] := by
+  simp [walk, specs, step]
+
+-- But not nothing, nor a target of another kind.
+example : walk specs 0 8 [] = none := by
+  simp [walk, specs, step]
+example : walk specs 0 8 [.optString none] = none := by
+  simp [walk, specs, step]
+
+-- Bytes that are not whole elements are refused.
+example : walk specs 0 12 [.string "a", .string "b"] = none := by
+  simp [walk, specs]
+
+-- Each element takes its own: two elements, two strings, after the block.
+example :
+    walk specs 1 16 [.block (zerosOf 16), .string "a", .string "b"]
+      = some [] := by
+  rw [walk]
+  simp [specs, step, size_zerosOf]
+  rw [walk]
+  simp [step]
+
+-- An empty block takes nothing.
+example : walk specs 1 16 [.block (zerosOf 0)] = some [] := by
+  rw [walk]
+  simp [specs, step, size_zerosOf]
+  rw [walk]
+  simp
+
+-- A block whose table does not come before its own is refused: so the walk
+-- ends.
+example :
+    walk #[(8, [⟨0, .block 0⟩])] 0 8 [.block (zerosOf 8)] = none := by
+  simp [walk, step]
+
 /-! ## Filling in -/
 
 /-- An instance as an object: the same Lean value. -/

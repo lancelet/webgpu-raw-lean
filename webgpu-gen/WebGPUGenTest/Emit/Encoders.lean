@@ -260,6 +260,75 @@ def member (name : String) (value : Value) : Member :=
       "  #[.string d.label] ++ (d.inner.elim #[.block .empty] Inner.block64)")
     && has "def tableIndex : Nat := 1"
 
+/-! ## Walks -/
+
+-- `simp` on one line if it fits, else its lemmas filled below it.
+#guard
+  let long (s : String) := s ++ String.ofList (List.replicate 29 '_')
+  simpLines 2 ["a", "b"] == ["  simp [a, b]"]
+    && simpLines 2 [long "a", long "b", long "c"] == [
+      "  simp [",
+      s!"    {long "a"}, {long "b"},",
+      s!"    {long "c"}]"
+    ]
+
+-- A walk's proof: its index, and for an optional struct, a case for each, by
+-- that struct's block, walk and empty walk.
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone
+    [member "s" (.string false)]
+  let input := struct "WGPUOuter" "Outer" .extensible [
+    member "inner" (.structPointer inner.names true)
+  ]
+  let lines := match structEntries [inner, input] .bits64 input with
+    | some (size, entries) => walkDecls input .bits64 size entries 1
+    | none                 => []
+  lines == [
+    ["/-- Its index finds its table as the walk reads it. -/",
+      "theorem specs64_index : specs64[1]? = some (16, relocs64) :=",
+      "  rfl"],
+    ["/-- Walking its table over its bytes takes exactly its targets. -/",
+      "theorem walk64 (d : Outer) (ts : List Target) :",
+      "    walk specs64 1 (encode64 d).size",
+      "      ((targets64 d).toList ++ ts) = some ts := by",
+      "  rw [walk, specs64_index, size_encode64]",
+      "  cases h0 : d.inner <;>",
+      "    simp [",
+      "      relocs64, targets64, step, h0, Inner.block64, Inner.walk64,",
+      "      walk_empty Inner.specs64_index (by decide)]"],
+    ["/-- The same, at its index. -/",
+      "theorem walk64_tableIndex (d : Outer) (ts : List Target) :",
+      "    walk specs64 tableIndex (encode64 d).size",
+      "      ((targets64 d).toList ++ ts) = some ts :=",
+      "  walk64 d ts"]
+  ]
+
+-- Several optional structs, one in a struct held by value: a case for each,
+-- by its path, the lemmas for a struct they share once.
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone
+    [member "s" (.string false)]
+  let middle := struct "WGPUMiddle" "Middle" .standalone
+    [member "c" (.structPointer inner.names true)]
+  let input := struct "WGPUOuter" "Outer" .standalone [
+    member "a" (.structPointer inner.names true),
+    member "b" (.structPointer inner.names true),
+    member "mid" (.struct middle.names)
+  ]
+  let lines := match structEntries [inner, middle, input] .bits64 input with
+    | some (size, entries) => walkDecls input .bits64 size entries 2
+    | none                 => []
+  let proof := (lines.drop 1).head?.getD []
+  proof.drop 4 == [
+    "  rw [walk, specs64_index, size_encode64]",
+    "  cases h0 : d.a <;>",
+    "  cases h1 : d.b <;>",
+    "  cases h2 : d.mid.c <;>",
+    "    simp [",
+    "      relocs64, targets64, step, h0, h1, h2, Inner.block64, Inner.walk64,",
+    "      walk_empty Inner.specs64_index (by decide)]"
+  ]
+
 /-! ## Printing -/
 
 -- A struct of one field: its fields, pointers, proofs, and encoders.
@@ -280,6 +349,11 @@ def member (name : String) (value : Value) : Member :=
     theorem fields64_wellFormed : Fields.WellFormed .bits64 4 fields64 := by
       unfold Fields.WellFormed; decide
 
+    /-- The pointers are within the struct. -/
+    theorem pointers64_within :
+        ∀ o ∈ pointers64, o + 8 ≤ 4 := by
+      decide
+
     /-- The pointers are apart from every field. -/
     theorem pointers64_apart :
         ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -299,6 +373,11 @@ def member (name : String) (value : Value) : Member :=
       simp only [
         encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
         List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+    /-- Its encoding is its size. -/
+    theorem size_encode64 (d : One) :
+        (encode64 d).size = 4 := by
+      rw [encode64_eq, size_encode]
 
     /-- Its pointers read as 0, for C to fill in. -/
     theorem encode64_pointers (d : One) :

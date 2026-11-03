@@ -1,7 +1,8 @@
-// Filling in an encoded struct's pointers: see WebGPU/Raw/Internal/Reloc.lean.
-// That the table, the targets and the bytes agree is to be proved there, of the
-// generated tables; this checks it only when the bindings are built with
-// `-K checkPokes=true` (LEAN_WGPU_CHECKED), as the tests are in CI.
+// Filling in an encoded struct's pointers: see WebGPU/Raw/Internal/Reloc.lean,
+// whose `walk` this implements. That the table, the targets and the bytes
+// agree is proved there of every generated table; this checks it only when the
+// bindings are built with `-K checkPokes=true` (LEAN_WGPU_CHECKED), as the
+// tests are in CI.
 
 #include <string.h>
 #include "reloc.h"

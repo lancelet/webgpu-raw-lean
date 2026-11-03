@@ -23,6 +23,9 @@ target width, a struct has:
   proved to be every pointer and only them, and `serialize` of them; and what
   C fills each pointer in from (`targets64`), and itself as a block, both
   `@[never_extract]`, so that no block is a constant.
+- and, with every table known, at the end: that walking its table over its
+  bytes (`WebGPU.Raw.Reloc.walk`, as C does) takes exactly its targets
+  (`walk64`), each of its kind, a pointer to a struct by that struct's own.
 
 Every struct's table is in `tables64`, at its `tableIndex`; each object type
 converts to the `Object` a pointer to one is filled in from.
@@ -241,6 +244,11 @@ def widthName : Width → String
   | .bits32 => ".bits32"
   | .bits64 => ".bits64"
 
+/-- The width, as a declaration's doc names it. -/
+def widthOn : Width → String
+  | .bits32 => "wasm32"
+  | .bits64 => "64-bit targets"
+
 /-- A line, or, if it is over the width, its parts on lines of their own. -/
 def lineOrBroken (indent : Nat) (head : String) (parts : List String) :
     List String :=
@@ -282,9 +290,7 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
   let pointers := entries.filterMap fun (o, _, i) =>
     if i.isPointer then some o else none
   let ptr := w.bytes
-  let on := match w with
-    | .bits32 => "wasm32"
-    | .bits64 => "64-bit targets"
+  let on := widthOn w
   let fieldRows := (fields.map fun (o, k, i) =>
     let param := if (bits i).contains "d." then "d" else "_"
     lineOrBroken 2 s!"⟨{o}, .{scalarName k},"
@@ -315,6 +321,10 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
       s!"theorem fields{n}_wellFormed : " ++
         s!"Fields.WellFormed {wn} {size} fields{n} := by",
       "  unfold Fields.WellFormed; decide"],
+    ["/-- The pointers are within the struct. -/",
+      s!"theorem pointers{n}_within :",
+      s!"    ∀ o ∈ pointers{n}, o + {ptr} ≤ {size} := by",
+      "  decide"],
     ["/-- The pointers are apart from every field. -/",
       s!"theorem pointers{n}_apart :",
       s!"    ∀ o ∈ pointers{n}, ∀ f ∈ fields{n},",
@@ -330,6 +340,10 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
       s!"theorem encode{n}_eq (d : {t}) :",
       s!"    encode{n} d = Encode.encode {wn} {size} fields{n} d := by",
       "  simp only ["] ++ indent 4 (closed (fill 4 lemmas)),
+    ["/-- Its encoding is its size. -/",
+      s!"theorem size_encode{n} (d : {t}) :",
+      s!"    (encode{n} d).size = {size} := by",
+      s!"  rw [encode{n}_eq, size_encode]"],
     ["/-- Its pointers read as 0, for C to fill in. -/",
       s!"theorem encode{n}_pointers (d : {t}) :",
       s!"    ∀ o ∈ pointers{n}, readLE (encode{n} d) o {ptr} = 0 :=",
@@ -430,9 +444,7 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
     (index : Names → Option Nat) : Option (List (List String)) := do
   let t := s.names.lean
   let n := suffix w
-  let on := match w with
-    | .bits32 => "wasm32"
-    | .bits64 => "64-bit targets"
+  let on := widthOn w
   let pointers := entries.filterMap fun (o, _, i) => match i with
     | .pointer p => some (o, p)
     | _          => none
@@ -573,33 +585,109 @@ def objectDecls (spec : Lowered.Spec) : List Doc :=
       "@[extern c inline \"#1\"]",
       s!"opaque Internal.{o.names.lean}.toObject : {o.names.lean} → Object"]
 
+/--
+`simp` with these lemmas, `indent` in: on one line if it fits, else its lemmas
+on lines of their own, filled.
+-/
+def simpLines (indent : Nat) (lemmas : List String) : List String :=
+  let flat := "simp [" ++ ", ".intercalate lemmas ++ "]"
+  let pad := String.ofList (List.replicate indent ' ')
+  if indent + flat.length ≤ width then [pad ++ flat]
+  else [pad ++ "simp ["] ++ Encoders.indent (indent + 2)
+    (closed (fill (indent + 2) lemmas))
+
+/--
+The structs a struct's pointers point to: each one's names, the path to its
+pointer, and whether it is optional.
+-/
+def pointees (entries : List Entry) : List (Names × String × Bool) :=
+  entries.filterMap fun (_, _, i) => match i with
+    | .pointer (.struct names e nullable) => some (names, e, nullable)
+    | _                                   => none
+
+/--
+A struct's proofs that the walk (`WebGPU.Raw.Reloc.walk`) agrees with its
+table and targets on one width, its table's index `i` and those of the structs
+it points to: each declaration as its lines.
+-/
+def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
+    (i : Nat) : List (List String) :=
+  let t := s.names.lean
+  let n := suffix w
+  let ps := pointees entries
+  let optional := ps.filter fun (_, _, nullable) => nullable
+  let hyp (k : Nat) := s!"h{k}"
+  -- The pointees' lemmas, and for each optional one, its case and its empty.
+  let pointeeLemmas := (ps.map fun (names, _, _) =>
+      [s!"{names.lean}.block{n}", s!"{names.lean}.walk{n}"]).flatten.eraseDups
+  let empties := (optional.map fun (names, _, _) =>
+      s!"walk_empty {names.lean}.specs{n}_index (by decide)").eraseDups
+  let relocs := entries.filter fun (_, _, it) => it.isPointer
+  let lemmas := [s!"relocs{n}", s!"targets{n}"]
+    ++ (if relocs.isEmpty then [] else ["step"])
+    ++ (optional.zipIdx.map fun (_, k) => hyp k) ++ pointeeLemmas ++ empties
+  let cases := optional.zipIdx.map fun ((_, e, _), k) =>
+    s!"cases {hyp k} : {e} <;>"
+  [
+    ["/-- Its index finds its table as the walk reads it. -/",
+      s!"theorem specs{n}_index : specs{n}[{i}]? = some ({size}, relocs{n}) :=",
+      "  rfl"],
+    ["/-- Walking its table over its bytes takes exactly its targets. -/"]
+      ++ lineOrBroken 0 s!"theorem walk{n} (d : {t})" ["(ts : List Target) :"]
+      ++ [s!"    walk specs{n} {i} (encode{n} d).size",
+        s!"      ((targets{n} d).toList ++ ts) = some ts := by",
+        s!"  rw [walk, specs{n}_index, size_encode{n}]"]
+      ++ indent 2 cases ++ simpLines (if cases.isEmpty then 2 else 4) lemmas,
+    ["/-- The same, at its index. -/"]
+      ++ lineOrBroken 0 s!"theorem walk{n}_tableIndex (d : {t})"
+        ["(ts : List Target) :"] ++ [
+      s!"    walk specs{n} tableIndex (encode{n} d).size",
+      s!"      ((targets{n} d).toList ++ ts) = some ts :=",
+      s!"  walk{n} d ts"]
+  ]
+
 /-- Every table on each width, by its index in a relocation. -/
 def tablesDecls (spec : Lowered.Spec) : List Doc :=
-  let tables := tabled spec.structs.toList
-  let widths := [Width.bits64, .bits32].map fun w =>
+  let structs := spec.structs.toList
+  let tables := tabled structs
+  let widths := [Width.bits64, .bits32].flatMap fun w =>
     let n := suffix w
-    let on := match w with
-      | .bits32 => "wasm32"
-      | .bits64 => "64-bit targets"
     let names := tables.map fun s => s!"{s.names.lean}.table{n}"
-    Doc.lines ([s!"/-- Every struct's table on {on}, by its index. -/",
-      s!"def tables{n} : Array ByteArray := #["] ++ indent 2 (fill 2 names)
-      ++ ["]"])
+    -- Every struct of `tables` has its entries, so none is left out here,
+    -- which would put each after it at the wrong index.
+    let specs := tables.filterMap fun s =>
+      (structEntries structs w s).map fun (size, _) =>
+        s!"({size}, {s.names.lean}.relocs{n})"
+    [Doc.lines ([s!"/-- Every struct's table on {widthOn w}, by its index. -/",
+        s!"def tables{n} : Array ByteArray := #["] ++ indent 2 (fill 2 names)
+        ++ ["]"]),
+      Doc.lines ([s!"/-- Every struct's table on {widthOn w}, as the walk " ++
+          "reads it. -/",
+        s!"noncomputable def specs{n} : Array Spec := #["]
+        ++ indent 2 (fill 2 specs) ++ ["]"]),
+      Doc.lines ["/-- The tables C reads are the tables the walk reads. -/",
+        s!"theorem tables{n}_eq :",
+        s!"    tables{n}.toList = specs{n}.toList.map fun (size, relocs) =>",
+        "      serialize size relocs :=",
+        "  rfl"]]
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
     "def tables : Array ByteArray :=",
     "  if System.Platform.numBits = 64 then tables64 else tables32"]
-  -- Each struct's index finds its tables.
-  let indices := tables.map fun s => Doc.lines [
-    s!"namespace {s.names.lean}",
-    "",
-    "/-- Its index finds its tables. -/",
-    "theorem tables_index :",
-    "    tables64[tableIndex]? = some table64 ∧",
-    "      tables32[tableIndex]? = some table32 :=",
-    "  ⟨rfl, rfl⟩",
-    "",
-    s!"end {s.names.lean}"]
-  [Doc.lines ["/-! ## Tables -/"]] ++ widths ++ [current] ++ indices
+  -- Each struct's index finds its tables, and its walk takes its targets.
+  let proofs := tables.zipIdx.map fun (s, i) =>
+    let walks := [Width.bits64, .bits32].flatMap fun w =>
+      match structEntries structs w s with
+      | some (size, entries) => walkDecls s w size entries i
+      | none                 => []
+    Doc.lines ([s!"namespace {s.names.lean}", "",
+      "/-- Its index finds its tables. -/",
+      "theorem tables_index :",
+      "    tables64[tableIndex]? = some table64 ∧",
+      "      tables32[tableIndex]? = some table32 :=",
+      "  ⟨rfl, rfl⟩", ""]
+      ++ (walks.map (· ++ [""])).flatten
+      ++ [s!"end {s.names.lean}"])
+  [Doc.lines ["/-! ## Tables -/"]] ++ widths ++ [current] ++ proofs
 
 /-- The encoders' module, `WebGPU/Raw/Encoders.lean`; none if one is missing. -/
 def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
@@ -622,7 +710,8 @@ def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
       "",
       "Where C fills in a struct's pointers is its table (`tables`, at its",
       "`tableIndex`), proved to be its pointers; what it fills each in from,",
-      "its targets (`toTargets`)."
+      "its targets (`toTargets`), proved to be what walking its table takes",
+      "(`walk64`, `walk32`)."
     ]
     (text "open Encode Bytes Reloc" :: objectDecls spec ++ decls
       ++ tablesDecls spec)

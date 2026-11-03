@@ -122,13 +122,17 @@ unimplemented.)
   `ByteArray.empty`), so what makes one is `@[never_extract]`: the encoders,
   and what makes the targets. *Checked by:*
   proof, of every generated table, that its relocations are exactly its
-  struct's pointers, and that its bytes are their serialization; a check, as
+  struct's pointers, each within the struct, and that its bytes are their
+  serialization; a check, as
   the tests build, that every encoder and maker of targets is
   `@[never_extract]`; test, natively and on the web, of every kind of pointer,
   none and some, blocks two deep, empty and of two elements, and of generated
   tables against C; and CI runs the tests in the checked build, where the
-  walker checks every one of the above, stopping the program if not. That the
-  targets agree with the table is to be proved.
+  walker checks every one of the above, stopping the program if not. And proof,
+  of every generated struct, that the walker's Lean specification (`walk`),
+  walking its table over its bytes, takes exactly its targets, each of the
+  kind its relocation needs: the agreement the checked build checks. That C
+  implements the specification is by review and test.
 
 ## Threads
 

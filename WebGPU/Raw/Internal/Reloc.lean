@@ -126,6 +126,64 @@ theorem size_serialize (size : Nat) (relocs : List Reloc) :
     simp [le32] at ih ⊢
     omega
 
+
+/-! ## The walk
+
+Which targets `lean_wgpu_fill` takes, in which order, and of which kinds, as
+Lean: the specification it implements (by review and test). A table, as the
+walk reads it, is its struct's size and its relocations; each element of the
+bytes takes, for each relocation but a null one, the next target, which must
+be of its kind, and a block's own targets come next, by its own table. The
+walk is none if a target is missing or of the wrong kind, if the bytes are
+not whole elements, or if a block's table does not come before its own, as
+every generated one does: so it ends.
+
+It says nothing of where C writes each pointer (each struct's pointers are
+proved within it, `pointers64_within`), of alignment, or of a block being
+held by nothing else (both checked in the checked build); nor that C reads
+the table `serialize` lays out, or that a kind's code is its target's
+constructor's index (both by review and test).
+-/
+
+/-- A table as the walk reads it: its struct's size, and its relocations. -/
+abbrev Spec := Nat × List Reloc
+
+/-- One relocation's step: the targets after it, if the next is of its kind. -/
+def step (walk : Nat → Nat → List Target → Option (List Target)) (r : Reloc)
+    (ts : List Target) : Option (List Target) :=
+  match r.kind, ts with
+  | .null,      ts                 => some ts
+  | .string,    .string _ :: ts    => some ts
+  | .optString, .optString _ :: ts => some ts
+  | .object,    .object _ :: ts    => some ts
+  | .optObject, .optObject _ :: ts => some ts
+  | .block j,   .block bytes :: ts => walk j bytes.size ts
+  | _,          _                  => none
+
+/--
+The targets left after filling in `size` bytes by table `table` of `specs`,
+from `targets`; none if they do not agree.
+-/
+def walk (specs : Array Spec) (table size : Nat) (targets : List Target) :
+    Option (List Target) := do
+  let (stride, relocs) ← specs[table]?
+  if stride = 0 ∨ size % stride ≠ 0 then none
+  else
+    (List.replicate (size / stride) ()).foldlM (init := targets) fun ts _ =>
+      relocs.foldlM (init := ts) fun ts r =>
+        step (fun j size ts => if j < table then walk specs j size ts
+          else none) r ts
+termination_by table
+
+
+/-- An empty block takes no targets: an optional struct that is none. -/
+theorem walk_empty {specs : Array Spec} {table stride : Nat}
+    {relocs : List Reloc} (h : specs[table]? = some (stride, relocs))
+    (hstride : stride ≠ 0) (ts : List Target) :
+    walk specs table 0 ts = some ts := by
+  rw [walk, h]
+  simp [hstride]
+
 end WebGPU.Raw.Reloc
 
 end
