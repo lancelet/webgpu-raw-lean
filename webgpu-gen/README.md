@@ -111,6 +111,14 @@ The main proofs we have (not a complete list) are:
   each `T.zero` declared is its struct's, lined up with its members; and
   each `{}` is of a bound struct, the one `complete` finds
   (`Emit/ZeroDecls.lean`).
+- **Laying Out C Structs.** To pack a struct as C lays it out, the generator
+  models C's layout rules for `webgpu.h`'s structs, on 64-bit and wasm32
+  targets (`CLayout.lean`). For every struct, however deeply nested: each field,
+  and each scalar within it, is aligned, lies within the struct, and ends
+  before the next begins; and each scalar is at its field's offset, so
+  checking fields' offsets checks scalars' too. That the model gives what the
+  C compiler does is tested for examples, on both widths; checking every
+  struct against `webgpu.h` is *not yet* done.
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`

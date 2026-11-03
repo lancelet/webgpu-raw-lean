@@ -23,6 +23,7 @@ import WebGPUGen.Lowered.LeanNames
 import WebGPUGen.Lowered
 import WebGPUGen.Lowered.Docs
 import WebGPUGen.Lowered.Lower
+import WebGPUGen.CLayout
 import WebGPUGen.Lowered.BoundStructs
 import WebGPUGen.Lowered.Settle
 import WebGPUGen.Lowered.ZeroFields
