@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: b8a5388 (clean)
-  Generated:        2026-11-02 23:17:47 UTC
+  Generator commit: c6bfcc4 (clean)
+  Generated:        2026-11-03 00:05:23 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -284,6 +284,30 @@ structure RenderBundleEncoderDescriptor where
   sampleCount        : UInt32              := 1
   depthReadOnly      : Bool                := false
   stencilReadOnly    : Bool                := false
+
+structure RenderPassDepthStencilAttachment where
+  view              : TextureView
+  depthLoadOp       : LoadOp         := .undefined
+  depthStoreOp      : StoreOp        := .undefined
+  /--
+  This is a [NullableFloatingPointType].
+
+  If `NaN`, indicates an `undefined` value (as defined by the JS spec). Use
+  `WGPU_DEPTH_CLEAR_VALUE_UNDEFINED` to indicate this semantically.
+
+  If infinite, produces a [NonFiniteFloatValueError].
+
+  In Lean, `none` is C's NaN, as is `some` of a NaN.
+
+  [NullableFloatingPointType]: https://webgpu-native.github.io/webgpu-headers/FloatingPointNumbers.html#NullableFloatingPointType
+  [NonFiniteFloatValueError]: https://webgpu-native.github.io/webgpu-headers/FloatingPointNumbers.html#NonFiniteFloatValueError
+  -/
+  depthClearValue   : Option Float32 := none
+  depthReadOnly     : Bool           := false
+  stencilLoadOp     : LoadOp         := .undefined
+  stencilStoreOp    : StoreOp        := .undefined
+  stencilClearValue : UInt32         := 0
+  stencilReadOnly   : Bool           := false
 
 structure RenderPassMaxDrawCount where
   maxDrawCount : UInt64 := 50000000
@@ -816,6 +840,13 @@ structure ComputePipelineDescriptor where
   label   : String                := ""
   layout  : Option PipelineLayout := none
   compute : ComputeState
+
+structure RenderPassDescriptor where
+  label                  : String                                  := ""
+  colorAttachments       : Array RenderPassColorAttachment         := #[]
+  depthStencilAttachment : Option RenderPassDepthStencilAttachment := none
+  occlusionQuerySet      : Option QuerySet                         := none
+  timestampWrites        : Option PassTimestampWrites              := none
 
 structure VertexState where
   module     : ShaderModule
