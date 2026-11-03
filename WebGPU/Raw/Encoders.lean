@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: b5a0a78 (clean)
-  Generated:        2026-11-03 10:57:10 UTC
+  Generator commit: d69d4c8 (clean)
+  Generated:        2026-11-03 11:54:13 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -16,6 +16,7 @@ module
 
 public import WebGPU.Raw.Structs
 public import WebGPU.Raw.Internal.Encode
+public import WebGPU.Raw.Internal.Reloc
 
 /-!
 # Encoders
@@ -26,13 +27,114 @@ fields are the specification (`WebGPU.Raw.Encode.encode`); its
 encoder, a poke for each field into a fresh block, is proved the same,
 its fields well-formed, and its pointers 0. The C compiler checks the
 layouts against `webgpu.h` (`c/generated/layouts.c`).
+
+Where C fills in a struct's pointers is its table (`tables`, at its
+`tableIndex`), proved to be its pointers; what it fills each in from,
+its targets (`toTargets`).
 -/
 
 @[expose] public section
 
 namespace WebGPU.Raw
 
-open Encode Bytes
+open Encode Bytes Reloc
+
+/-! ## Objects
+
+Each object type as an `Object`, the same Lean value: what C fills in a
+pointer to one from. -/
+
+/-- `Adapter`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Adapter.toObject : Adapter → Object
+
+/-- `BindGroup`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.BindGroup.toObject : BindGroup → Object
+
+/-- `BindGroupLayout`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.BindGroupLayout.toObject : BindGroupLayout → Object
+
+/-- `Buffer`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Buffer.toObject : Buffer → Object
+
+/-- `CommandBuffer`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.CommandBuffer.toObject : CommandBuffer → Object
+
+/-- `CommandEncoder`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.CommandEncoder.toObject : CommandEncoder → Object
+
+/-- `ComputePassEncoder`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.ComputePassEncoder.toObject : ComputePassEncoder → Object
+
+/-- `ComputePipeline`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.ComputePipeline.toObject : ComputePipeline → Object
+
+/-- `Device`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Device.toObject : Device → Object
+
+/-- `ExternalTexture`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.ExternalTexture.toObject : ExternalTexture → Object
+
+/-- `Instance`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Instance.toObject : Instance → Object
+
+/-- `PipelineLayout`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.PipelineLayout.toObject : PipelineLayout → Object
+
+/-- `QuerySet`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.QuerySet.toObject : QuerySet → Object
+
+/-- `Queue`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Queue.toObject : Queue → Object
+
+/-- `RenderBundle`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.RenderBundle.toObject : RenderBundle → Object
+
+/-- `RenderBundleEncoder`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.RenderBundleEncoder.toObject : RenderBundleEncoder → Object
+
+/-- `RenderPassEncoder`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.RenderPassEncoder.toObject : RenderPassEncoder → Object
+
+/-- `RenderPipeline`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.RenderPipeline.toObject : RenderPipeline → Object
+
+/-- `Sampler`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Sampler.toObject : Sampler → Object
+
+/-- `ShaderModule`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.ShaderModule.toObject : ShaderModule → Object
+
+/-- `Surface`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Surface.toObject : Surface → Object
+
+/-- `Texture`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.Texture.toObject : Texture → Object
+
+/-- `TextureView`, as an `Object`. -/
+@[extern c inline "#1"]
+opaque Internal.TextureView.toObject : TextureView → Object
 
 namespace BindGroupEntry
 
@@ -57,7 +159,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BindGroupEntry) : ByteArray :=
   let b := Block.fresh 56
   let b := b.pokeU32 8 d.binding (by decide)
@@ -80,6 +182,42 @@ theorem encode64_pointers (d : BindGroupEntry) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨16, .optObject⟩, ⟨40, .optObject⟩, ⟨48, .optObject⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  56, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 3,
+  0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 3, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 56 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : BindGroupEntry) : Array Target :=
+  #[
+    .optObject (d.buffer.map Internal.Buffer.toObject),
+    .optObject (d.sampler.map Internal.Sampler.toObject),
+    .optObject (d.textureView.map Internal.TextureView.toObject)
+  ]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BindGroupEntry) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BindGroupEntry) := [
   ⟨4, .u32, fun d => (d.binding).toNat⟩,
@@ -101,7 +239,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BindGroupEntry) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU32 4 d.binding (by decide)
@@ -124,6 +262,42 @@ theorem encode32_pointers (d : BindGroupEntry) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .optObject⟩, ⟨32, .optObject⟩, ⟨36, .optObject⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  40, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 3, 0,
+  0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 3, 0, 0,
+  0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 40 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : BindGroupEntry) : Array Target :=
+  #[
+    .optObject (d.buffer.map Internal.Buffer.toObject),
+    .optObject (d.sampler.map Internal.Sampler.toObject),
+    .optObject (d.textureView.map Internal.TextureView.toObject)
+  ]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BindGroupEntry) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -136,6 +310,14 @@ def sizesFit (_ : BindGroupEntry) : Bool :=
 @[inline]
 def toBytes (d : BindGroupEntry) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 0
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BindGroupEntry) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BindGroupEntry
 
@@ -162,7 +344,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BlendComponent) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 (CEnum.toC d.operation) (by decide)
@@ -183,6 +365,34 @@ theorem encode64_pointers (d : BlendComponent) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 12 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : BlendComponent) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BlendComponent) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BlendComponent) := [
@@ -205,7 +415,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BlendComponent) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 (CEnum.toC d.operation) (by decide)
@@ -227,6 +437,34 @@ theorem encode32_pointers (d : BlendComponent) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : BlendComponent) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BlendComponent) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -239,6 +477,14 @@ def sizesFit (_ : BlendComponent) : Bool :=
 @[inline]
 def toBytes (d : BlendComponent) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 1
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BlendComponent) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BlendComponent
 
@@ -265,7 +511,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BufferBindingLayout) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC d.type) (by decide)
@@ -288,6 +534,36 @@ theorem encode64_pointers (d : BufferBindingLayout) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : BufferBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BufferBindingLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BufferBindingLayout) := [
   ⟨4, .u32, fun d => (CEnum.toC d.type).toNat⟩,
@@ -309,7 +585,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BufferBindingLayout) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.type) (by decide)
@@ -332,6 +608,36 @@ theorem encode32_pointers (d : BufferBindingLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : BufferBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BufferBindingLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -344,6 +650,14 @@ def sizesFit (_ : BufferBindingLayout) : Bool :=
 @[inline]
 def toBytes (d : BufferBindingLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 2
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BufferBindingLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BufferBindingLayout
 
@@ -371,7 +685,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BufferDescriptor) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -395,6 +709,37 @@ theorem encode64_pointers (d : BufferDescriptor) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 48 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : BufferDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BufferDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BufferDescriptor) := [
   ⟨8, .size, fun d => (d.label.utf8ByteSize.toUInt32).toNat⟩,
@@ -417,7 +762,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BufferDescriptor) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -441,6 +786,37 @@ theorem encode32_pointers (d : BufferDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 40 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : BufferDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BufferDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -453,6 +829,14 @@ def sizesFit (_ : BufferDescriptor) : Bool :=
 @[inline]
 def toBytes (d : BufferDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 3
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BufferDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BufferDescriptor
 
@@ -480,7 +864,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : Color) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeF64 0 d.r (by decide)
@@ -502,6 +886,34 @@ theorem encode64_pointers (d : Color) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : Color) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : Color) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field Color) := [
@@ -525,7 +937,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : Color) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeF64 0 d.r (by decide)
@@ -548,6 +960,34 @@ theorem encode32_pointers (d : Color) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  32, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 32 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : Color) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : Color) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -560,6 +1000,14 @@ def sizesFit (_ : Color) : Bool :=
 @[inline]
 def toBytes (d : Color) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 4
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : Color) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end Color
 
@@ -584,7 +1032,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : CommandBufferDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -603,6 +1051,37 @@ theorem encode64_pointers (d : CommandBufferDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : CommandBufferDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : CommandBufferDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field CommandBufferDescriptor) := [
@@ -623,7 +1102,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : CommandBufferDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -643,6 +1122,37 @@ theorem encode32_pointers (d : CommandBufferDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : CommandBufferDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : CommandBufferDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -655,6 +1165,14 @@ def sizesFit (_ : CommandBufferDescriptor) : Bool :=
 @[inline]
 def toBytes (d : CommandBufferDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 5
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : CommandBufferDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end CommandBufferDescriptor
 
@@ -679,7 +1197,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : CommandEncoderDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -698,6 +1216,37 @@ theorem encode64_pointers (d : CommandEncoderDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : CommandEncoderDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : CommandEncoderDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field CommandEncoderDescriptor) := [
@@ -718,7 +1267,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : CommandEncoderDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -738,6 +1287,37 @@ theorem encode32_pointers (d : CommandEncoderDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : CommandEncoderDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : CommandEncoderDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -750,6 +1330,14 @@ def sizesFit (_ : CommandEncoderDescriptor) : Bool :=
 @[inline]
 def toBytes (d : CommandEncoderDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 6
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : CommandEncoderDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end CommandEncoderDescriptor
 
@@ -778,7 +1366,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : CompatibilityModeLimits) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC SType.compatibilityModeLimits) (by decide)
@@ -801,6 +1389,36 @@ theorem encode64_pointers (d : CompatibilityModeLimits) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : CompatibilityModeLimits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : CompatibilityModeLimits) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field CompatibilityModeLimits) := [
@@ -825,7 +1443,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : CompatibilityModeLimits) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC SType.compatibilityModeLimits) (by decide)
@@ -849,6 +1467,36 @@ theorem encode32_pointers (d : CompatibilityModeLimits) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : CompatibilityModeLimits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : CompatibilityModeLimits) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -861,6 +1509,14 @@ def sizesFit (_ : CompatibilityModeLimits) : Bool :=
 @[inline]
 def toBytes (d : CompatibilityModeLimits) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 7
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : CompatibilityModeLimits) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end CompatibilityModeLimits
 
@@ -886,7 +1542,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ConstantEntry) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU64 16 d.key.utf8ByteSize.toUInt64 (by decide)
@@ -908,6 +1564,37 @@ theorem encode64_pointers (d : ConstantEntry) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ConstantEntry) : Array Target :=
+  #[.string d.key]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ConstantEntry) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ConstantEntry) := [
   ⟨8, .size, fun d => (d.key.utf8ByteSize.toUInt32).toNat⟩,
@@ -928,7 +1615,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ConstantEntry) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 d.key.utf8ByteSize.toUInt32 (by decide)
@@ -950,6 +1637,37 @@ theorem encode32_pointers (d : ConstantEntry) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ConstantEntry) : Array Target :=
+  #[.string d.key]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ConstantEntry) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -962,6 +1680,14 @@ def sizesFit (_ : ConstantEntry) : Bool :=
 @[inline]
 def toBytes (d : ConstantEntry) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 8
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ConstantEntry) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ConstantEntry
 
@@ -988,7 +1714,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : Extent3D) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 d.width (by decide)
@@ -1009,6 +1735,34 @@ theorem encode64_pointers (d : Extent3D) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 12 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : Extent3D) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : Extent3D) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field Extent3D) := [
@@ -1031,7 +1785,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : Extent3D) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 d.width (by decide)
@@ -1053,6 +1807,34 @@ theorem encode32_pointers (d : Extent3D) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : Extent3D) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : Extent3D) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1065,6 +1847,14 @@ def sizesFit (_ : Extent3D) : Bool :=
 @[inline]
 def toBytes (d : Extent3D) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 9
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : Extent3D) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end Extent3D
 
@@ -1089,7 +1879,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (_ : ExternalTextureBindingEntry) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC SType.externalTextureBindingEntry) (by decide)
@@ -1108,6 +1898,37 @@ theorem encode64_pointers (d : ExternalTextureBindingEntry) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨16, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 2,
+  0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ExternalTextureBindingEntry) : Array Target :=
+  #[.object (Internal.ExternalTexture.toObject d.externalTexture)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ExternalTextureBindingEntry) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ExternalTextureBindingEntry) := [
@@ -1128,7 +1949,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (_ : ExternalTextureBindingEntry) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 4 (CEnum.toC SType.externalTextureBindingEntry) (by decide)
@@ -1148,6 +1969,37 @@ theorem encode32_pointers (d : ExternalTextureBindingEntry) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ExternalTextureBindingEntry) : Array Target :=
+  #[.object (Internal.ExternalTexture.toObject d.externalTexture)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ExternalTextureBindingEntry) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1160,6 +2012,14 @@ def sizesFit (_ : ExternalTextureBindingEntry) : Bool :=
 @[inline]
 def toBytes (d : ExternalTextureBindingEntry) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 10
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ExternalTextureBindingEntry) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ExternalTextureBindingEntry
 
@@ -1184,7 +2044,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (_ : ExternalTextureBindingLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 8
@@ -1206,6 +2066,36 @@ theorem encode64_pointers (d : ExternalTextureBindingLayout) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : ExternalTextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ExternalTextureBindingLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ExternalTextureBindingLayout) := [
   ⟨4, .u32, fun _ => (CEnum.toC SType.externalTextureBindingLayout).toNat⟩
@@ -1225,7 +2115,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (_ : ExternalTextureBindingLayout) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 4
@@ -1247,6 +2137,36 @@ theorem encode32_pointers (d : ExternalTextureBindingLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 8 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : ExternalTextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ExternalTextureBindingLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1259,6 +2179,14 @@ def sizesFit (_ : ExternalTextureBindingLayout) : Bool :=
 @[inline]
 def toBytes (d : ExternalTextureBindingLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 11
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ExternalTextureBindingLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ExternalTextureBindingLayout
 
@@ -1283,7 +2211,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : Future) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU64 0 d.id (by decide)
@@ -1302,6 +2230,34 @@ theorem encode64_pointers (d : Future) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  8, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 8 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : Future) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : Future) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field Future) := [
@@ -1322,7 +2278,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : Future) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU64 0 d.id (by decide)
@@ -1342,6 +2298,34 @@ theorem encode32_pointers (d : Future) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  8, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 8 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : Future) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : Future) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1354,6 +2338,14 @@ def sizesFit (_ : Future) : Bool :=
 @[inline]
 def toBytes (d : Future) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 12
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : Future) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end Future
 
@@ -1378,7 +2370,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : InstanceLimits) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 8 d.timedWaitAnyMaxCount (by decide)
@@ -1397,6 +2389,36 @@ theorem encode64_pointers (d : InstanceLimits) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : InstanceLimits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : InstanceLimits) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field InstanceLimits) := [
@@ -1417,7 +2439,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : InstanceLimits) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 4 (size32 d.timedWaitAnyMaxCount) (by decide)
@@ -1437,6 +2459,36 @@ theorem encode32_pointers (d : InstanceLimits) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 8 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : InstanceLimits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : InstanceLimits) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1453,6 +2505,14 @@ low 32 bits.
 @[inline]
 def toBytes (d : InstanceLimits) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 13
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : InstanceLimits) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end InstanceLimits
 
@@ -1508,7 +2568,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : Limits) : ByteArray :=
   let b := Block.fresh 152
   let b := b.pokeU32 8 d.maxTextureDimension1D (by decide)
@@ -1560,6 +2620,36 @@ theorem encode64_pointers (d : Limits) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  152, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 152 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : Limits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : Limits) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field Limits) := [
   ⟨4, .u32, fun d => (d.maxTextureDimension1D).toNat⟩,
@@ -1610,7 +2700,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : Limits) : ByteArray :=
   let b := Block.fresh 152
   let b := b.pokeU32 4 d.maxTextureDimension1D (by decide)
@@ -1662,6 +2752,36 @@ theorem encode32_pointers (d : Limits) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  152, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 152 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : Limits) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : Limits) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1674,6 +2794,14 @@ def sizesFit (_ : Limits) : Bool :=
 @[inline]
 def toBytes (d : Limits) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 14
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : Limits) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end Limits
 
@@ -1700,7 +2828,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : MultisampleState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 d.count (by decide)
@@ -1721,6 +2849,36 @@ theorem encode64_pointers (d : MultisampleState) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : MultisampleState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : MultisampleState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field MultisampleState) := [
@@ -1743,7 +2901,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : MultisampleState) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 d.count (by decide)
@@ -1765,6 +2923,36 @@ theorem encode32_pointers (d : MultisampleState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : MultisampleState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : MultisampleState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1777,6 +2965,14 @@ def sizesFit (_ : MultisampleState) : Bool :=
 @[inline]
 def toBytes (d : MultisampleState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 15
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : MultisampleState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end MultisampleState
 
@@ -1803,7 +2999,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : Origin3D) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 d.x (by decide)
@@ -1824,6 +3020,34 @@ theorem encode64_pointers (d : Origin3D) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 12 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : Origin3D) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : Origin3D) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field Origin3D) := [
@@ -1846,7 +3070,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : Origin3D) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 0 d.x (by decide)
@@ -1868,6 +3092,34 @@ theorem encode32_pointers (d : Origin3D) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : Origin3D) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : Origin3D) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1880,6 +3132,14 @@ def sizesFit (_ : Origin3D) : Bool :=
 @[inline]
 def toBytes (d : Origin3D) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 16
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : Origin3D) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end Origin3D
 
@@ -1905,7 +3165,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : PassTimestampWrites) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 16 d.beginningOfPassWriteIndex (by decide)
@@ -1925,6 +3185,37 @@ theorem encode64_pointers (d : PassTimestampWrites) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : PassTimestampWrites) : Array Target :=
+  #[.object (Internal.QuerySet.toObject d.querySet)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : PassTimestampWrites) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field PassTimestampWrites) := [
@@ -1946,7 +3237,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : PassTimestampWrites) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 8 d.beginningOfPassWriteIndex (by decide)
@@ -1967,6 +3258,37 @@ theorem encode32_pointers (d : PassTimestampWrites) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : PassTimestampWrites) : Array Target :=
+  #[.object (Internal.QuerySet.toObject d.querySet)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : PassTimestampWrites) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -1979,6 +3301,14 @@ def sizesFit (_ : PassTimestampWrites) : Bool :=
 @[inline]
 def toBytes (d : PassTimestampWrites) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 17
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : PassTimestampWrites) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end PassTimestampWrites
 
@@ -2005,7 +3335,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : PipelineLayoutDescriptor) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -2049,7 +3379,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : PipelineLayoutDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -2111,7 +3441,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : PrimitiveState) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC d.topology) (by decide)
@@ -2134,6 +3464,36 @@ theorem encode64_pointers (d : PrimitiveState) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : PrimitiveState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : PrimitiveState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field PrimitiveState) := [
@@ -2158,7 +3518,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : PrimitiveState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.topology) (by decide)
@@ -2182,6 +3542,36 @@ theorem encode32_pointers (d : PrimitiveState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : PrimitiveState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : PrimitiveState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2194,6 +3584,14 @@ def sizesFit (_ : PrimitiveState) : Bool :=
 @[inline]
 def toBytes (d : PrimitiveState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 18
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : PrimitiveState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end PrimitiveState
 
@@ -2220,7 +3618,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : QuerySetDescriptor) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -2243,6 +3641,37 @@ theorem encode64_pointers (d : QuerySetDescriptor) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : QuerySetDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : QuerySetDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field QuerySetDescriptor) := [
   ⟨8, .size, fun d => (d.label.utf8ByteSize.toUInt32).toNat⟩,
@@ -2264,7 +3693,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : QuerySetDescriptor) : ByteArray :=
   let b := Block.fresh 20
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -2286,6 +3715,37 @@ theorem encode32_pointers (d : QuerySetDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 20 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : QuerySetDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : QuerySetDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2298,6 +3758,14 @@ def sizesFit (_ : QuerySetDescriptor) : Bool :=
 @[inline]
 def toBytes (d : QuerySetDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 19
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : QuerySetDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end QuerySetDescriptor
 
@@ -2322,7 +3790,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : QueueDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -2341,6 +3809,37 @@ theorem encode64_pointers (d : QueueDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : QueueDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : QueueDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field QueueDescriptor) := [
@@ -2361,7 +3860,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : QueueDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -2381,6 +3880,37 @@ theorem encode32_pointers (d : QueueDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : QueueDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : QueueDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2393,6 +3923,14 @@ def sizesFit (_ : QueueDescriptor) : Bool :=
 @[inline]
 def toBytes (d : QueueDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 20
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : QueueDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end QueueDescriptor
 
@@ -2417,7 +3955,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderBundleDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -2436,6 +3974,37 @@ theorem encode64_pointers (d : RenderBundleDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : RenderBundleDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RenderBundleDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RenderBundleDescriptor) := [
@@ -2456,7 +4025,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderBundleDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -2476,6 +4045,37 @@ theorem encode32_pointers (d : RenderBundleDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : RenderBundleDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RenderBundleDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2488,6 +4088,14 @@ def sizesFit (_ : RenderBundleDescriptor) : Bool :=
 @[inline]
 def toBytes (d : RenderBundleDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 21
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RenderBundleDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RenderBundleDescriptor
 
@@ -2517,7 +4125,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderBundleEncoderDescriptor) : ByteArray :=
   let b := Block.fresh 56
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -2567,7 +4175,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderBundleEncoderDescriptor) : ByteArray :=
   let b := Block.fresh 36
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -2635,7 +4243,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderPassDepthStencilAttachment) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU32 16 (CEnum.toC d.depthLoadOp) (by decide)
@@ -2661,6 +4269,37 @@ theorem encode64_pointers (d : RenderPassDepthStencilAttachment) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 48 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : RenderPassDepthStencilAttachment) : Array Target :=
+  #[.object (Internal.TextureView.toObject d.view)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RenderPassDepthStencilAttachment) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RenderPassDepthStencilAttachment) := [
@@ -2688,7 +4327,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderPassDepthStencilAttachment) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU32 8 (CEnum.toC d.depthLoadOp) (by decide)
@@ -2715,6 +4354,37 @@ theorem encode32_pointers (d : RenderPassDepthStencilAttachment) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 40 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : RenderPassDepthStencilAttachment) : Array Target :=
+  #[.object (Internal.TextureView.toObject d.view)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RenderPassDepthStencilAttachment) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2727,6 +4397,14 @@ def sizesFit (_ : RenderPassDepthStencilAttachment) : Bool :=
 @[inline]
 def toBytes (d : RenderPassDepthStencilAttachment) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 22
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RenderPassDepthStencilAttachment) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RenderPassDepthStencilAttachment
 
@@ -2752,7 +4430,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderPassMaxDrawCount) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC SType.renderPassMaxDrawCount) (by decide)
@@ -2774,6 +4452,36 @@ theorem encode64_pointers (d : RenderPassMaxDrawCount) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : RenderPassMaxDrawCount) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RenderPassMaxDrawCount) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RenderPassMaxDrawCount) := [
   ⟨4, .u32, fun _ => (CEnum.toC SType.renderPassMaxDrawCount).toNat⟩,
@@ -2794,7 +4502,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderPassMaxDrawCount) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 (CEnum.toC SType.renderPassMaxDrawCount) (by decide)
@@ -2816,6 +4524,36 @@ theorem encode32_pointers (d : RenderPassMaxDrawCount) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : RenderPassMaxDrawCount) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RenderPassMaxDrawCount) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2828,6 +4566,14 @@ def sizesFit (_ : RenderPassMaxDrawCount) : Bool :=
 @[inline]
 def toBytes (d : RenderPassMaxDrawCount) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 23
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RenderPassMaxDrawCount) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RenderPassMaxDrawCount
 
@@ -2855,7 +4601,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RequestAdapterOptions) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC d.featureLevel) (by decide)
@@ -2877,6 +4623,37 @@ theorem encode64_pointers (d : RequestAdapterOptions) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨24, .optObject⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3,
+  0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : RequestAdapterOptions) : Array Target :=
+  #[.optObject (d.compatibleSurface.map Internal.Surface.toObject)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RequestAdapterOptions) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RequestAdapterOptions) := [
@@ -2900,7 +4677,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RequestAdapterOptions) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.featureLevel) (by decide)
@@ -2923,6 +4700,37 @@ theorem encode32_pointers (d : RequestAdapterOptions) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨20, .optObject⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 3,
+  0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : RequestAdapterOptions) : Array Target :=
+  #[.optObject (d.compatibleSurface.map Internal.Surface.toObject)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RequestAdapterOptions) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -2935,6 +4743,14 @@ def sizesFit (_ : RequestAdapterOptions) : Bool :=
 @[inline]
 def toBytes (d : RequestAdapterOptions) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 24
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RequestAdapterOptions) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RequestAdapterOptions
 
@@ -2960,7 +4776,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RequestAdapterWebXROptions) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC SType.requestAdapterWebXROptions) (by decide)
@@ -2980,6 +4796,36 @@ theorem encode64_pointers (d : RequestAdapterWebXROptions) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : RequestAdapterWebXROptions) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RequestAdapterWebXROptions) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RequestAdapterWebXROptions) := [
@@ -3001,7 +4847,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RequestAdapterWebXROptions) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 4 (CEnum.toC SType.requestAdapterWebXROptions) (by decide)
@@ -3022,6 +4868,36 @@ theorem encode32_pointers (d : RequestAdapterWebXROptions) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : RequestAdapterWebXROptions) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RequestAdapterWebXROptions) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3034,6 +4910,14 @@ def sizesFit (_ : RequestAdapterWebXROptions) : Bool :=
 @[inline]
 def toBytes (d : RequestAdapterWebXROptions) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 25
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RequestAdapterWebXROptions) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RequestAdapterWebXROptions
 
@@ -3058,7 +4942,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SamplerBindingLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 8 (CEnum.toC d.type) (by decide)
@@ -3077,6 +4961,36 @@ theorem encode64_pointers (d : SamplerBindingLayout) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : SamplerBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : SamplerBindingLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field SamplerBindingLayout) := [
@@ -3097,7 +5011,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SamplerBindingLayout) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 4 (CEnum.toC d.type) (by decide)
@@ -3117,6 +5031,36 @@ theorem encode32_pointers (d : SamplerBindingLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 8 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : SamplerBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : SamplerBindingLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3129,6 +5073,14 @@ def sizesFit (_ : SamplerBindingLayout) : Bool :=
 @[inline]
 def toBytes (d : SamplerBindingLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 26
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : SamplerBindingLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end SamplerBindingLayout
 
@@ -3163,7 +5115,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SamplerDescriptor) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -3194,6 +5146,37 @@ theorem encode64_pointers (d : SamplerDescriptor) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  64, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 64 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : SamplerDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : SamplerDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field SamplerDescriptor) := [
   ⟨8, .size, fun d => (d.label.utf8ByteSize.toUInt32).toNat⟩,
@@ -3223,7 +5206,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SamplerDescriptor) : ByteArray :=
   let b := Block.fresh 52
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -3254,6 +5237,37 @@ theorem encode32_pointers (d : SamplerDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  52, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 52 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : SamplerDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : SamplerDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3266,6 +5280,14 @@ def sizesFit (_ : SamplerDescriptor) : Bool :=
 @[inline]
 def toBytes (d : SamplerDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 27
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : SamplerDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end SamplerDescriptor
 
@@ -3290,7 +5312,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ShaderModuleDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -3309,6 +5331,37 @@ theorem encode64_pointers (d : ShaderModuleDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ShaderModuleDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ShaderModuleDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ShaderModuleDescriptor) := [
@@ -3329,7 +5382,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ShaderModuleDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -3349,6 +5402,37 @@ theorem encode32_pointers (d : ShaderModuleDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ShaderModuleDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ShaderModuleDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3361,6 +5445,14 @@ def sizesFit (_ : ShaderModuleDescriptor) : Bool :=
 @[inline]
 def toBytes (d : ShaderModuleDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 28
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ShaderModuleDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ShaderModuleDescriptor
 
@@ -3386,7 +5478,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ShaderSourceWGSL) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC SType.shaderSourceWGSL) (by decide)
@@ -3408,6 +5500,37 @@ theorem encode64_pointers (d : ShaderSourceWGSL) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨16, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ShaderSourceWGSL) : Array Target :=
+  #[.string d.code]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ShaderSourceWGSL) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ShaderSourceWGSL) := [
   ⟨4, .u32, fun _ => (CEnum.toC SType.shaderSourceWGSL).toNat⟩,
@@ -3428,7 +5551,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ShaderSourceWGSL) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 (CEnum.toC SType.shaderSourceWGSL) (by decide)
@@ -3449,6 +5572,37 @@ theorem encode32_pointers (d : ShaderSourceWGSL) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ShaderSourceWGSL) : Array Target :=
+  #[.string d.code]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ShaderSourceWGSL) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3461,6 +5615,14 @@ def sizesFit (_ : ShaderSourceWGSL) : Bool :=
 @[inline]
 def toBytes (d : ShaderSourceWGSL) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 29
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ShaderSourceWGSL) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ShaderSourceWGSL
 
@@ -3488,7 +5650,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : StencilFaceState) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 0 (CEnum.toC d.compare) (by decide)
@@ -3510,6 +5672,34 @@ theorem encode64_pointers (d : StencilFaceState) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : StencilFaceState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : StencilFaceState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field StencilFaceState) := [
@@ -3533,7 +5723,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : StencilFaceState) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 0 (CEnum.toC d.compare) (by decide)
@@ -3556,6 +5746,34 @@ theorem encode32_pointers (d : StencilFaceState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : StencilFaceState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : StencilFaceState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3568,6 +5786,14 @@ def sizesFit (_ : StencilFaceState) : Bool :=
 @[inline]
 def toBytes (d : StencilFaceState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 30
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : StencilFaceState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end StencilFaceState
 
@@ -3594,7 +5820,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : StorageTextureBindingLayout) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC d.access) (by decide)
@@ -3615,6 +5841,36 @@ theorem encode64_pointers (d : StorageTextureBindingLayout) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : StorageTextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : StorageTextureBindingLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field StorageTextureBindingLayout) := [
@@ -3637,7 +5893,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : StorageTextureBindingLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 (CEnum.toC d.access) (by decide)
@@ -3659,6 +5915,36 @@ theorem encode32_pointers (d : StorageTextureBindingLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : StorageTextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : StorageTextureBindingLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -3671,6 +5957,14 @@ def sizesFit (_ : StorageTextureBindingLayout) : Bool :=
 @[inline]
 def toBytes (d : StorageTextureBindingLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 31
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : StorageTextureBindingLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end StorageTextureBindingLayout
 
@@ -3695,7 +5989,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SupportedFeatures) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.features.size.toUInt64 (by decide)
@@ -3734,7 +6028,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SupportedFeatures) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 0 d.features.size.toUInt32 (by decide)
@@ -3790,7 +6084,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SupportedInstanceFeatures) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.features.size.toUInt64 (by decide)
@@ -3829,7 +6123,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SupportedInstanceFeatures) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 0 d.features.size.toUInt32 (by decide)
@@ -3885,7 +6179,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SupportedWGSLLanguageFeatures) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.features.size.toUInt64 (by decide)
@@ -3924,7 +6218,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SupportedWGSLLanguageFeatures) : ByteArray :=
   let b := Block.fresh 8
   let b := b.pokeU32 0 d.features.size.toUInt32 (by decide)
@@ -3983,7 +6277,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SurfaceCapabilities) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 8 d.usages.bits (by decide)
@@ -4028,7 +6322,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SurfaceCapabilities) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU64 8 d.usages.bits (by decide)
@@ -4090,7 +6384,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SurfaceColorManagement) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC SType.surfaceColorManagement) (by decide)
@@ -4111,6 +6405,36 @@ theorem encode64_pointers (d : SurfaceColorManagement) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : SurfaceColorManagement) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : SurfaceColorManagement) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field SurfaceColorManagement) := [
@@ -4133,7 +6457,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SurfaceColorManagement) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 (CEnum.toC SType.surfaceColorManagement) (by decide)
@@ -4155,6 +6479,36 @@ theorem encode32_pointers (d : SurfaceColorManagement) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : SurfaceColorManagement) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : SurfaceColorManagement) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4167,6 +6521,14 @@ def sizesFit (_ : SurfaceColorManagement) : Bool :=
 @[inline]
 def toBytes (d : SurfaceColorManagement) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 32
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : SurfaceColorManagement) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end SurfaceColorManagement
 
@@ -4197,7 +6559,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SurfaceConfiguration) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU32 16 (CEnum.toC d.format) (by decide)
@@ -4249,7 +6611,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SurfaceConfiguration) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU32 8 (CEnum.toC d.format) (by decide)
@@ -4312,7 +6674,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SurfaceDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -4331,6 +6693,37 @@ theorem encode64_pointers (d : SurfaceDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : SurfaceDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : SurfaceDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field SurfaceDescriptor) := [
@@ -4351,7 +6744,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SurfaceDescriptor) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -4371,6 +6764,37 @@ theorem encode32_pointers (d : SurfaceDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : SurfaceDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : SurfaceDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4383,6 +6807,14 @@ def sizesFit (_ : SurfaceDescriptor) : Bool :=
 @[inline]
 def toBytes (d : SurfaceDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 33
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : SurfaceDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end SurfaceDescriptor
 
@@ -4407,7 +6839,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : SurfaceTexture) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 16 (CEnum.toC d.status) (by decide)
@@ -4426,6 +6858,37 @@ theorem encode64_pointers (d : SurfaceTexture) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : SurfaceTexture) : Array Target :=
+  #[.object (Internal.Texture.toObject d.texture)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : SurfaceTexture) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field SurfaceTexture) := [
@@ -4446,7 +6909,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : SurfaceTexture) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 8 (CEnum.toC d.status) (by decide)
@@ -4466,6 +6929,37 @@ theorem encode32_pointers (d : SurfaceTexture) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : SurfaceTexture) : Array Target :=
+  #[.object (Internal.Texture.toObject d.texture)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : SurfaceTexture) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4478,6 +6972,14 @@ def sizesFit (_ : SurfaceTexture) : Bool :=
 @[inline]
 def toBytes (d : SurfaceTexture) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 34
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : SurfaceTexture) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end SurfaceTexture
 
@@ -4504,7 +7006,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TexelCopyBufferLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.offset (by decide)
@@ -4527,6 +7029,34 @@ theorem encode64_pointers (d : TexelCopyBufferLayout) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : TexelCopyBufferLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TexelCopyBufferLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TexelCopyBufferLayout) := [
   ⟨0, .u64, fun d => (d.offset).toNat⟩,
@@ -4548,7 +7078,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TexelCopyBufferLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.offset (by decide)
@@ -4571,6 +7101,34 @@ theorem encode32_pointers (d : TexelCopyBufferLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : TexelCopyBufferLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TexelCopyBufferLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4583,6 +7141,14 @@ def sizesFit (_ : TexelCopyBufferLayout) : Bool :=
 @[inline]
 def toBytes (d : TexelCopyBufferLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 35
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TexelCopyBufferLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TexelCopyBufferLayout
 
@@ -4609,7 +7175,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureBindingLayout) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC d.sampleType) (by decide)
@@ -4630,6 +7196,36 @@ theorem encode64_pointers (d : TextureBindingLayout) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : TextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TextureBindingLayout) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TextureBindingLayout) := [
@@ -4652,7 +7248,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureBindingLayout) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 (CEnum.toC d.sampleType) (by decide)
@@ -4674,6 +7270,36 @@ theorem encode32_pointers (d : TextureBindingLayout) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : TextureBindingLayout) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TextureBindingLayout) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4686,6 +7312,14 @@ def sizesFit (_ : TextureBindingLayout) : Bool :=
 @[inline]
 def toBytes (d : TextureBindingLayout) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 36
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TextureBindingLayout) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TextureBindingLayout
 
@@ -4711,7 +7345,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureBindingViewDimension) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 (CEnum.toC SType.textureBindingViewDimension) (by decide)
@@ -4731,6 +7365,36 @@ theorem encode64_pointers (d : TextureBindingViewDimension) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : TextureBindingViewDimension) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TextureBindingViewDimension) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TextureBindingViewDimension) := [
@@ -4752,7 +7416,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureBindingViewDimension) : ByteArray :=
   let b := Block.fresh 12
   let b := b.pokeU32 4 (CEnum.toC SType.textureBindingViewDimension) (by decide)
@@ -4773,6 +7437,36 @@ theorem encode32_pointers (d : TextureBindingViewDimension) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 12 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : TextureBindingViewDimension) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TextureBindingViewDimension) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4785,6 +7479,14 @@ def sizesFit (_ : TextureBindingViewDimension) : Bool :=
 @[inline]
 def toBytes (d : TextureBindingViewDimension) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 37
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TextureBindingViewDimension) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TextureBindingViewDimension
 
@@ -4812,7 +7514,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureComponentSwizzle) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 0 (CEnum.toC d.r) (by decide)
@@ -4834,6 +7536,34 @@ theorem encode64_pointers (d : TextureComponentSwizzle) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : TextureComponentSwizzle) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TextureComponentSwizzle) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TextureComponentSwizzle) := [
@@ -4857,7 +7587,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureComponentSwizzle) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 0 (CEnum.toC d.r) (by decide)
@@ -4880,6 +7610,34 @@ theorem encode32_pointers (d : TextureComponentSwizzle) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : TextureComponentSwizzle) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TextureComponentSwizzle) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -4892,6 +7650,14 @@ def sizesFit (_ : TextureComponentSwizzle) : Bool :=
 @[inline]
 def toBytes (d : TextureComponentSwizzle) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 38
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TextureComponentSwizzle) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TextureComponentSwizzle
 
@@ -4924,7 +7690,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureViewDescriptor) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -4953,6 +7719,37 @@ theorem encode64_pointers (d : TextureViewDescriptor) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  64, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 64 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : TextureViewDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TextureViewDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TextureViewDescriptor) := [
   ⟨8, .size, fun d => (d.label.utf8ByteSize.toUInt32).toNat⟩,
@@ -4980,7 +7777,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureViewDescriptor) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -5009,6 +7806,37 @@ theorem encode32_pointers (d : TextureViewDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 48 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : TextureViewDescriptor) : Array Target :=
+  #[.string d.label]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TextureViewDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5021,6 +7849,14 @@ def sizesFit (_ : TextureViewDescriptor) : Bool :=
 @[inline]
 def toBytes (d : TextureViewDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 39
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TextureViewDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TextureViewDescriptor
 
@@ -5047,7 +7883,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : VertexAttribute) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC d.format) (by decide)
@@ -5070,6 +7906,36 @@ theorem encode64_pointers (d : VertexAttribute) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : VertexAttribute) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : VertexAttribute) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field VertexAttribute) := [
   ⟨4, .u32, fun d => (CEnum.toC d.format).toNat⟩,
@@ -5091,7 +7957,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : VertexAttribute) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.format) (by decide)
@@ -5114,6 +7980,36 @@ theorem encode32_pointers (d : VertexAttribute) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : VertexAttribute) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : VertexAttribute) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5126,6 +8022,14 @@ def sizesFit (_ : VertexAttribute) : Bool :=
 @[inline]
 def toBytes (d : VertexAttribute) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 40
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : VertexAttribute) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end VertexAttribute
 
@@ -5151,7 +8055,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BindGroupDescriptor) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -5192,7 +8096,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BindGroupDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -5261,7 +8165,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BindGroupLayoutEntry) : ByteArray :=
   let b := Block.fresh 120
   let b := b.pokeU32 8 d.binding (by decide)
@@ -5294,6 +8198,38 @@ theorem encode64_pointers (d : BindGroupLayoutEntry) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨32, .null⟩, ⟨56, .null⟩, ⟨72, .null⟩, ⟨96, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  120, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 5,
+  0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 5, 0,
+  0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 120 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : BindGroupLayoutEntry) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BindGroupLayoutEntry) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BindGroupLayoutEntry) := [
   ⟨4, .u32, fun d => (d.binding).toNat⟩,
@@ -5325,7 +8261,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BindGroupLayoutEntry) : ByteArray :=
   let b := Block.fresh 88
   let b := b.pokeU32 4 d.binding (by decide)
@@ -5358,6 +8294,38 @@ theorem encode32_pointers (d : BindGroupLayoutEntry) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨24, .null⟩, ⟨48, .null⟩, ⟨56, .null⟩, ⟨72, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  88, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 5,
+  0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 5, 0,
+  0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 88 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : BindGroupLayoutEntry) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BindGroupLayoutEntry) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5370,6 +8338,14 @@ def sizesFit (_ : BindGroupLayoutEntry) : Bool :=
 @[inline]
 def toBytes (d : BindGroupLayoutEntry) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 41
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BindGroupLayoutEntry) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BindGroupLayoutEntry
 
@@ -5399,7 +8375,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BlendState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 0 (CEnum.toC d.color.operation) (by decide)
@@ -5423,6 +8399,34 @@ theorem encode64_pointers (d : BlendState) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : BlendState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : BlendState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field BlendState) := [
@@ -5448,7 +8452,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BlendState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 0 (CEnum.toC d.color.operation) (by decide)
@@ -5473,6 +8477,34 @@ theorem encode32_pointers (d : BlendState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : BlendState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : BlendState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5485,6 +8517,14 @@ def sizesFit (_ : BlendState) : Bool :=
 @[inline]
 def toBytes (d : BlendState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 42
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : BlendState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end BlendState
 
@@ -5509,7 +8549,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ComputePassDescriptor) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -5528,6 +8568,38 @@ theorem encode64_pointers (d : ComputePassDescriptor) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .block 17⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 4, 0, 0, 0, 17, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ComputePassDescriptor) : Array Target :=
+  #[.string d.label]
+  ++ (d.timestampWrites.elim #[.block .empty] PassTimestampWrites.block64)
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ComputePassDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ComputePassDescriptor) := [
@@ -5548,7 +8620,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ComputePassDescriptor) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -5568,6 +8640,38 @@ theorem encode32_pointers (d : ComputePassDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩, ⟨12, .block 17⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 4, 0, 0, 0, 17, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ComputePassDescriptor) : Array Target :=
+  #[.string d.label]
+  ++ (d.timestampWrites.elim #[.block .empty] PassTimestampWrites.block32)
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ComputePassDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5580,6 +8684,14 @@ def sizesFit (_ : ComputePassDescriptor) : Bool :=
 @[inline]
 def toBytes (d : ComputePassDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 43
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ComputePassDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ComputePassDescriptor
 
@@ -5605,7 +8717,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ComputeState) : ByteArray :=
   let b := Block.fresh 48
   let b := b.pokeU64 24 (viewLength64 d.entryPoint) (by decide)
@@ -5646,7 +8758,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ComputeState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 12 (viewLength32 d.entryPoint) (by decide)
@@ -5718,7 +8830,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : DepthStencilState) : ByteArray :=
   let b := Block.fresh 72
   let b := b.pokeU32 8 (CEnum.toC d.format) (by decide)
@@ -5754,6 +8866,36 @@ theorem encode64_pointers (d : DepthStencilState) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  72, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 72 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : DepthStencilState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : DepthStencilState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field DepthStencilState) := [
   ⟨4, .u32, fun d => (CEnum.toC d.format).toNat⟩,
@@ -5788,7 +8930,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : DepthStencilState) : ByteArray :=
   let b := Block.fresh 68
   let b := b.pokeU32 4 (CEnum.toC d.format) (by decide)
@@ -5824,6 +8966,36 @@ theorem encode32_pointers (d : DepthStencilState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  68, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 68 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : DepthStencilState) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : DepthStencilState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5836,6 +9008,14 @@ def sizesFit (_ : DepthStencilState) : Bool :=
 @[inline]
 def toBytes (d : DepthStencilState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 44
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : DepthStencilState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end DepthStencilState
 
@@ -5861,7 +9041,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : FutureWaitInfo) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.future.id (by decide)
@@ -5883,6 +9063,34 @@ theorem encode64_pointers (d : FutureWaitInfo) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := []
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 16 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : FutureWaitInfo) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : FutureWaitInfo) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field FutureWaitInfo) := [
   ⟨0, .u64, fun d => (d.future.id).toNat⟩,
@@ -5903,7 +9111,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : FutureWaitInfo) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU64 0 d.future.id (by decide)
@@ -5925,6 +9133,34 @@ theorem encode32_pointers (d : FutureWaitInfo) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := []
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  16, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 16 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : FutureWaitInfo) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : FutureWaitInfo) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -5937,6 +9173,14 @@ def sizesFit (_ : FutureWaitInfo) : Bool :=
 @[inline]
 def toBytes (d : FutureWaitInfo) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 45
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : FutureWaitInfo) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end FutureWaitInfo
 
@@ -5961,7 +9205,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : InstanceDescriptor) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU64 8 d.requiredFeatures.size.toUInt64 (by decide)
@@ -6000,7 +9244,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : InstanceDescriptor) : ByteArray :=
   let b := Block.fresh 16
   let b := b.pokeU32 4 d.requiredFeatures.size.toUInt32 (by decide)
@@ -6067,7 +9311,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderPassColorAttachment) : ByteArray :=
   let b := Block.fresh 72
   let b := b.pokeU32 16 d.depthSlice (by decide)
@@ -6094,6 +9338,40 @@ theorem encode64_pointers (d : RenderPassColorAttachment) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .optObject⟩, ⟨24, .optObject⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  72, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 3, 0,
+  0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 72 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : RenderPassColorAttachment) : Array Target :=
+  #[
+    .optObject (d.view.map Internal.TextureView.toObject),
+    .optObject (d.resolveTarget.map Internal.TextureView.toObject)
+  ]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : RenderPassColorAttachment) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field RenderPassColorAttachment) := [
   ⟨8, .u32, fun d => (d.depthSlice).toNat⟩,
@@ -6119,7 +9397,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderPassColorAttachment) : ByteArray :=
   let b := Block.fresh 56
   let b := b.pokeU32 8 d.depthSlice (by decide)
@@ -6146,6 +9424,40 @@ theorem encode32_pointers (d : RenderPassColorAttachment) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .optObject⟩, ⟨12, .optObject⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  56, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 3, 0,
+  0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 56 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : RenderPassColorAttachment) : Array Target :=
+  #[
+    .optObject (d.view.map Internal.TextureView.toObject),
+    .optObject (d.resolveTarget.map Internal.TextureView.toObject)
+  ]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : RenderPassColorAttachment) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -6158,6 +9470,14 @@ def sizesFit (_ : RenderPassColorAttachment) : Bool :=
 @[inline]
 def toBytes (d : RenderPassColorAttachment) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 46
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : RenderPassColorAttachment) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end RenderPassColorAttachment
 
@@ -6184,7 +9504,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TexelCopyBufferInfo) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 0 d.layout.offset (by decide)
@@ -6207,6 +9527,36 @@ theorem encode64_pointers (d : TexelCopyBufferInfo) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨16, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 24 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : TexelCopyBufferInfo) : Array Target :=
+  #[.object (Internal.Buffer.toObject d.buffer)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TexelCopyBufferInfo) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TexelCopyBufferInfo) := [
   ⟨0, .u64, fun d => (d.layout.offset).toNat⟩,
@@ -6228,7 +9578,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TexelCopyBufferInfo) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU64 0 d.layout.offset (by decide)
@@ -6251,6 +9601,36 @@ theorem encode32_pointers (d : TexelCopyBufferInfo) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨16, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : TexelCopyBufferInfo) : Array Target :=
+  #[.object (Internal.Buffer.toObject d.buffer)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TexelCopyBufferInfo) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -6263,6 +9643,14 @@ def sizesFit (_ : TexelCopyBufferInfo) : Bool :=
 @[inline]
 def toBytes (d : TexelCopyBufferInfo) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 47
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TexelCopyBufferInfo) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TexelCopyBufferInfo
 
@@ -6291,7 +9679,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TexelCopyTextureInfo) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 d.mipLevel (by decide)
@@ -6314,6 +9702,36 @@ theorem encode64_pointers (d : TexelCopyTextureInfo) :
   fun o ho => by
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .object⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : TexelCopyTextureInfo) : Array Target :=
+  #[.object (Internal.Texture.toObject d.texture)]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TexelCopyTextureInfo) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
 
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TexelCopyTextureInfo) := [
@@ -6338,7 +9756,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TexelCopyTextureInfo) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 d.mipLevel (by decide)
@@ -6362,6 +9780,36 @@ theorem encode32_pointers (d : TexelCopyTextureInfo) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .object⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : TexelCopyTextureInfo) : Array Target :=
+  #[.object (Internal.Texture.toObject d.texture)]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TexelCopyTextureInfo) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -6374,6 +9822,14 @@ def sizesFit (_ : TexelCopyTextureInfo) : Bool :=
 @[inline]
 def toBytes (d : TexelCopyTextureInfo) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 48
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TexelCopyTextureInfo) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TexelCopyTextureInfo
 
@@ -6402,7 +9858,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureComponentSwizzleDescriptor) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8
@@ -6428,6 +9884,36 @@ theorem encode64_pointers (d : TextureComponentSwizzleDescriptor) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (_ : TextureComponentSwizzleDescriptor) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : TextureComponentSwizzleDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field TextureComponentSwizzleDescriptor) := [
   ⟨4, .u32, fun _ => (CEnum.toC SType.textureComponentSwizzleDescriptor).toNat⟩,
@@ -6451,7 +9937,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureComponentSwizzleDescriptor) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4
@@ -6477,6 +9963,36 @@ theorem encode32_pointers (d : TextureComponentSwizzleDescriptor) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (_ : TextureComponentSwizzleDescriptor) : Array Target :=
+  #[]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : TextureComponentSwizzleDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -6489,6 +10005,14 @@ def sizesFit (_ : TextureComponentSwizzleDescriptor) : Bool :=
 @[inline]
 def toBytes (d : TextureComponentSwizzleDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 49
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : TextureComponentSwizzleDescriptor) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end TextureComponentSwizzleDescriptor
 
@@ -6522,7 +10046,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : TextureDescriptor) : ByteArray :=
   let b := Block.fresh 80
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -6580,7 +10104,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : TextureDescriptor) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -6648,7 +10172,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : VertexBufferLayout) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU32 8 (CEnum.toC d.stepMode) (by decide)
@@ -6692,7 +10216,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : VertexBufferLayout) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.stepMode) (by decide)
@@ -6752,7 +10276,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : BindGroupLayoutDescriptor) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -6793,7 +10317,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : BindGroupLayoutDescriptor) : ByteArray :=
   let b := Block.fresh 20
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -6851,7 +10375,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ColorTargetState) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 (CEnum.toC d.format) (by decide)
@@ -6873,6 +10397,37 @@ theorem encode64_pointers (d : ColorTargetState) :
     rw [encode64_eq]
     exact readLE_encode_apart d o 8 (pointers64_apart o ho)
 
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨16, .block 42⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4,
+  0, 0, 0, 42, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 32 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : ColorTargetState) : Array Target :=
+  (d.blend.elim #[.block .empty] BlendState.block64)
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : ColorTargetState) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
 /-- The scalar fields on wasm32: the specification. -/
 def fields32 : List (Field ColorTargetState) := [
   ⟨4, .u32, fun d => (CEnum.toC d.format).toNat⟩,
@@ -6893,7 +10448,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ColorTargetState) : ByteArray :=
   let b := Block.fresh 24
   let b := b.pokeU32 4 (CEnum.toC d.format) (by decide)
@@ -6915,6 +10470,37 @@ theorem encode32_pointers (d : ColorTargetState) :
     rw [encode32_eq]
     exact readLE_encode_apart d o 4 (pointers32_apart o ho)
 
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .block 42⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0,
+  0, 0, 42, 0, 0, 0
+]⟩
+
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 24 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : ColorTargetState) : Array Target :=
+  (d.blend.elim #[.block .empty] BlendState.block32)
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : ColorTargetState) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
 /--
 Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
@@ -6927,6 +10513,14 @@ def sizesFit (_ : ColorTargetState) : Bool :=
 @[inline]
 def toBytes (d : ColorTargetState) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 50
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : ColorTargetState) : Array Target :=
+  if System.Platform.numBits = 64 then targets64 d else targets32 d
 
 end ColorTargetState
 
@@ -6953,7 +10547,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : ComputePipelineDescriptor) : ByteArray :=
   let b := Block.fresh 80
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -6996,7 +10590,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : ComputePipelineDescriptor) : ByteArray :=
   let b := Block.fresh 40
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -7055,7 +10649,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderPassDescriptor) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -7096,7 +10690,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderPassDescriptor) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -7155,7 +10749,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : VertexState) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 24 (viewLength64 d.entryPoint) (by decide)
@@ -7198,7 +10792,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : VertexState) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 12 (viewLength32 d.entryPoint) (by decide)
@@ -7258,7 +10852,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : FragmentState) : ByteArray :=
   let b := Block.fresh 64
   let b := b.pokeU64 24 (viewLength64 d.entryPoint) (by decide)
@@ -7301,7 +10895,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : FragmentState) : ByteArray :=
   let b := Block.fresh 32
   let b := b.pokeU32 12 (viewLength32 d.entryPoint) (by decide)
@@ -7370,7 +10964,7 @@ theorem pointers64_apart :
   decide
 
 /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode64 (d : RenderPipelineDescriptor) : ByteArray :=
   let b := Block.fresh 168
   let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
@@ -7434,7 +11028,7 @@ theorem pointers32_apart :
   decide
 
 /-- `d` as C lays it out on wasm32, its pointers 0. -/
-@[noinline]
+@[noinline, never_extract]
 def encode32 (d : RenderPipelineDescriptor) : ByteArray :=
   let b := Block.fresh 96
   let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
@@ -7481,6 +11075,577 @@ def toBytes (d : RenderPipelineDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
 
 end RenderPipelineDescriptor
+
+/-! ## Tables -/
+
+/-- Every struct's table on 64-bit targets, by its index. -/
+def tables64 : Array ByteArray := #[
+  BindGroupEntry.table64, BlendComponent.table64, BufferBindingLayout.table64,
+  BufferDescriptor.table64, Color.table64, CommandBufferDescriptor.table64,
+  CommandEncoderDescriptor.table64, CompatibilityModeLimits.table64,
+  ConstantEntry.table64, Extent3D.table64, ExternalTextureBindingEntry.table64,
+  ExternalTextureBindingLayout.table64, Future.table64, InstanceLimits.table64,
+  Limits.table64, MultisampleState.table64, Origin3D.table64,
+  PassTimestampWrites.table64, PrimitiveState.table64,
+  QuerySetDescriptor.table64, QueueDescriptor.table64,
+  RenderBundleDescriptor.table64, RenderPassDepthStencilAttachment.table64,
+  RenderPassMaxDrawCount.table64, RequestAdapterOptions.table64,
+  RequestAdapterWebXROptions.table64, SamplerBindingLayout.table64,
+  SamplerDescriptor.table64, ShaderModuleDescriptor.table64,
+  ShaderSourceWGSL.table64, StencilFaceState.table64,
+  StorageTextureBindingLayout.table64, SurfaceColorManagement.table64,
+  SurfaceDescriptor.table64, SurfaceTexture.table64,
+  TexelCopyBufferLayout.table64, TextureBindingLayout.table64,
+  TextureBindingViewDimension.table64, TextureComponentSwizzle.table64,
+  TextureViewDescriptor.table64, VertexAttribute.table64,
+  BindGroupLayoutEntry.table64, BlendState.table64,
+  ComputePassDescriptor.table64, DepthStencilState.table64,
+  FutureWaitInfo.table64, RenderPassColorAttachment.table64,
+  TexelCopyBufferInfo.table64, TexelCopyTextureInfo.table64,
+  TextureComponentSwizzleDescriptor.table64, ColorTargetState.table64
+]
+
+/-- Every struct's table on wasm32, by its index. -/
+def tables32 : Array ByteArray := #[
+  BindGroupEntry.table32, BlendComponent.table32, BufferBindingLayout.table32,
+  BufferDescriptor.table32, Color.table32, CommandBufferDescriptor.table32,
+  CommandEncoderDescriptor.table32, CompatibilityModeLimits.table32,
+  ConstantEntry.table32, Extent3D.table32, ExternalTextureBindingEntry.table32,
+  ExternalTextureBindingLayout.table32, Future.table32, InstanceLimits.table32,
+  Limits.table32, MultisampleState.table32, Origin3D.table32,
+  PassTimestampWrites.table32, PrimitiveState.table32,
+  QuerySetDescriptor.table32, QueueDescriptor.table32,
+  RenderBundleDescriptor.table32, RenderPassDepthStencilAttachment.table32,
+  RenderPassMaxDrawCount.table32, RequestAdapterOptions.table32,
+  RequestAdapterWebXROptions.table32, SamplerBindingLayout.table32,
+  SamplerDescriptor.table32, ShaderModuleDescriptor.table32,
+  ShaderSourceWGSL.table32, StencilFaceState.table32,
+  StorageTextureBindingLayout.table32, SurfaceColorManagement.table32,
+  SurfaceDescriptor.table32, SurfaceTexture.table32,
+  TexelCopyBufferLayout.table32, TextureBindingLayout.table32,
+  TextureBindingViewDimension.table32, TextureComponentSwizzle.table32,
+  TextureViewDescriptor.table32, VertexAttribute.table32,
+  BindGroupLayoutEntry.table32, BlendState.table32,
+  ComputePassDescriptor.table32, DepthStencilState.table32,
+  FutureWaitInfo.table32, RenderPassColorAttachment.table32,
+  TexelCopyBufferInfo.table32, TexelCopyTextureInfo.table32,
+  TextureComponentSwizzleDescriptor.table32, ColorTargetState.table32
+]
+
+/-- Every table on this target. -/
+@[inline]
+def tables : Array ByteArray :=
+  if System.Platform.numBits = 64 then tables64 else tables32
+
+namespace BindGroupEntry
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BindGroupEntry
+
+namespace BlendComponent
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BlendComponent
+
+namespace BufferBindingLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BufferBindingLayout
+
+namespace BufferDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BufferDescriptor
+
+namespace Color
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end Color
+
+namespace CommandBufferDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end CommandBufferDescriptor
+
+namespace CommandEncoderDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end CommandEncoderDescriptor
+
+namespace CompatibilityModeLimits
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end CompatibilityModeLimits
+
+namespace ConstantEntry
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ConstantEntry
+
+namespace Extent3D
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end Extent3D
+
+namespace ExternalTextureBindingEntry
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ExternalTextureBindingEntry
+
+namespace ExternalTextureBindingLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ExternalTextureBindingLayout
+
+namespace Future
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end Future
+
+namespace InstanceLimits
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end InstanceLimits
+
+namespace Limits
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end Limits
+
+namespace MultisampleState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end MultisampleState
+
+namespace Origin3D
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end Origin3D
+
+namespace PassTimestampWrites
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end PassTimestampWrites
+
+namespace PrimitiveState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end PrimitiveState
+
+namespace QuerySetDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end QuerySetDescriptor
+
+namespace QueueDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end QueueDescriptor
+
+namespace RenderBundleDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RenderBundleDescriptor
+
+namespace RenderPassDepthStencilAttachment
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RenderPassDepthStencilAttachment
+
+namespace RenderPassMaxDrawCount
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RenderPassMaxDrawCount
+
+namespace RequestAdapterOptions
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RequestAdapterOptions
+
+namespace RequestAdapterWebXROptions
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RequestAdapterWebXROptions
+
+namespace SamplerBindingLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end SamplerBindingLayout
+
+namespace SamplerDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end SamplerDescriptor
+
+namespace ShaderModuleDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ShaderModuleDescriptor
+
+namespace ShaderSourceWGSL
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ShaderSourceWGSL
+
+namespace StencilFaceState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end StencilFaceState
+
+namespace StorageTextureBindingLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end StorageTextureBindingLayout
+
+namespace SurfaceColorManagement
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end SurfaceColorManagement
+
+namespace SurfaceDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end SurfaceDescriptor
+
+namespace SurfaceTexture
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end SurfaceTexture
+
+namespace TexelCopyBufferLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TexelCopyBufferLayout
+
+namespace TextureBindingLayout
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TextureBindingLayout
+
+namespace TextureBindingViewDimension
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TextureBindingViewDimension
+
+namespace TextureComponentSwizzle
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TextureComponentSwizzle
+
+namespace TextureViewDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TextureViewDescriptor
+
+namespace VertexAttribute
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end VertexAttribute
+
+namespace BindGroupLayoutEntry
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BindGroupLayoutEntry
+
+namespace BlendState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end BlendState
+
+namespace ComputePassDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ComputePassDescriptor
+
+namespace DepthStencilState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end DepthStencilState
+
+namespace FutureWaitInfo
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end FutureWaitInfo
+
+namespace RenderPassColorAttachment
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end RenderPassColorAttachment
+
+namespace TexelCopyBufferInfo
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TexelCopyBufferInfo
+
+namespace TexelCopyTextureInfo
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TexelCopyTextureInfo
+
+namespace TextureComponentSwizzleDescriptor
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end TextureComponentSwizzleDescriptor
+
+namespace ColorTargetState
+
+/-- Its index finds its tables. -/
+theorem tables_index :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+end ColorTargetState
 
 end WebGPU.Raw
 
