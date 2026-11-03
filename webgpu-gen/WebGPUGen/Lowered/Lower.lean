@@ -427,6 +427,33 @@ def complete (spec : Lowered.Spec) (names : Names) : Nat → Bool
       | some _, _ => true
       | none, _ => false
 
+/-- `spec` with `f` applied to each struct's members. -/
+def mapMembers (f : Member → Member) (spec : Lowered.Spec) : Lowered.Spec :=
+  { spec with structs := spec.structs.map fun s =>
+      { s with members := s.members.map f } }
+
+/--
+A member with a `zero` default, given its field values (`fields`), or with no
+default if they cannot all be zero.
+-/
+def settleZero (spec : Lowered.Spec) (m : Member) : Member :=
+  match m.default, m.value with
+  | some .zero, .struct nested =>
+    let fields := zeroFields spec nested (spec.structs.size + 1)
+    { m with default := fields.map .fields }
+  | _, _ => m
+
+/--
+A member with a `nested` default, which stands only if the nested struct needs
+nothing given; with no default otherwise.
+-/
+def settleNested (spec : Lowered.Spec) (m : Member) : Member :=
+  match m.default, m.value with
+  | some .nested, .struct nested =>
+    if complete spec nested (spec.structs.size + 1) then m
+    else { m with default := none }
+  | _, _ => m
+
 /--
 Settle the defaults that refer to other structs, once all are lowered: first a
 `zero` default becomes its field values (`fields`); then a `nested` one stands
@@ -434,18 +461,8 @@ only if the nested struct, so settled, needs nothing given. Where either cannot
 be, the member has no default, and must be given.
 -/
 def settleStructDefaults (spec : Lowered.Spec) : Lowered.Spec :=
-  let fuel := spec.structs.size + 1
-  let settle (spec : Lowered.Spec) (f : Member → Member) : Lowered.Spec :=
-    { spec with structs := spec.structs.map fun s =>
-        { s with members := s.members.map f } }
-  let zeros := settle spec fun m => match m.default, m.value with
-    | some .zero, .struct nested =>
-      { m with default := (zeroFields spec nested fuel).map .fields }
-    | _, _ => m
-  settle zeros fun m => match m.default, m.value with
-    | some .nested, .struct nested =>
-      if complete zeros nested fuel then m else { m with default := none }
-    | _, _ => m
+  let zeros := mapMembers (settleZero spec) spec
+  mapMembers (settleNested zeros) zeros
 
 /--
 Lower a resolved spec. `sections` are the documentation sections its docs may

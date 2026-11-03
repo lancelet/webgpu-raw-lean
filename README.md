@@ -19,4 +19,4 @@ support WebAssembly; the web build is a workaround whose lifespan is unknown
 
 [pages]: https://lancelet.github.io/webgpu-raw-lean/
 
-Status: WIP: approximately 51% complete.
+Status: WIP: approximately 52% complete.

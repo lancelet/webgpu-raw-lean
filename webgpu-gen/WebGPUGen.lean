@@ -24,6 +24,7 @@ import WebGPUGen.Lowered
 import WebGPUGen.Lowered.Docs
 import WebGPUGen.Lowered.Lower
 import WebGPUGen.Lowered.BoundStructs
+import WebGPUGen.Lowered.Settle
 import WebGPUGen.Emit.Layout
 import WebGPUGen.Emit.Pretty
 import WebGPUGen.Emit.C

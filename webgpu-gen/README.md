@@ -80,6 +80,17 @@ The main proofs we have (not a complete list) are:
     bound too, matched by both its C and its Lean name
   - a bound struct holds nothing the bindings cannot pass; nor, by the
     above, does any struct it refers to
+- **Settling Defaults.** Defaults that refer to other structs are settled
+  once all are lowered (`Lowered/Settle.lean`). In the settled spec:
+  - no member of struct type keeps a `zero` default: each became its field
+    values, from which the printer declares `T.zero`, or none, so the member
+    must be given
+  - each `nested` default, printed `{}`, names a struct whose every member has
+    a default, at every depth
+
+  That `{}` then elaborates is *not yet* proved: each printed default must
+  elaborate too (a `.zero` needs its `T.zero`), and the struct found, by its
+  C name, must be the one the Lean file names.
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`
