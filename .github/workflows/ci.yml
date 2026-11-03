@@ -105,6 +105,17 @@ jobs:
         if: runner.os == 'Linux'
         run: scripts/check-abi.sh
 
+      # The tests again, in the build where each poke (the unchecked writes the
+      # encoders make) also checks its array is unshared and its store fits,
+      # stopping the program if not; -R, so that Lake applies the option.
+      - name: Test with the pokes checked
+        run: lake test -R -K checkPokes=true
+
+      # And back to the normal build: Lake keeps -K options in its configuration
+      # until the next -R, and the CI cache keeps that configuration.
+      - name: Reconfigure for the normal build
+        run: lake build -R
+
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
   # web/emscripten-version (and cmake and make), then run web/build.sh. The
@@ -155,6 +166,14 @@ jobs:
             web-${{ hashFiles('lean-toolchain', 'web/build.sh',
             'web/emscripten-version', 'web/include/**',
             'vendor/lean4/fetch.sh', 'vendor/libuv/fetch.sh') }}
+
+      # First in the build where each poke also checks its array is unshared
+      # and its store fits, as natively: the tests only, not to publish.
+      - name: Build for the web, with the pokes checked
+        run: WEBGPU_RAW_CHECK_POKES=1 web/build.sh
+
+      - name: Run the self-test under Node, with the pokes checked
+        run: node .lake/web/site/webgpu-raw-web-test.js
 
       - name: Build for the web
         run: web/build.sh

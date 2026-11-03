@@ -55,9 +55,25 @@ def cCompiler : IO String := return (← IO.getEnv "CC").getD "cc"
 def picArgs : Array String :=
   if System.Platform.isWindows then #[] else #["-fPIC"]
 
+/--
+What a poke (`WebGPU.Raw.Internal.Bytes`) checks, as C the pokes call: nothing,
+unless built with `-K checkPokes=true` (and `-R`, so Lake applies it), when it
+stops the program if the array is held by anything else, or the store does not
+fit. The tests run so in CI. Lake keeps the option until the next `-R`.
+-/
+def checkPoke : String :=
+  if get_config? checkPokes == some "true" then
+    "-DLEAN_WGPU_CHECK_POKE(b,o,w)=(lean_is_exclusive(b) \
+      && (o) <= lean_sarray_size(b) && (w) <= lean_sarray_size(b) - (o) \
+      ? (void)0 : lean_internal_panic(\"a poke into a shared array, \
+      or past its end\"))"
+  else
+    "-DLEAN_WGPU_CHECK_POKE(b,o,w)=((void)0)"
+
 package WebGPURaw where
-  leanOptions  := #[⟨`autoImplicit, false⟩]
-  moreLinkArgs := wgpuRpath
+  leanOptions   := #[⟨`autoImplicit, false⟩]
+  moreLinkArgs  := wgpuRpath
+  moreLeancArgs := #[checkPoke]
 
 /--
 wgpu-native's shared library, from `fetch.sh`. Programs that link it are linked

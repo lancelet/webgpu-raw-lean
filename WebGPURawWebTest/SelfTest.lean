@@ -1,6 +1,7 @@
 import WebGPU.Raw
 import WebGPURawTest.Internal.Bytes
 import WebGPURawTest.Internal.Pack
+import WebGPURawTest.Internal.Encode
 
 /-!
 # The web self-test
@@ -77,6 +78,7 @@ def checks : List (String × Bool) :=
     ++ (WebGPURawTest.Internal.Pack.checks (runtime .bits64)).map
       (fun (what, ok) => (what ++ " (64-bit)", ok))
     ++ WebGPURawTest.Internal.Pack.cChecks
+    ++ WebGPURawTest.Internal.Encode.checks
 
 end WebGPURawWebTest
 

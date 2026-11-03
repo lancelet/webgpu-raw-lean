@@ -40,5 +40,13 @@ bindings prove, in Lean:
   scalar and slot (`WebGPU/Raw/Internal/Pack.lean`). A `size_t` that does not
   fit the target is refused, as for a function's argument. A packed buffer
   descriptor is tested to be byte for byte one C fills in.
+- **Encoding structs.** A struct is encoded field by field: each field an
+  offset, a kind of scalar, and the number its bytes hold. For well-formed
+  fields (in order, apart, within the struct), every field reads back as its
+  number, and every other byte, the pointers and padding, as 0
+  (`WebGPU/Raw/Internal/Encode.lean`). The encoders that run are straight-line
+  pokes into a fresh block, each proved the same as the general encoding, so
+  these hold of them; their bounds are proved, and that their block is
+  unshared is checked in CI (see `docs/Safety.md`).
 
-Status: WIP: approximately 60% complete.
+Status: WIP: approximately 61% complete.

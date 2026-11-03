@@ -93,6 +93,18 @@ unimplemented.)
   each C writer implements write only within the array, and whole or not at
   all; and test that each C writer agrees with its definition, in place and on
   shared arrays, natively and on the web.
+- **A poke writes only into a block nothing else holds, and only within it.**
+  The encoders write a struct's fields with pokes: unchecked stores, for
+  speed. Each poke's bounds are proved, as its last argument. That its block
+  is held by nothing else is so by how the encoders are made: each allocates a
+  fresh block once (`freshZeros`, which Lean's compiler may not compute once
+  and share, but may merge with a like call in the same function, so there is
+  one), passes it straight from poke to poke, using it for nothing else, and
+  is `@[noinline]`, so that no function holds two of its calls. A poke into a
+  block anything else held would change that too. *Checked by:* proof (the
+  bounds), and test: CI runs the tests in a build where every poke also checks
+  its block is unshared and its store fits (`-K checkPokes=true`, and on the web
+  `WEBGPU_RAW_CHECK_POKES=1`), stopping the program if not.
 
 ## Threads
 

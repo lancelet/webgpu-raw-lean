@@ -36,6 +36,16 @@ open WebGPU.Raw.Bytes
 def next (n : UInt64) : UInt64 :=
   n * 6364136223846793005 + 1442695040888963407
 
+/-- A fresh block, from a call that differs from others by its tag. -/
+@[noinline]
+def freshBlock (size : Nat) (_tag : String) : ByteArray :=
+  freshZeros size
+
+/-- A fresh block is `size` bytes. -/
+theorem size_freshBlock (size : Nat) (tag : String) :
+    (freshBlock size tag).size = size :=
+  size_freshZeros size
+
 /--
 Each way a writer's C fast path differs from its Lean definition, over arrays
 of several sizes, every offset in and past them, and many values: edge cases
@@ -104,6 +114,36 @@ def disagreements (seed : UInt64) : List String := Id.run do
         unless inPlace.data == expected.data do
           found := s!"writing in place at {offset} of {size} bytes, {v}: \
             {inPlace.data}, not {expected.data}" :: found
+        -- Pokes, each onto its own fresh block, where they fit, against the
+        -- definition. Each block comes from a call no other is like, as the
+        -- compiler may merge like calls into one shared block, and its size
+        -- from the lemma, not the block, which reading would share too: the
+        -- checked build stops at either.
+        let expect (width n : Nat) :=
+          writeWhole (zeros size) offset width n
+        let poked : List (String × Option ByteArray × ByteArray) := [
+          ("pokeU8", if h : offset + 1 ≤ size then
+              some (pokeU8 (freshBlock size "U8") offset v.toUInt8
+                (by rw [size_freshBlock]; exact h)) else none,
+            expect 1 v.toUInt8.toNat),
+          ("pokeU16", if h : offset + 2 ≤ size then
+              some (pokeU16 (freshBlock size "U16") offset v.toUInt16
+                (by rw [size_freshBlock]; exact h)) else none,
+            expect 2 v.toUInt16.toNat),
+          ("pokeU32", if h : offset + 4 ≤ size then
+              some (pokeU32 (freshBlock size "U32") offset v.toUInt32
+                (by rw [size_freshBlock]; exact h)) else none,
+            expect 4 v.toUInt32.toNat),
+          ("pokeU64", if h : offset + 8 ≤ size then
+              some (pokeU64 (freshBlock size "U64") offset v
+                (by rw [size_freshBlock]; exact h)) else none,
+            expect 8 v.toNat)
+        ]
+        for (name, fast, lean) in poked do
+          if let some fast := fast then
+            unless fast.data == lean.data do
+              found := s!"{name} at {offset} of {size} bytes, {v}: \
+                {fast.data}, not {lean.data}" :: found
         -- `bytes` is still used here, so each write above found it shared.
         unless bytes.data == ((List.range size).map (·.toUInt8)).toArray do
           found := s!"a write changed a shared array of {size} bytes" :: found

@@ -58,5 +58,9 @@ def main : IO Unit := do
   for (what, ok) in WebGPURawTest.Internal.Pack.cChecks do
     unless ok do
       throw (IO.userError s!"FAIL: packing: {what}")
+  -- The straight-line encoders give the bytes C holds, as `encode` says.
+  for (what, ok) in WebGPURawTest.Internal.Encode.checks do
+    unless ok do
+      throw (IO.userError s!"FAIL: encoding: {what}")
   -- The instance's reference is released when `wgpu` is freed, at the end.
   IO.println "The WebGPU bindings called through their shims."

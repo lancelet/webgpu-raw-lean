@@ -186,6 +186,19 @@ lake build WebGPURawWebTest >/dev/null
 rm -rf "$app"
 mkdir -p "$app" "$site"
 
+# What a poke (WebGPU.Raw.Internal.Bytes) checks, as the lakefile defines it:
+# nothing, unless WEBGPU_RAW_CHECK_POKES=1, the web's `-K checkPokes=true`, when
+# it stops the program if its array is shared, or its store does not fit.
+if [ "${WEBGPU_RAW_CHECK_POKES:-0}" = 1 ]; then
+  fits='(o) <= lean_sarray_size(b) && (w) <= lean_sarray_size(b) - (o)'
+  panic='lean_internal_panic("a poke into a shared array, or past its end")'
+  check_poke="-DLEAN_WGPU_CHECK_POKE(b,o,w)=(lean_is_exclusive(b) && $fits"
+  check_poke+=" ? (void)0 : $panic)"
+else
+  check_poke='-DLEAN_WGPU_CHECK_POKE(b,o,w)=((void)0)'
+fi
+export check_poke
+
 # Compile one module's C, like `WebGPU/Raw/Enums`, from Lake's output.
 compile_module() {
   local c=".lake/build/ir/$1.c"
@@ -194,19 +207,21 @@ compile_module() {
     return 1
   fi
   read_flags
-  emcc "${flags[@]}" -w -c "$c" -o "$app/${1//\//_}.o"
+  emcc "${flags[@]}" -w "$check_poke" -c "$c" -o "$app/${1//\//_}.o"
 }
 export -f compile_module
 export app
 # The modules in the sources, not every C file in .lake/build/ir, which may
 # hold C of modules since removed; and the native tests' modules the self-test
-# shares: the byte writers' differential test, and the packing checks.
+# shares: the byte writers' differential test, and the packing and encoding
+# checks.
 # shellcheck disable=SC2016 # the $1 is the inner bash's
 {
   find WebGPU WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
   echo WebGPURawTest/Internal/Bytes.lean
   echo WebGPURawTest/Internal/Pack.lean
+  echo WebGPURawTest/Internal/Encode.lean
 } \
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _

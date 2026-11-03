@@ -11,7 +11,9 @@ them back: what packing a struct of `webgpu.h` writes. Every target the
 bindings support is little-endian, which the C side checks as it compiles.
 
 Each typed writer (`writeU32`, `writeF64`, ...) is defined in Lean, one byte at
-a time, which is what the proofs reason about. It runs as a few lines of C that
+a time, which is what the proofs reason about. The generated encoders use pokes
+instead (`pokeU32`, ...): the same, without checks, for a fresh block (see the
+section on them). It runs as a few lines of C that
 Lean pastes into the code it compiles (`@[extern c inline]`), so the C compiler
 inlines it: a bounds check, and one store. The C uses only `lean.h`, and is
 part of this file, so any change to it rebuilds what pasted it; the tests check
@@ -352,6 +354,195 @@ theorem readU64_writeF64 (bytes : ByteArray) (offset : USize) (v : Float)
     readU64 (writeF64 bytes offset v) offset = v.toBits := by
   unfold writeF64
   exact readU64_writeU64 _ _ _ h
+
+/-!
+## Fresh blocks and pokes
+
+What the generated encoders run: a block allocated fresh, zeroed, and then a
+poke for each field. A poke is a writer without checks: its offset is proved to
+fit (its last argument), and its array must be held by nothing else, which is
+so of a fresh block passed from poke to poke, each result used once. A poke
+into an array anything else held would change that too: so pokes are only for
+the generated encoders, which keep to this.
+
+The fresh block must be fresh at each call: `@[never_extract]` keeps Lean's
+compiler from computing `freshZeros 48` once, as a constant, and sharing it.
+
+In a build with `-K checkPokes=true` (and `-R`, so Lake applies it), each poke
+also asserts its array is held by nothing else, and its store fits, and stops
+the program if not; the tests run so in CI. Otherwise the check is nothing.
+
+Two things would share a block, and so must not happen in an encoder: two
+calls of `freshZeros` alike in one function, which the compiler may merge into
+one block (`@[never_extract]` does not stop that), and using the block for
+anything but the next poke, even to read its size. So an encoder calls
+`freshZeros` once, takes sizes from `size_freshZeros`, and is `@[noinline]`:
+else, inlined twice into one function, it would call `freshZeros` twice there.
+
+The pokes' C uses the macro `LEAN_WGPU_CHECK_POKE`, which this package defines
+as it compiles (the lakefile, and `web/build.sh`). C that pastes a poke without
+it fails to compile, rather than run unchecked.
+-/
+
+/-- `size` bytes, each 0. -/
+def zeros (size : Nat) : ByteArray :=
+  ⟨Array.replicate size 0⟩
+
+/-- Zeros are `size` bytes. -/
+theorem size_zeros (size : Nat) : (zeros size).size = size := by
+  simp [zeros, ByteArray.size]
+
+/-- Zeros read as 0. -/
+theorem readLE_zeros (size offset width : Nat) :
+    readLE (zeros size) offset width = 0 := by
+  induction width generalizing offset with
+  | zero => rfl
+  | succ width ih =>
+    simp only [readLE, ih]
+    have : readByte (zeros size) offset = 0 := by
+      unfold readByte
+      split
+      · rw [ByteArray.getElem_eq_getElem_data]
+        exact Array.getElem_replicate ..
+      · rfl
+    simp [this]
+
+/-- A new block of `size` bytes, each 0, held by nothing else. -/
+@[never_extract, extern c inline "({ \
+  if (!lean_is_scalar(#1)) lean_internal_panic_out_of_memory(); \
+  size_t lean_wgpu_n = lean_unbox(#1); \
+  lean_object * lean_wgpu_r = \
+    lean_alloc_sarray(1, lean_wgpu_n, lean_wgpu_n); \
+  __builtin_memset(lean_sarray_cptr(lean_wgpu_r), 0, lean_wgpu_n); \
+  lean_wgpu_r; })"]
+def freshZeros (size : @& Nat) : ByteArray :=
+  zeros size
+
+/-- A fresh block is `size` bytes. -/
+theorem size_freshZeros (size : Nat) : (freshZeros size).size = size :=
+  size_zeros _
+
+/-- `bytes` with `v` at `offset`, where it fits: 1 byte, unchecked. -/
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = lean_unbox(#2); \
+  uint8_t lean_wgpu_v = #3; \
+  LEAN_WGPU_CHECK_POKE(lean_wgpu_b, lean_wgpu_o, 1); \
+  __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+    &lean_wgpu_v, 1); \
+  lean_wgpu_b; })"]
+def pokeU8 (bytes : ByteArray) (offset : @& Nat) (v : UInt8)
+    (h : offset + 1 ≤ bytes.size) : ByteArray :=
+  writeWhole bytes offset 1 v.toNat
+
+/-- `bytes` with `v` at `offset`, where it fits: 2 bytes, unchecked. -/
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = lean_unbox(#2); \
+  uint16_t lean_wgpu_v = #3; \
+  LEAN_WGPU_CHECK_POKE(lean_wgpu_b, lean_wgpu_o, 2); \
+  __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+    &lean_wgpu_v, 2); \
+  lean_wgpu_b; })"]
+def pokeU16 (bytes : ByteArray) (offset : @& Nat) (v : UInt16)
+    (h : offset + 2 ≤ bytes.size) : ByteArray :=
+  writeWhole bytes offset 2 v.toNat
+
+/-- `bytes` with `v` at `offset`, where it fits: 4 bytes, unchecked. -/
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = lean_unbox(#2); \
+  uint32_t lean_wgpu_v = #3; \
+  LEAN_WGPU_CHECK_POKE(lean_wgpu_b, lean_wgpu_o, 4); \
+  __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+    &lean_wgpu_v, 4); \
+  lean_wgpu_b; })"]
+def pokeU32 (bytes : ByteArray) (offset : @& Nat) (v : UInt32)
+    (h : offset + 4 ≤ bytes.size) : ByteArray :=
+  writeWhole bytes offset 4 v.toNat
+
+/-- `bytes` with `v` at `offset`, where it fits: 8 bytes, unchecked. -/
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = lean_unbox(#2); \
+  uint64_t lean_wgpu_v = #3; \
+  LEAN_WGPU_CHECK_POKE(lean_wgpu_b, lean_wgpu_o, 8); \
+  __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+    &lean_wgpu_v, 8); \
+  lean_wgpu_b; })"]
+def pokeU64 (bytes : ByteArray) (offset : @& Nat) (v : UInt64)
+    (h : offset + 8 ≤ bytes.size) : ByteArray :=
+  writeWhole bytes offset 8 v.toNat
+
+/-- `bytes` with `v` at `offset`, where it fits, as a C `float`, unchecked. -/
+@[inline]
+def pokeF32 (bytes : ByteArray) (offset : @& Nat) (v : Float32)
+    (h : offset + 4 ≤ bytes.size) : ByteArray :=
+  pokeU32 bytes offset v.toBits h
+
+/-- `bytes` with `v` at `offset`, where it fits, as a C `double`, unchecked. -/
+@[inline]
+def pokeF64 (bytes : ByteArray) (offset : @& Nat) (v : Float)
+    (h : offset + 8 ≤ bytes.size) : ByteArray :=
+  pokeU64 bytes offset v.toBits h
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeU8_eq (bytes : ByteArray) (offset : Nat) (v : UInt8) (h) :
+    pokeU8 bytes offset v h = writeWhole bytes offset 1 v.toNat := rfl
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeU8 (bytes : ByteArray) (offset : Nat) (v : UInt8) (h) :
+    (pokeU8 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeU16_eq (bytes : ByteArray) (offset : Nat) (v : UInt16) (h) :
+    pokeU16 bytes offset v h = writeWhole bytes offset 2 v.toNat := rfl
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeU16 (bytes : ByteArray) (offset : Nat) (v : UInt16) (h) :
+    (pokeU16 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeU32_eq (bytes : ByteArray) (offset : Nat) (v : UInt32) (h) :
+    pokeU32 bytes offset v h = writeWhole bytes offset 4 v.toNat := rfl
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeU32 (bytes : ByteArray) (offset : Nat) (v : UInt32) (h) :
+    (pokeU32 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeU64_eq (bytes : ByteArray) (offset : Nat) (v : UInt64) (h) :
+    pokeU64 bytes offset v h = writeWhole bytes offset 8 v.toNat := rfl
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeU64 (bytes : ByteArray) (offset : Nat) (v : UInt64) (h) :
+    (pokeU64 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeF32_eq (bytes : ByteArray) (offset : Nat) (v : Float32) (h) :
+    pokeF32 bytes offset v h = writeWhole bytes offset 4 v.toBits.toNat := rfl
+
+/-- A poke writes what `writeWhole` does. -/
+theorem pokeF64_eq (bytes : ByteArray) (offset : Nat) (v : Float) (h) :
+    pokeF64 bytes offset v h = writeWhole bytes offset 8 v.toBits.toNat := rfl
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeF32 (bytes : ByteArray) (offset : Nat) (v : Float32) (h) :
+    (pokeF32 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
+
+/-- A poke keeps the array's size. -/
+theorem size_pokeF64 (bytes : ByteArray) (offset : Nat) (v : Float) (h) :
+    (pokeF64 bytes offset v h).size = bytes.size :=
+  size_writeWhole ..
 
 end WebGPU.Raw.Bytes
 

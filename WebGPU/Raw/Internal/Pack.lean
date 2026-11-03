@@ -194,31 +194,6 @@ theorem readLE_writeAll_entries (bytes : ByteArray) (entries : List Entry)
         simp only [Entry.write?, hn, Option.map_some]
         exact readLE_writeWhole _ _ _ _ (hfit e (List.mem_cons_self ..))
 
-/-! ## Bytes of zeros -/
-
-/-- `size` bytes, each 0. -/
-def zeros (size : Nat) : ByteArray :=
-  ⟨Array.replicate size 0⟩
-
-/-- Zeros are `size` bytes. -/
-theorem size_zeros (size : Nat) : (zeros size).size = size := by
-  simp [zeros, ByteArray.size]
-
-/-- Zeros read as 0. -/
-theorem readLE_zeros (size offset width : Nat) :
-    readLE (zeros size) offset width = 0 := by
-  induction width generalizing offset with
-  | zero => rfl
-  | succ width ih =>
-    simp only [readLE, ih]
-    have : readByte (zeros size) offset = 0 := by
-      unfold readByte
-      split
-      · rw [ByteArray.getElem_eq_getElem_data]
-        exact Array.getElem_replicate ..
-      · rfl
-    simp [this]
-
 /-! ## Layouts and values -/
 
 /-- How wide the target's pointers and `size_t` are. -/
