@@ -108,6 +108,22 @@ unimplemented.)
   bounds), and test: CI runs the tests in a build where every poke also checks
   its block is unshared and its store fits (`-K checkPokes=true`, and on the web
   `WEBGPU_RAW_CHECK_POKES=1`), stopping the program if not.
+- **C fills in a struct's pointers only where its table says, from targets of
+  the kinds it says.** One C function (`lean_wgpu_fill`, `c/reloc.c`) walks a
+  struct's table of relocations over its encoded bytes, writing each pointer
+  from the next target: a string's bytes, an object's handle, or a block of
+  bytes it fills in first. It trusts the table, the targets and the bytes to
+  agree: offsets within the struct, targets of the kinds the table says, as
+  many as it needs, blocks of whole elements, held by nothing else and aligned.
+  Whatever a pointer points into is a target, held by the call's targets, so
+  borrowed for the call (see above: C keeps no input after it). A block must
+  never be a constant Lean computes once, so what makes one is to be
+  `@[never_extract]`, as the tests' are. *Checked by:* test, natively and on
+  the web, of every kind of pointer, none and some, and blocks two deep, empty
+  and of two elements; and CI runs the tests in the checked build, where the
+  walker checks every one of the above, stopping the program if not. Generated
+  tables, with proofs that they agree with their targets, and that every
+  pointer of a struct has a relocation, are to follow.
 
 ## Threads
 
@@ -129,6 +145,11 @@ Whatever the implementation:
 A Lean `Task` may run on any thread of the pool, so an encoder must not be
 shared between tasks running at the same time, and a push and pop of an error
 scope must not be split between tasks. *Checked by:* not enforced; documented.
+
+The checked build's test that an array is held by nothing else
+(`lean_is_exclusive`, for pokes and blocks) also fails for one Lean has marked
+as shared between threads, though nothing else holds it: so a test that hands
+encoded structs between tasks would stop the checked build without cause.
 
 ## Functions an implementation does not implement
 

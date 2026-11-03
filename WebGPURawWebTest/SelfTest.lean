@@ -1,6 +1,7 @@
 import WebGPU.Raw
 import WebGPURawTest.Internal.Bytes
 import WebGPURawTest.Internal.Encode
+import WebGPURawTest.Internal.Reloc
 
 /-!
 # The web self-test
@@ -89,6 +90,14 @@ def main : IO UInt32 := do
       pure "ok   an instance created, and a method called on it"
     catch e => pure s!"FAIL the bindings: {e}"
   IO.println bindings
+  -- C fills in encoded structs' pointers as their tables say.
+  let relocations ← try
+      let wgpu ← WebGPURawWebTest.createInstance
+      let checks := WebGPURawTest.Internal.Reloc.checks wgpu
+      pure (checks.map fun (what, problem) =>
+        if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
+    catch e => pure [s!"FAIL relocations: {e}"]
+  relocations.forM IO.println
   -- A function and a method wgpu-native leaves unimplemented, which Dawn
   -- implements: on the web their shims call them.
   -- (The method needs WebGPU, which Node lacks: there, emdawnwebgpu throws a
@@ -106,7 +115,7 @@ def main : IO UInt32 := do
     catch e => pure s!"FAIL calling what wgpu-native does not implement: {e}"
   IO.println dawn
   let bindingsFailed :=
-    [bindings, dawn].filter (!·.startsWith "ok") |>.length
+    (bindings :: dawn :: relocations).filter (!·.startsWith "ok") |>.length
   if failed.isEmpty && bindingsFailed == 0 then
     IO.println "All checks passed."
     return 0

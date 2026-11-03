@@ -1,0 +1,25 @@
+// Filling in an encoded struct's pointers: see WebGPU/Raw/Internal/Reloc.lean.
+
+#ifndef LEAN_WGPU_RELOC_H
+#define LEAN_WGPU_RELOC_H
+
+#include <stddef.h>
+#include <stdint.h>
+#include <lean/lean.h>
+
+// Fill in the pointers of the `size` bytes at `data`, the elements of the
+// struct of table `table` in `tables` (an `Array ByteArray`), each from the
+// next target in `targets` (an `Array Target`), from `*cursor` on, advancing
+// it. A block is filled in by its own table first, its targets next in order.
+// Everything is borrowed; the pointers are valid while the targets are.
+void lean_wgpu_fill(
+    uint8_t * data, size_t size, b_lean_obj_arg tables, size_t table,
+    b_lean_obj_arg targets, size_t * cursor);
+
+// Fill in the pointers of a struct, or the elements of an array, from every
+// target in `targets`, as `lean_wgpu_fill` does from the first.
+void lean_wgpu_fill_struct(
+    uint8_t * data, size_t size, b_lean_obj_arg tables, size_t table,
+    b_lean_obj_arg targets);
+
+#endif

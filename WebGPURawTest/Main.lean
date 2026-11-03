@@ -54,5 +54,9 @@ def main : IO Unit := do
   for (what, ok) in WebGPURawTest.Internal.Encode.checks do
     unless ok do
       throw (IO.userError s!"FAIL: encoding: {what}")
+  -- C fills in encoded structs' pointers as their tables say.
+  for (what, problem) in WebGPURawTest.Internal.Reloc.checks wgpu do
+    unless problem.isEmpty do
+      throw (IO.userError s!"FAIL: relocations: {what}: {problem}")
   -- The instance's reference is released when `wgpu` is freed, at the end.
   IO.println "The WebGPU bindings called through their shims."

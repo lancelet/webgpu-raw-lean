@@ -194,8 +194,11 @@ if [ "${WEBGPU_RAW_CHECK_POKES:-0}" = 1 ]; then
   panic='lean_internal_panic("a poke into a shared array, or past its end")'
   check_poke="-DLEAN_WGPU_CHECK_POKE(b,o,w)=(lean_is_exclusive(b) && $fits"
   check_poke+=" ? (void)0 : $panic)"
+  # And the hand-written C's checks of its Lean specification.
+  checked=(-DLEAN_WGPU_CHECKED)
 else
   check_poke='-DLEAN_WGPU_CHECK_POKE(b,o,w)=((void)0)'
+  checked=()
 fi
 export check_poke
 
@@ -213,13 +216,15 @@ export -f compile_module
 export app
 # The modules in the sources, not every C file in .lake/build/ir, which may
 # hold C of modules since removed; and the native tests' modules the self-test
-# shares: the byte writers' differential test, and the encoding checks.
+# shares: the byte writers' differential test, and the encoding and
+# relocation checks.
 # shellcheck disable=SC2016 # the $1 is the inner bash's
 {
   find WebGPU WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
   echo WebGPURawTest/Internal/Bytes.lean
   echo WebGPURawTest/Internal/Encode.lean
+  echo WebGPURawTest/Internal/Reloc.lean
 } \
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
@@ -229,8 +234,9 @@ export app
 # unimplemented then call them, rather than raise an IO error.
 port=--use-port=emdawnwebgpu
 read_flags
-for f in c/generated/*.c WebGPURawTest/c/*.c; do
-  emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN -I c/generated -c "$f" \
+for f in c/*.c c/generated/*.c WebGPURawTest/c/*.c; do
+  emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN "${checked[@]}" -I c \
+    -I c/generated -c "$f" \
     -o "$app/shim_$(basename "$f" .c).o"
 done
 

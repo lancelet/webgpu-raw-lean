@@ -70,6 +70,15 @@ def checkPoke : String :=
   else
     "-DLEAN_WGPU_CHECK_POKE(b,o,w)=((void)0)"
 
+/--
+What the hand-written C (`c/*.c`) checks of its Lean specification, as the
+pokes do: nothing, unless built with `-K checkPokes=true`, when
+`LEAN_WGPU_CHECKED` compiles its checks in.
+-/
+def checkedArgs : Array String :=
+  if get_config? checkPokes == some "true" then #["-DLEAN_WGPU_CHECKED"]
+  else #[]
+
 package WebGPURaw where
   leanOptions   := #[⟨`autoImplicit, false⟩]
   moreLinkArgs  := wgpuRpath
@@ -87,13 +96,14 @@ target wgpuNative pkg : Dynlib := do
   return (← inputBinFile file).map fun path => { path, name := "wgpu_native" }
 
 /--
-The C shims, generated into `c/generated/` by `webgpu-gen`: every `.c` file
-there, compiled with the system C compiler (`cc`, or `CC`) into one static
-library. Each is rebuilt when it, or any header beside it or in wgpu-native's
-`include/webgpu/`, changes.
+The C shims, generated into `c/generated/` by `webgpu-gen`, and the hand-written
+C beside them in `c/`: every `.c` file in either, compiled with the system C
+compiler (`cc`, or `CC`) into one static library. Each is rebuilt when it, or
+any header in either or in wgpu-native's `include/webgpu/`, changes.
 -/
 target wgpuShim pkg : FilePath := do
-  let sources := pkg.dir / "c" / "generated"
+  let handWritten := pkg.dir / "c"
+  let sources := handWritten / "generated"
   let wgpuInclude := wgpuDir pkg.dir / "include"
   unless ← wgpuInclude.isDir do
     error s!"no wgpu-native in {wgpuDir pkg.dir}: \
@@ -101,20 +111,24 @@ target wgpuShim pkg : FilePath := do
   -- Sorted, since directory order varies, and the traces depend on the order.
   let paths (dir : FilePath) : IO (Array FilePath) := do
     return ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
-  let files ← paths sources
+  -- (`generated`, having no extension, is neither a source nor a header.)
+  let files := (← paths handWritten) ++ (← paths sources)
   let wgpuHeaders ← paths (wgpuInclude / "webgpu")
   let headers := (files ++ wgpuHeaders).filter (·.extension == some "h")
   let headerJobs ← headers.mapM fun h => inputTextFile h
   let cc ← cCompiler
   let leanInclude ← getLeanIncludeDir
-  let includes := #["-I", leanInclude.toString, "-I", wgpuInclude.toString]
+  let includes := #["-I", leanInclude.toString, "-I", wgpuInclude.toString,
+    "-I", handWritten.toString]
   let objs ← (files.filter (·.extension == some "c")).mapM fun src => do
     let stem := src.fileStem.getD "shim"
     -- The source, with the headers' traces mixed into its own.
     let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
       (Job.mixArray headerJobs "headers")
-    buildO (pkg.buildDir / "c" / "generated" / s!"{stem}.o") srcJob
-      includes (#["-O2"] ++ picArgs) cc getLeanTrace
+    let out := if src.parent == some handWritten then pkg.buildDir / "c"
+      else pkg.buildDir / "c" / "generated"
+    buildO (out / s!"{stem}.o") srcJob
+      includes (#["-O2"] ++ picArgs ++ checkedArgs) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
 
 /--
@@ -141,10 +155,12 @@ target testHelpers pkg : FilePath := do
   let includes := #[
     "-I", (← getLeanIncludeDir).toString,
     "-I", (wgpuDir pkg.dir / "include").toString,
-    "-I", (pkg.dir / "c" / "generated").toString
+    "-I", (pkg.dir / "c" / "generated").toString,
+    "-I", (pkg.dir / "c").toString
   ]
   let headers ← [
     pkg.dir / "c" / "generated" / "objects.h",
+    pkg.dir / "c" / "reloc.h",
     wgpuDir pkg.dir / "include" / "webgpu" / "webgpu.h"
   ].mapM fun h => inputTextFile h
   let cc ← cCompiler
@@ -154,12 +170,14 @@ target testHelpers pkg : FilePath := do
       (Job.mixArray headers.toArray "headers")
     let stem := src.fileStem.getD "test"
     buildO (pkg.buildDir / "c" / "test" / s!"{stem}.o") srcJob
-      includes (#["-O2"] ++ picArgs) cc getLeanTrace
+      includes (#["-O2"] ++ picArgs ++ checkedArgs) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpurawtest") objs
 
 /-- Tests. `#guard` checks run while this library builds. -/
 lean_lib WebGPURawTest where
-  moreLinkObjs := #[testHelpers]
+  -- The shims again after the helpers, which call the walker in them: a static
+  -- library resolves only what those before it need.
+  moreLinkObjs := #[testHelpers, wgpuShim]
 
 /--
 The test driver: builds the tests, then builds and runs a program that imports
