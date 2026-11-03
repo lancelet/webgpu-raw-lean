@@ -525,6 +525,28 @@ def main : IO Unit := do
   unless unlike.isEmpty do
     failWith s!"bound structs whose C fields differ from webgpu.h: {unlike}"
 
+  -- Nothing C keeps beyond a call is bound: a device descriptor's callbacks
+  -- live as long as the device, a surface source's OS handles as long as the
+  -- surface. Each such struct is in the spec, unsupported for that reason,
+  -- and not bound.
+  let handle := "c_void (mutable pointer)"
+  let kept := [
+    ("WGPUDeviceDescriptor",                 "callback"),
+    ("WGPUSurfaceSourceAndroidNativeWindow", handle),
+    ("WGPUSurfaceSourceMetalLayer",          handle),
+    ("WGPUSurfaceSourceWaylandSurface",      handle),
+    ("WGPUSurfaceSourceWindowsHWND",         handle),
+    ("WGPUSurfaceSourceXCBWindow",           handle),
+    ("WGPUSurfaceSourceXlibWindow",          handle)
+  ]
+  let bound := (WebGPUGen.Lowered.boundStructs structs).map (·.names.c)
+  let wrong := kept.filter fun (c, reason) =>
+    match structs.find? (·.names.c == c) with
+    | some s => !s.unsupported.contains reason || bound.contains c
+    | none   => true
+  unless wrong.isEmpty do
+    failWith s!"structs C keeps beyond a call, not excluded: {wrong}"
+
   -- And every bound struct has its encoders.
   let unencodable := WebGPUGen.Emit.Encoders.unencodable lowered
   unless unencodable.isEmpty do

@@ -87,9 +87,24 @@ unimplemented.)
   UTF-8 and their length excludes the terminating NUL. A Lean string may hold
   U+0000, which the view, being explicitly sized, passes on. *Checked by:*
   review.
-- **C does not keep a string, or any other input, after the call.** Upstream
-  implies this (only outputs belong to the application) but does not state it.
-  *Checked by:* not checked.
+- **C keeps no memory of an input after the call.** Upstream implies this
+  (only outputs belong to the application) but does not state it; Dawn and
+  wgpu-native, as far as we have read them, copy what they need during the
+  call. An object C keeps, it holds a reference to itself: nothing it keeps is
+  memory Lean owns. The exceptions are not bound: a device descriptor's
+  callbacks, which live as long as the device, and a surface source's OS
+  handles, which live as long as the surface. A callback and a mutable
+  `void *` lower to unsupported; a struct with an unsupported member is not
+  bound, nor any that holds one. *Checked by:* proof (a bound struct has no
+  unsupported member, and every struct it refers to is bound), and test (a
+  handle C keeps is unsupported; and each of those structs of the spec, by
+  name, is unsupported for its reason and not bound). That a bound function
+  takes no struct that is not bound is to be checked when the first is bound;
+  that C keeps nothing else is not checked.
+- **C writes into an input only through a mutable pointer, and no mutable
+  pointer argument is bound**: not `wait_any`'s futures, which it writes back
+  to, nor the outputs of the `get_` functions. *Checked by:* test (a mutable
+  pointer argument, an array or a struct, is unsupported).
 - **A byte writer changes a byte array in place only if nothing else holds
   it**, and only within it: a shared array is copied first, and a value that
   does not fit is not written. *Checked by:* proof that the Lean definitions

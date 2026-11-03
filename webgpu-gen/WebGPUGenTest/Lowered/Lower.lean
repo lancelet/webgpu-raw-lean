@@ -1,4 +1,5 @@
 import WebGPUGen.Lowered.Lower
+import WebGPUGen.Lowered.BoundStructs
 import WebGPUGenTest.Resolved.Resolve
 
 /-!
@@ -1057,5 +1058,60 @@ def membersOf (structs name : String) :
   ]
   holder.map (·.members.toList.map (·.default))
     == some [some (.fields setting fields)]
+
+/-! ## What C would keep beyond a call -/
+
+-- A handle C keeps beyond the call, an OS window's as a surface source holds
+-- one, cannot be passed: its struct is not bound, nor any that holds it.
+#guard
+  let input := dedent "
+    - name: source
+      doc: x
+      type: standalone
+      members:
+        - name: window
+          doc: x
+          type: c_void
+          pointer: mutable
+    - name: holder
+      doc: x
+      type: standalone
+      members:
+        - name: source
+          doc: x
+          type: struct.source
+    "
+  let lowered := lowerText (structSpec input)
+  let bound := lowered.map fun l =>
+    (boundStructs l.structs.toList).map (·.names.lean)
+  (membersOf input "Source").map (·.map (·.2.1))
+      == some [.unsupported "c_void (mutable pointer)"]
+    && bound.any fun names =>
+      !names.contains "Source" && !names.contains "Holder"
+
+-- C writes into an argument only through a mutable pointer, as `wait_any`
+-- writes back to its futures: none is bound, an array or a struct.
+#guard
+  let input := dedent "
+    - name: m
+      doc: x
+      args:
+        - name: futures
+          doc: x
+          type: array<struct.s>
+          pointer: mutable
+        - name: limits
+          doc: x
+          type: struct.s
+          pointer: mutable
+    "
+  let methods := (lowerText (spec
+    (structs := "- name: s\n  doc: x\n  type: standalone\n")
+    (objects := deviceWith input)))
+    |>.bind (·.objects[0]?.map (·.methods))
+  (methods.bind (·[0]?.map (·.unsupported))) == some [
+    "array (mutable pointer)",
+    "struct (mutable pointer)"
+  ]
 
 end WebGPUGenTest.Lowered.Lower
