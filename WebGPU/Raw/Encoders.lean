@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 742ce34 (clean)
-  Generated:        2026-11-03 10:20:35 UTC
+  Generator commit: b5a0a78 (clean)
+  Generated:        2026-11-03 10:57:10 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -1443,7 +1443,7 @@ as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
 as for a `size_t` argument.
 -/
 def sizesFit (d : InstanceLimits) : Bool :=
-  System.Platform.numBits = 64 || (sizeFits d.timedWaitAnyMaxCount)
+  System.Platform.numBits = 64 || sizeFits d.timedWaitAnyMaxCount
 
 /--
 `d` as C lays it out on this target, its pointers 0. The caller checks
@@ -6025,10 +6025,15 @@ Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
 as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
 as for a `size_t` argument.
 -/
-def sizesFit (_ : InstanceDescriptor) : Bool :=
-  true
+def sizesFit (d : InstanceDescriptor) : Bool :=
+  System.Platform.numBits = 64 ||
+      (d.requiredLimits.all fun x0 => sizeFits x0.timedWaitAnyMaxCount)
 
-/-- `d` as C lays it out on this target, its pointers 0. -/
+/--
+`d` as C lays it out on this target, its pointers 0. The caller checks
+`sizesFit d` first: on wasm32, a `size_t` that does not fit is cut to its
+low 32 bits.
+-/
 @[inline]
 def toBytes (d : InstanceDescriptor) : ByteArray :=
   if System.Platform.numBits = 64 then encode64 d else encode32 d
