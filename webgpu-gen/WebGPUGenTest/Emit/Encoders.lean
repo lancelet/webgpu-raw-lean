@@ -54,9 +54,9 @@ def member (name : String) (value : Value) : Member :=
     member "inner" (.struct inner.names)
   ]
   let expected (w : String) (size : String) : List Item := [
-    .pointer,
-    .pointer, .int s!"d.label.utf8ByteSize.toUInt{w}",
-    .pointer, .int s!"viewLength{w} d.name",
+    .pointer .chain,
+    .pointer (.string "d.label"), .int s!"d.label.utf8ByteSize.toUInt{w}",
+    .pointer (.optString "d.name"), .int s!"viewLength{w} d.name",
     .int "CEnum.toC d.mode",
     .int "d.usage.bits",
     .int "wgpuBool d.on",
@@ -64,8 +64,8 @@ def member (name : String) (value : Value) : Member :=
     .float "d.scale",
     .int "d.bias.toUInt32",
     .int size,
-    .pointer,
-    .int s!"d.items.size.toUInt{w}", .pointer,
+    .pointer (.object ⟨"WGPUBuffer", "Buffer"⟩ "d.buffer"),
+    .int s!"d.items.size.toUInt{w}", .pointer .array,
     .int "d.inner.n"
   ]
   items [inner, input] .bits64 input "d" 3 == some (expected "64" "d.count")
@@ -77,7 +77,7 @@ def member (name : String) (value : Value) : Member :=
   let input := struct "WGPUExtra" "Extra" .extension [member "n" .uint32]
     (sType := some ⟨"WGPUSType_Extra", "extra"⟩)
   items [input] .bits64 input "d" 2
-    == some [.pointer, .int "CEnum.toC SType.extra", .int "d.n"]
+    == some [.pointer .chain, .int "CEnum.toC SType.extra", .int "d.n"]
 
 -- A member that cannot be written gives no items.
 #guard
@@ -143,7 +143,7 @@ def member (name : String) (value : Value) : Member :=
     [member "xs" (.array (.struct s2.names) "xsCount")]
   let s0 := struct "WGPUS0" "S0" .standalone
     [member "xs" (.array (.struct s1.names) "xsCount")]
-  let printed := (structEncoders [s3, s2, s1, s0] s0).map
+  let printed := (structEncoders [s3, s2, s1, s0] [] s0).map
     (Emit.Doc.pretty Emit.width)
   printed.any fun text => (text.splitOn "sizeFits x2.n").length > 1
 
@@ -163,6 +163,102 @@ def member (name : String) (value : Value) : Member :=
       (size, entries.map (·.1))
   offsets .bits64 == some (48, [0, 8, 16, 24, 32, 40])
     && offsets .bits32 == some (40, [0, 4, 8, 16, 24, 32])
+
+/-! ## Relocations -/
+
+-- A table's bytes, as `WebGPU.Raw.Reloc.serialize` lays them out (the bindings
+-- check the same bytes): the size, the count, then each offset, code, table.
+#guard tableBytes 0x10203 [(8, 4, 5)] == [
+  0x03, 0x02, 0x01, 0, 1, 0, 0, 0,
+  8, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0
+]
+
+-- Each kind of pointer: its name, its code and its table; a block's table its
+-- struct's index; an array's elements, not yet filled in, none.
+#guard
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let index (names : Names) := if names == inner then some 7 else none
+  let pointers : List Pointer := [
+    .chain, .string "d.a", .optString "d.b",
+    .object ⟨"WGPUBuffer", "Buffer"⟩ "d.c",
+    .optObject ⟨"WGPUBuffer", "Buffer"⟩ "d.e",
+    .struct inner "d.f" false, .array
+  ]
+  pointers.map (kind index) == [
+    some (".null", 5, 0),
+    some (".string", 0, 0),
+    some (".optString", 1, 0),
+    some (".object", 2, 0),
+    some (".optObject", 3, 0),
+    some (".block 7", 4, 7),
+    none
+  ]
+
+-- The structs with tables: each after those it points to, by its index; not
+-- one with an array, nor one that points to one with no table.
+#guard
+  let leaf := struct "WGPULeaf" "Leaf" .standalone [member "s" (.string false)]
+  let listed := struct "WGPUListed" "Listed" .standalone
+    [member "xs" (.array .uint32 "xsCount")]
+  let top := struct "WGPUTop" "Top" .standalone [
+    member "leaf" (.structPointer leaf.names true)
+  ]
+  let above := struct "WGPUAbove" "Above" .standalone [
+    member "listed" (.structPointer listed.names false)
+  ]
+  (tabled [leaf, listed, top, above]).map (·.names.lean)
+    == ["Leaf", "Top"]
+
+-- Targets: each run of targets one literal, joined with arrays by `++`; on one
+-- line if they fit, else each run on its own, and a long literal one a line.
+#guard
+  let ps := [Piece.target ".string d.a", .target ".string d.b",
+    .targets "Inner.block64 d.c", .target ".string d.e"]
+  piecesLines 2 ps
+    == ["#[.string d.a, .string d.b] ++ Inner.block64 d.c ++ #[.string d.e]"]
+  && piecesLines 2 [] == ["#[]"]
+  && piecesLines 60 ps == [
+    "#[", "  .string d.a,", "  .string d.b", "]",
+    "++ Inner.block64 d.c", "++ #[.string d.e]"
+  ]
+  -- An array too long for its line is left on its own.
+  && piecesLines 70 [.targets "Inner.block64 d.c", .targets "Inner.block64 d.e"]
+    == ["Inner.block64 d.c", "++ Inner.block64 d.e"]
+
+-- A struct nested by value keeps its own chain: a null relocation at its
+-- offset in the outer struct, after the outer one's.
+#guard
+  let inner := struct "WGPUInner" "Inner" .extensible [member "n" .uint32]
+  let input := struct "WGPUOuter" "Outer" .extensible [
+    member "label" (.string false),
+    member "inner" (.struct inner.names)
+  ]
+  let printed := (structEncoders [inner, input] [inner, input] input).map
+    (Emit.Doc.pretty Emit.width)
+  let has (s : String) := printed.any fun text => (text.splitOn s).length > 1
+  has "⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .null⟩"
+    && has "⟨0, .null⟩, ⟨4, .string⟩, ⟨12, .null⟩"
+    && has "def targets64 (d : Outer) : Array Target :=\n  #[.string d.label]"
+
+-- A struct's relocations, table, proofs and targets, as printed: a chain, a
+-- string, and an optional struct with a table, a block of its own.
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone [member "n" .uint32]
+  let input := struct "WGPUOuter" "Outer" .extensible [
+    member "label" (.string false),
+    member "inner" (.structPointer inner.names true)
+  ]
+  let printed := (structEncoders [inner, input] [inner, input] input).map
+    (Emit.Doc.pretty Emit.width)
+  let has (s : String) := printed.any fun text => (text.splitOn s).length > 1
+  has ("noncomputable def relocs64 : List Reloc := [\n" ++
+      "  ⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .block 0⟩\n]")
+    && has "theorem table64_eq : table64 = serialize 32 relocs64 := rfl"
+    && has ("theorem relocs64_offsets : " ++
+      "relocs64.map (·.offset) = pointers64 :=\n  rfl")
+    && has ("def targets64 (d : Outer) : Array Target :=\n" ++
+      "  #[.string d.label] ++ (d.inner.elim #[.block .empty] Inner.block64)")
+    && has "def tableIndex : Nat := 1"
 
 /-! ## Printing -/
 
@@ -191,7 +287,7 @@ def member (name : String) (value : Value) : Member :=
       decide
 
     /-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
-    @[noinline]
+    @[noinline, never_extract]
     def encode64 (d : One) : ByteArray :=
       let b := Block.fresh 4
       let b := b.pokeU32 0 d.n (by decide)
@@ -211,7 +307,7 @@ def member (name : String) (value : Value) : Member :=
         rw [encode64_eq]
         exact readLE_encode_apart d o 8 (pointers64_apart o ho)
     "
-  (structEncoders [input] input).map (fun d => Emit.Doc.pretty Emit.width d)
+  (structEncoders [input] [] input).map (fun d => Emit.Doc.pretty Emit.width d)
     |>.map (fun text => text.startsWith expected) == some true
 
 end WebGPUGenTest.Emit.Encoders

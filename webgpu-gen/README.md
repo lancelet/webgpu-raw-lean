@@ -38,8 +38,9 @@ It consists of the following stages:
    crosses between C and Lean, struct defaults as C's initialisers give
    them, and what cannot be passed yet, so that it is not bound.
 6. **Generate.** Print the C shims and the Lean bindings (`Emit/`): among them,
-   each bound struct's encoders, with the proofs Lean checks as the bindings
-   build (`Emit/Encoders.lean`).
+   each bound struct's encoders, and its table of where C fills in its
+   pointers, with the proofs Lean checks as the bindings build
+   (`Emit/Encoders.lean`).
 
 ## Proofs
 

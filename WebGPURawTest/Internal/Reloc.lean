@@ -8,8 +8,11 @@ import WebGPURawTest.Internal.Encode
 
 Tables laid out as `serialize` lays them out, and C filling in pointers by
 them (`c/reloc.c`): every kind of pointer, each optional one some and none,
-blocks two deep, of two elements, of none, and with no pointers; and a buffer
-descriptor's label, read back as WebGPU would, by its pointer and length.
+blocks two deep, of two elements, of none, and with no pointers, by tables
+written here; and, by the generated tables and targets, a buffer descriptor's
+label, read back as WebGPU would, by its pointer and length, and a color target
+state's blend state, a block of its own, and a bind group entry's optional
+objects.
 These run at run time, natively and on the web, and again in the checked
 build, where the C checks the table, the targets and the bytes agree.
 -/
@@ -27,8 +30,9 @@ open WebGPU.Raw WebGPU.Raw.Reloc
 ]
 
 -- Each kind's code.
-#guard [Kind.string, .optString, .object, .optObject, .block 0].map Kind.code
-  == [0, 1, 2, 3, 4]
+#guard
+  let kinds := [Kind.string, .optString, .object, .optObject, .block 0, .null]
+  kinds.map Kind.code == [0, 1, 2, 3, 4, 5]
 
 /-! ## Filling in -/
 
@@ -46,7 +50,8 @@ def fresh (size : Nat) (_tag : String) : ByteArray :=
 
 /--
 Every kind of pointer, each 8 bytes apart, the last to a block (table 0); its
-elements, of 24 bytes, a string, an optional object and a block (table 1);
+elements, of 32 bytes, a string, an optional object, a block, and a pointer left
+null (table 1);
 and those blocks' elements, of 16 bytes, with no pointers (table 2).
 -/
 def everyKind : Array ByteArray := #[
@@ -57,10 +62,11 @@ def everyKind : Array ByteArray := #[
     ⟨24, .optObject⟩,
     ⟨32, .block 1⟩
   ],
-  serialize 24 [
+  serialize 32 [
     ⟨0,  .string⟩,
     ⟨8,  .optObject⟩,
-    ⟨16, .block 2⟩
+    ⟨16, .block 2⟩,
+    ⟨24, .null⟩
   ],
   serialize 16 []
 ]
@@ -70,15 +76,21 @@ def everyKind : Array ByteArray := #[
 opaque fillEveryKind (bytes : ByteArray) (tables : @& Array ByteArray)
   (targets : @& Array Target) (inst : @& Instance) (some : Bool) : String
 
-/-- Fill an encoded buffer descriptor by `tables`; its label, as C reads it. -/
+/--
+Fill an encoded buffer descriptor by table `table` of `tables`; its label, as C
+reads it.
+-/
 @[extern "lean_wgpu_test_buffer_descriptor_label"]
 opaque bufferDescriptorLabel (bytes : ByteArray) (tables : @& Array ByteArray)
-  (targets : @& Array Target) : String
+  (table : USize) (targets : @& Array Target) : String
 
-/-- A buffer descriptor's one relocation, its label's data, on each width. -/
-def bufferDescriptor : Array ByteArray :=
-  if System.Platform.numBits = 64 then #[serialize 48 [⟨8, .string⟩]]
-  else #[serialize 40 [⟨4, .string⟩]]
+/--
+Fill an encoded color target state by table `table` of `tables`; what C finds
+wrong with it, its blend state some if `some`, or "".
+-/
+@[extern "lean_wgpu_test_color_target_state"]
+opaque colorTargetState (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) (some : Bool) : String
 
 /-- A buffer descriptor's bytes, from a call that differs by its tag. -/
 @[noinline, never_extract]
@@ -91,9 +103,60 @@ never a constant computed as the module loads.
 -/
 @[noinline, never_extract]
 def labelBack (label : String) : String :=
-  bufferDescriptorLabel
-    (descriptorBytes { Encode.descriptor with label } label)
-    bufferDescriptor #[.string label]
+  let d := { Encode.descriptor with label }
+  bufferDescriptorLabel (descriptorBytes d label) tables
+    BufferDescriptor.tableIndex.toUSize (BufferDescriptor.toTargets d)
+
+/--
+Fill an encoded bind group entry by table `table` of `tables`; what C finds
+wrong with it, or "".
+-/
+@[extern "lean_wgpu_test_bind_group_entry"]
+opaque bindGroupEntryBack (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) : String
+
+/-- A bind group entry, its optional objects none. -/
+def bindGroupEntry : BindGroupEntry := {
+  binding := 3
+  offset  := 256
+  size    := 1024
+}
+
+/--
+What C finds wrong with `bindGroupEntry`, filled in by its generated table and
+targets: at run time.
+-/
+@[noinline, never_extract]
+def bindGroupEntryCheck (_ : Unit) : String :=
+  bindGroupEntryBack (BindGroupEntry.toBytes bindGroupEntry) tables
+    BindGroupEntry.tableIndex.toUSize (BindGroupEntry.toTargets bindGroupEntry)
+
+/-- A color target state, with a blend state if `blend`. -/
+def colorTarget (blend : Bool) : ColorTargetState := {
+  format := .rgba8Unorm
+  blend  := if blend then some {
+    color := {
+      operation := .subtract
+      srcFactor := .srcAlpha
+      dstFactor := .oneMinusSrcAlpha
+    }
+    alpha := {
+      operation := .max
+      srcFactor := .one
+      dstFactor := .zero
+    }
+  } else none
+}
+
+/--
+What C finds wrong with a color target state, with a blend state if `blend`,
+filled in by its generated table and targets: at run time.
+-/
+@[noinline, never_extract]
+def colorTargetBack (blend : Bool) : String :=
+  let d := colorTarget blend
+  colorTargetState (ColorTargetState.toBytes d) tables
+    ColorTargetState.tableIndex.toUSize (ColorTargetState.toTargets d) blend
 
 /-- Each check, on the instance `inst`: what it is, and whether it held. -/
 @[noinline]
@@ -106,13 +169,13 @@ def checks (inst : Instance) : List (String × String) :=
         .optString (some "an optional string"),
         .object object,
         .optObject (some object),
-        .block (fresh 48 "elements"),
+        .block (fresh 64 "elements"),
         .string "the first element's",
         .optObject (some object),
         .block (fresh 16 "the first element's"),
         .string "the second element's",
         .optObject none,
-        .block (fresh 0 "the second element's")
+        .block .empty
       ] inst true),
     ("every kind of pointer, each optional one none, the block empty",
       fillEveryKind (fresh 40 "none") everyKind #[
@@ -120,7 +183,7 @@ def checks (inst : Instance) : List (String × String) :=
         .optString none,
         .object object,
         .optObject none,
-        .block (fresh 0 "no elements")
+        .block .empty
       ] inst false),
     ("a buffer descriptor's label, read back",
       if labelBack "vertices" == "vertices" then ""
@@ -128,7 +191,11 @@ def checks (inst : Instance) : List (String × String) :=
     ("an empty label, read back",
       if labelBack "" == "" then "" else "it is not empty"),
     ("a label with a NUL in it, read back whole",
-      if labelBack "a\x00b" == "a\x00b" then "" else "it is cut short")
+      if labelBack "a\x00b" == "a\x00b" then "" else "it is cut short"),
+    ("a color target state, its blend state a block of its own",
+      colorTargetBack true),
+    ("a color target state with no blend state", colorTargetBack false),
+    ("a bind group entry, its optional objects none", bindGroupEntryCheck ())
   ]
 
 end WebGPURawTest.Internal.Reloc

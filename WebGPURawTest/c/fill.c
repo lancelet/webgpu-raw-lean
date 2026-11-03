@@ -31,12 +31,12 @@ static uint8_t * lean_wgpu_test_block(b_lean_obj_arg targets, size_t i) {
 
 // Fill `bytes` by table 0 of `WebGPURawTest.Internal.Reloc.everyKind`: a
 // pointer every 8 bytes, to a string, an optional string, an object, an
-// optional object, and a block of two elements of 24 bytes (table 1), each a
-// string, an optional object, and a block of 16 bytes with no pointers (table
-// 2). If `some`, each optional is some but the second element's, and the
-// second element's block empty; if not, each optional is none and the first
-// block empty. The message of the first pointer that is not what it should
-// be, or "".
+// optional object, and a block of two elements of 32 bytes (table 1), each a
+// string, an optional object, a block of 16 bytes with no pointers (table 2),
+// and a pointer left null, which takes no target. If `some`, each optional is
+// some but the second element's, and the second element's block empty; if not,
+// each optional is none and the first block empty. The message of the first
+// pointer that is not what it should be, or "".
 LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_every_kind(
         lean_obj_arg bytes, b_lean_obj_arg tables, b_lean_obj_arg targets,
         b_lean_obj_arg instance, uint8_t some) {
@@ -63,16 +63,19 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_every_kind(
         problem = "the block";
     } else if (lean_wgpu_test_pointer(block, 0)
             != lean_wgpu_test_string(targets, 5)
-            || lean_wgpu_test_pointer(block, 24)
+            || lean_wgpu_test_pointer(block, 32)
                 != lean_wgpu_test_string(targets, 8)) {
         problem = "the elements' strings";
     } else if (lean_wgpu_test_pointer(block, 8) != handle
-            || lean_wgpu_test_pointer(block, 32) != NULL) {
+            || lean_wgpu_test_pointer(block, 40) != NULL) {
         problem = "the elements' optional objects";
     } else if (lean_wgpu_test_pointer(block, 16)
             != lean_wgpu_test_block(targets, 7)
-            || lean_wgpu_test_pointer(block, 40) != NULL) {
+            || lean_wgpu_test_pointer(block, 48) != NULL) {
         problem = "the elements' blocks";
+    } else if (lean_wgpu_test_pointer(block, 24) != NULL
+            || lean_wgpu_test_pointer(block, 56) != NULL) {
+        problem = "the elements' null pointers";
     }
     if (*problem == '\0' && cursor != lean_array_size(targets)) {
         problem = "the targets, not all taken";
@@ -81,13 +84,14 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_every_kind(
     return lean_mk_string(problem);
 }
 
-// Fill an encoded buffer descriptor by table 0, then read its label back, as
-// WebGPU would, by its pointer and length; "(not a buffer descriptor)" if its
-// other fields are not those of `WebGPURawTest.Internal.Encode.descriptor`.
+// Fill an encoded buffer descriptor by table `table`, then read its label back,
+// as WebGPU would, by its pointer and length; "(not a buffer descriptor)" if
+// its other fields are not those of `WebGPURawTest.Internal.Encode.descriptor`.
 LEAN_EXPORT lean_obj_res lean_wgpu_test_buffer_descriptor_label(
-        lean_obj_arg bytes, b_lean_obj_arg tables, b_lean_obj_arg targets) {
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
     lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, 0, targets);
+        tables, table, targets);
     WGPUBufferDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     lean_obj_res label =
@@ -98,4 +102,69 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_buffer_descriptor_label(
             descriptor.label.length);
     lean_dec(bytes);
     return label;
+}
+
+// Fill an encoded color target state by table `table`, then check it as
+// WebGPU would read it: `WebGPURawTest.Internal.Reloc.colorTarget`, its blend
+// state behind its pointer if `some`, else null. The first field that is not
+// what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_color_target_state(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets, uint8_t some) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUColorTargetState state;
+    memcpy(&state, lean_sarray_cptr(bytes), sizeof state);
+    WGPUBlendState const * blend = state.blend;
+    char const * problem = "";
+    if (state.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (state.format != WGPUTextureFormat_RGBA8Unorm
+            || state.writeMask != WGPUColorWriteMask_All) {
+        problem = "the format or write mask";
+    } else if (!some) {
+        if (blend != NULL) {
+            problem = "the blend state, not null";
+        }
+    } else if (blend == NULL) {
+        problem = "the blend state, null";
+    } else if (blend->color.operation != WGPUBlendOperation_Subtract
+            || blend->color.srcFactor != WGPUBlendFactor_SrcAlpha
+            || blend->color.dstFactor != WGPUBlendFactor_OneMinusSrcAlpha) {
+        problem = "the blend state's color";
+    } else if (blend->alpha.operation != WGPUBlendOperation_Max
+            || blend->alpha.srcFactor != WGPUBlendFactor_One
+            || blend->alpha.dstFactor != WGPUBlendFactor_Zero) {
+        problem = "the blend state's alpha";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill an encoded bind group entry by table `table`, then check it as WebGPU
+// would read it: `WebGPURawTest.Internal.Reloc.bindGroupEntry`, its three
+// optional objects none, each a target, so all three taken. The first field
+// that is not what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_entry(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    size_t cursor = 0;
+    lean_wgpu_fill(lean_sarray_cptr(bytes), lean_sarray_size(bytes), tables,
+        table, targets, &cursor);
+    WGPUBindGroupEntry entry;
+    memcpy(&entry, lean_sarray_cptr(bytes), sizeof entry);
+    char const * problem = "";
+    if (entry.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (entry.binding != 3 || entry.offset != 256
+            || entry.size != 1024) {
+        problem = "the binding, offset or size";
+    } else if (entry.buffer != NULL || entry.sampler != NULL
+            || entry.textureView != NULL) {
+        problem = "the objects, not null";
+    } else if (cursor != 3) {
+        problem = "the targets, not the three objects";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
 }

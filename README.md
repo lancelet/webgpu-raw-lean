@@ -44,5 +44,11 @@ bindings prove, in Lean:
   their bounds are proved, and that their block is unshared is checked in CI
   (see `docs/Safety.md`). Encoded structs of every kind of field are tested to
   be byte for byte ones C fills in, natively and on the web.
+- **Filling in pointers.** Each struct's pointers are a table of relocations,
+  each an offset and what C fills it in from, for one C walker
+  (`WebGPU/Raw/Internal/Reloc.lean`, `c/reloc.c`). For every struct with a
+  table, both widths, it is proved that its relocations are exactly its
+  pointers, that the bytes C reads are their serialization, and that its index
+  finds its table. That the targets agree with the table is to be proved.
 
-Status: WIP: approximately 62% complete.
+Status: WIP: approximately 64% complete.

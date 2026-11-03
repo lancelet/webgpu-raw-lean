@@ -116,14 +116,19 @@ unimplemented.)
   agree: offsets within the struct, targets of the kinds the table says, as
   many as it needs, blocks of whole elements, held by nothing else and aligned.
   Whatever a pointer points into is a target, held by the call's targets, so
-  borrowed for the call (see above: C keeps no input after it). A block must
-  never be a constant Lean computes once, so what makes one is to be
-  `@[never_extract]`, as the tests' are. *Checked by:* test, natively and on
-  the web, of every kind of pointer, none and some, and blocks two deep, empty
-  and of two elements; and CI runs the tests in the checked build, where the
-  walker checks every one of the above, stopping the program if not. Generated
-  tables, with proofs that they agree with their targets, and that every
-  pointer of a struct has a relocation, are to follow.
+  borrowed for the call (see above: C keeps no input after it). A block C
+  writes into must never be a constant Lean computes once (an empty one, which
+  C does not write into, may: an optional struct that is none is the one
+  `ByteArray.empty`), so what makes one is `@[never_extract]`: the encoders,
+  and what makes the targets. *Checked by:*
+  proof, of every generated table, that its relocations are exactly its
+  struct's pointers, and that its bytes are their serialization; a check, as
+  the tests build, that every encoder and maker of targets is
+  `@[never_extract]`; test, natively and on the web, of every kind of pointer,
+  none and some, blocks two deep, empty and of two elements, and of generated
+  tables against C; and CI runs the tests in the checked build, where the
+  walker checks every one of the above, stopping the program if not. That the
+  targets agree with the table is to be proved.
 
 ## Threads
 

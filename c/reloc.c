@@ -20,6 +20,7 @@ enum {
     LEAN_WGPU_OBJECT     = 2,
     LEAN_WGPU_OPT_OBJECT = 3,
     LEAN_WGPU_BLOCK      = 4,
+    LEAN_WGPU_NULL       = 5,
 };
 
 // The little-endian u32 at `p`. Every target is little-endian.
@@ -55,13 +56,18 @@ void lean_wgpu_fill(
             uint8_t kind = reloc[4];
             LEAN_WGPU_CHECK(offset <= stride - sizeof(void *),
                 "a pointer past its struct's end");
+            void * pointer = NULL;
+            if (kind == LEAN_WGPU_NULL) {
+                // Left null, taking no target.
+                memcpy(data + at + offset, &pointer, sizeof pointer);
+                continue;
+            }
             LEAN_WGPU_CHECK(*cursor < lean_array_size(targets),
                 "too few targets");
             lean_object * target = lean_array_get_core(targets, (*cursor)++);
             LEAN_WGPU_CHECK(lean_ptr_tag(target) == kind,
                 "a target of the wrong kind");
             lean_object * value = lean_ctor_get(target, 0);
-            void * pointer = NULL;
             switch (kind) {
             case LEAN_WGPU_STRING:
                 pointer = (void *)lean_string_cstr(value);
@@ -82,10 +88,12 @@ void lean_wgpu_fill(
                 }
                 break;
             case LEAN_WGPU_BLOCK: {
-                // Filled in by its own table, then pointed to; empty, null.
-                LEAN_WGPU_CHECK(lean_is_exclusive(value),
-                    "a block held by anything else");
+                // Filled in by its own table, then pointed to; empty, null,
+                // and written into not at all, so it may be shared: an
+                // optional struct that is none is the one `ByteArray.empty`.
                 size_t length = lean_sarray_size(value);
+                LEAN_WGPU_CHECK(length == 0 || lean_is_exclusive(value),
+                    "a block held by anything else");
                 uint8_t * block = lean_sarray_cptr(value);
                 lean_wgpu_fill(block, length, tables,
                     lean_wgpu_u32(reloc + 8), targets, cursor);

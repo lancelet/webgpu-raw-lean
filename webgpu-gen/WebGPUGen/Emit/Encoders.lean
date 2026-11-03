@@ -13,9 +13,19 @@ target width, a struct has:
   hold (`fields64`), the specification, and its pointers' offsets
   (`pointers64`);
 - an encoder (`encode64`): a fresh block, then a poke for each field, each
-  bound proved by `decide`, the encoder `@[noinline]` as the pokes require;
+  bound proved by `decide`, the encoder `@[noinline]` as the pokes require,
+  and `@[never_extract]`;
 - proofs that its fields are well-formed, that the encoder is `encode` of its
-  fields, and that its pointers read as 0.
+  fields, and that its pointers read as 0;
+- if each of its pointers can be filled in yet (an array's cannot, nor a
+  pointer to a struct that has no table), its relocations (`relocs64`), each
+  a pointer's offset and kind, and its table, their bytes for C (`table64`),
+  proved to be every pointer and only them, and `serialize` of them; and what
+  C fills each pointer in from (`targets64`), and itself as a block, both
+  `@[never_extract]`, so that no block is a constant.
+
+Every struct's table is in `tables64`, at its `tableIndex`; each object type
+converts to the `Object` a pointer to one is filled in from.
 
 The fields follow the layout model (`CLayout`), which the C compiler checks
 against `webgpu.h` (`layouts.c`): a struct's members in order, a nested struct
@@ -28,15 +38,38 @@ open WebGPUGen.Lowered WebGPUGen.CLayout WebGPUGen.Emit Doc
 
 /-! ## What each scalar holds -/
 
+/--
+What a pointer of a struct points to, and the Lean expression of what C fills
+it in from: a member of a value at `d`.
+-/
+inductive Pointer where
+  /-- A struct chain's next: left null, for now. -/
+  | chain
+  | string    (expr : String)
+  | optString (expr : String)
+  /-- An object of the type with these names. -/
+  | object    (names : Names) (expr : String)
+  | optObject (names : Names) (expr : String)
+  /-- A struct with these names, encoded as a block of its own. -/
+  | struct    (names : Names) (expr : String) (nullable : Bool)
+  /-- An array's elements: not yet filled in. -/
+  | array
+  deriving Repr, BEq
+
 /-- What an encoder writes for one scalar of a struct. -/
 inductive Item where
   /-- A number, by a Lean expression of the unsigned type of its width. -/
   | int (expr : String)
   /-- A `float` or `double`, by a Lean expression of `Float32` or `Float`. -/
   | float (expr : String)
-  /-- A pointer, left 0 for C to fill in. -/
-  | pointer
+  /-- A pointer, left 0 for C to fill in, and what it points to. -/
+  | pointer (to : Pointer)
   deriving Repr, BEq
+
+/-- Whether an item is a pointer. -/
+def Item.isPointer : Item → Bool
+  | .pointer _ => true
+  | _          => false
 
 /-- The Lean type a `size_t` is written as, on a width. -/
 def sizeType : Width → String
@@ -63,9 +96,9 @@ def items (structs : List Struct) (w : Width) (s : Struct) (path : String) :
   | 0 => none
   | fuel + 1 => do
     let chain ← match s.kind with
-      | .extensible | .extensibleCallbackArg => some [Item.pointer]
+      | .extensible | .extensibleCallbackArg => some [Item.pointer .chain]
       | .extension => s.sType.map fun e =>
-        [Item.pointer, .int s!"CEnum.toC SType.{e.lean}"]
+        [Item.pointer .chain, .int s!"CEnum.toC SType.{e.lean}"]
       | .standalone => some []
     let members ← s.members.toList.mapM fun m =>
       member fuel m.value s!"{path}.{m.names.lean}"
@@ -83,14 +116,16 @@ where
     | .nullableFloat32              => some [.int s!"nanOr {q}"]
     | .enum _                       => some [.int s!"CEnum.toC {q}"]
     | .bitflag _                    => some [.int s!"{q}.bits"]
-    | .object .. | .structPointer .. => some [.pointer]
+    | .object names false           => some [.pointer (.object names q)]
+    | .object names true            => some [.pointer (.optObject names q)]
+    | .structPointer names b        => some [.pointer (.struct names q b)]
     -- A string view: its data, then its length; a null view's is `SIZE_MAX`.
     | .string false                 =>
-      some [.pointer, .int s!"{q}.utf8ByteSize.to{sizeType w}"]
+      some [.pointer (.string q), .int s!"{q}.utf8ByteSize.to{sizeType w}"]
     | .string true                  =>
-      some [.pointer, .int s!"viewLength{suffix w} {q}"]
+      some [.pointer (.optString q), .int s!"viewLength{suffix w} {q}"]
     -- An array: its count, then a pointer to its elements.
-    | .array .. => some [.int s!"{q}.size.to{sizeType w}", .pointer]
+    | .array .. => some [.int s!"{q}.size.to{sizeType w}", .pointer .array]
     | .struct names => do
       let nested ← structs.find? (·.names.c == names.c)
       items structs w nested q fuel
@@ -158,9 +193,9 @@ def structEntries (structs : List Struct) (w : Width) (s : Struct) :
   guard (scalars.length == its.length)
   let entries := (scalars.zip its).map fun ((o, k), i) => (o, k, i)
   guard (entries.all fun (_, k, i) => match k, i with
-    | .ptr, .pointer => true
+    | .ptr, .pointer _ => true
     | .f32, .float _ | .f64, .float _ => true
-    | .ptr, _ | _, .pointer | _, .float _ => false
+    | .ptr, _ | _, .pointer _ | _, .float _ => false
     | _, .int _ => true)
   pure (t.size w, entries)
 
@@ -194,12 +229,12 @@ def pokeName (w : Width) : Scalar → Item → String
 def bits : Item → String
   | .int e   => s!"({e}).toNat"
   | .float e => s!"({e}).toBits.toNat"
-  | .pointer => "0"
+  | .pointer _ => "0"
 
 /-- The expression an item's poke writes, parenthesised if it has spaces. -/
 def value : Item → String
   | .int e | .float e => if e.contains ' ' then s!"({e})" else e
-  | .pointer => "0"
+  | .pointer _ => "0"
 
 /-- The width as the bindings name it (`WebGPU.Raw.Encode.Width`). -/
 def widthName : Width → String
@@ -243,9 +278,9 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
   let t := s.names.lean
   let n := suffix w
   let wn := widthName w
-  let fields := entries.filter fun (_, _, i) => i != .pointer
+  let fields := entries.filter fun (_, _, i) => !i.isPointer
   let pointers := entries.filterMap fun (o, _, i) =>
-    if i == .pointer then some o else none
+    if i.isPointer then some o else none
   let ptr := w.bytes
   let on := match w with
     | .bits32 => "wasm32"
@@ -286,7 +321,7 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
       s!"      f.offset + f.scalar.bytes {wn} ≤ o ∨ o + {ptr} ≤ f.offset := by",
       "  decide"],
     [s!"/-- `d` as C lays it out on {on}, its pointers 0. -/",
-      "@[noinline]",
+      "@[noinline, never_extract]",
       s!"def encode{n} ({arg} : {t}) : ByteArray :=",
       s!"  let b := Block.fresh {size}"]
       ++ indent 2 pokes ++ ["  b.1"],
@@ -303,8 +338,160 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
       s!"    exact readLE_encode_apart d o {ptr} (pointers{n}_apart o ho)"]
   ]
 
-/-- A struct's encoders, both widths, and the one for the target. -/
-def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
+/-! ## Relocations -/
+
+/--
+A pointer's kind of relocation (`WebGPU.Raw.Reloc.Kind`): as the bindings
+write it, its code, and its table, a block's its struct's `index`; none for an
+array's elements, not yet filled in, or a struct with no table.
+-/
+def kind (index : Names → Option Nat) : Pointer → Option (String × Nat × Nat)
+  | .chain            => some (".null", 5, 0)
+  | .string _         => some (".string", 0, 0)
+  | .optString _      => some (".optString", 1, 0)
+  | .object ..        => some (".object", 2, 0)
+  | .optObject ..     => some (".optObject", 3, 0)
+  | .struct names _ _ => (index names).map fun i => (s!".block {i}", 4, i)
+  | .array            => none
+
+/-- The number `n` in 4 bytes, little-endian. -/
+def le32 (n : Nat) : List Nat :=
+  [n % 256, n / 256 % 256, n / 65536 % 256, n / 16777216 % 256]
+
+/--
+A table's bytes, as `WebGPU.Raw.Reloc.serialize` lays them out: the struct's
+size, the number of relocations, then each one's offset, code and table.
+-/
+def tableBytes (size : Nat) (relocs : List (Nat × Nat × Nat)) : List Nat :=
+  le32 size ++ le32 relocs.length ++ relocs.flatMap fun (o, code, table) =>
+    le32 o ++ [code, 0, 0, 0] ++ le32 table
+
+/-- Part of a struct's targets: one target, or an expression of an array. -/
+inductive Piece where
+  | target (expr : String)
+  | targets (expr : String)
+
+/-- What C fills a pointer in from, on the width of suffix `n`. -/
+def pieces (n : String) : Pointer → List Piece
+  | .chain                => []
+  | .string e             => [.target s!".string {e}"]
+  | .optString e          => [.target s!".optString {e}"]
+  | .object names e       =>
+    [.target s!".object (Internal.{names.lean}.toObject {e})"]
+  | .optObject names e    =>
+    [.target s!".optObject ({e}.map Internal.{names.lean}.toObject)"]
+  | .struct names e false => [.targets s!"{names.lean}.block{n} {e}"]
+  | .struct names e true  =>
+    [.targets s!"({e}.elim #[.block .empty] {names.lean}.block{n})"]
+  | .array                => []
+
+/-- Pieces in a row: a run of targets, an array literal, or an array. -/
+inductive Run where
+  | literal (targets : List String)
+  | array (expr : String)
+
+/-- Pieces in runs: each run of targets, one literal. -/
+def runs (ps : List Piece) : List Run :=
+  ps.foldr (init := []) fun p rs => match p, rs with
+    | .target e,  .literal es :: rs => .literal (e :: es) :: rs
+    | .target e,  rs                => .literal [e] :: rs
+    | .targets e, rs                => .array e :: rs
+
+/-- A run on one line. -/
+def Run.line : Run → String
+  | .literal es => "#[" ++ ", ".intercalate es ++ "]"
+  | .array e    => e
+
+/--
+Pieces as the lines of an `Array Target`, `indent` in: their runs joined by
+`++`, on one line if they fit, else each on its own, a literal too long
+broken one target a line.
+-/
+def piecesLines (indent : Nat) (ps : List Piece) : List String :=
+  let rs := runs ps
+  let flat := " ++ ".intercalate (rs.map Run.line)
+  if rs.isEmpty then ["#[]"]
+  else if indent + flat.length ≤ width then [flat]
+  else rs.zipIdx.flatMap fun (r, i) =>
+    let head := if i == 0 then "" else "++ "
+    if indent + head.length + r.line.length ≤ width then [head ++ r.line]
+    else match r with
+      | .literal es =>
+        [head ++ "#["] ++ (es.zipIdx.map fun (e, j) =>
+          "  " ++ e ++ if j + 1 == es.length then "" else ",") ++ ["]"]
+      | .array e => [head ++ e]
+
+/--
+A struct's relocations, table and targets on one width, each declaration as
+its lines; none if a pointer cannot be filled in yet. `index` gives each
+struct's table.
+-/
+def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
+    (index : Names → Option Nat) : Option (List (List String)) := do
+  let t := s.names.lean
+  let n := suffix w
+  let on := match w with
+    | .bits32 => "wasm32"
+    | .bits64 => "64-bit targets"
+  let pointers := entries.filterMap fun (o, _, i) => match i with
+    | .pointer p => some (o, p)
+    | _          => none
+  let kinds ← pointers.mapM fun (o, p) => do
+    let (name, code, table) ← kind index p
+    pure (s!"⟨{o}, {name}⟩", o, code, table)
+  let relocs := kinds.map (·.1)
+  let codes := kinds.map (·.2)
+  let bytes := (tableBytes size codes).map toString
+  let ps := pointers.flatMap fun (_, p) => pieces n p
+  let body := piecesLines 2 ps
+  let arg := if ps.isEmpty then "_" else "d"
+  -- Only for the proofs: C reads the table, its bytes.
+  let head := s!"noncomputable def relocs{n} : List Reloc :="
+  let relocList := if relocs.isEmpty then [head ++ " []"]
+    else [head ++ " ["] ++ indent 2 (fill 2 relocs) ++ ["]"]
+  pure [
+    [s!"/-- Its pointers' relocations on {on}: what C fills each in from. -/"]
+      ++ relocList,
+    [s!"/-- Its table on {on}, for C: `serialize` of its relocations. -/",
+      s!"def table{n} : ByteArray := ⟨#["] ++ indent 2 (fill 2 bytes)
+      ++ ["]⟩"],
+    ["/-- The table is its relocations. -/",
+      s!"theorem table{n}_eq : table{n} = serialize {size} relocs{n} := rfl"],
+    ["/-- Every pointer has a relocation, and only a pointer. -/",
+      s!"theorem relocs{n}_offsets : relocs{n}.map (·.offset) = pointers{n} :=",
+      "  rfl"],
+    ["/-- Its relocations' numbers fit its table. -/",
+      s!"theorem relocs{n}_fit : relocs{n}.all Reloc.fits := by decide"],
+    [s!"/-- What C fills in `d`'s pointers from on {on}, in order. -/",
+      "@[never_extract]",
+      s!"def targets{n} ({arg} : {t}) : Array Target :="] ++ indent 2 body,
+    [s!"/-- `d` as the block a pointer to it points to on {on}. -/",
+      "@[never_extract]",
+      s!"def block{n} (d : {t}) : Array Target :=",
+      s!"  #[.block (encode{n} d)] ++ targets{n} d"]
+  ]
+
+/--
+The bound structs whose pointers can all be filled in, each after those it
+points to: their tables, in this order, are the tables. One pass suffices, as
+each bound struct comes after those it refers to (`boundStructs_ordered`).
+-/
+def tabled (structs : List Struct) : List Struct :=
+  (boundStructs structs).foldl (init := []) fun done s =>
+    let index (names : Names) := done.findIdx? (·.names.c == names.c)
+    let fills (w : Width) := match structEntries structs w s with
+      | some (_, entries) => entries.all fun (_, _, i) => match i with
+        | .pointer p => (kind index p).isSome
+        | _          => true
+      | none => false
+    if fills .bits64 && fills .bits32 then done ++ [s] else done
+
+/--
+A struct's encoders, both widths, and the one for the target; and, if it is of
+the `tables`, its relocations, table and targets.
+-/
+def structEncoders (structs tables : List Struct) (s : Struct) :
+    Option Doc := do
   let (size64, entries64) ← structEntries structs .bits64 s
   let (size32, entries32) ← structEntries structs .bits32 s
   -- Enough fuel: each struct is in a chain at most once, and each spends one,
@@ -320,8 +507,23 @@ def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
           if i == cs.length then c ++ ")" else c ++ " &&")
   let t := s.names.lean
   let arg := if sizes.isEmpty then "_" else "d"
+  let index (names : Names) := tables.findIdx? (·.names.c == names.c)
+  let relocs (w : Width) (size : Nat) (entries : List Entry) :=
+    if (index s.names).isSome then relocDecls s w size entries index else none
+  -- Its table's index, and its targets on this target, if it has a table.
+  let tableDecls := match index s.names with
+    | some i => [
+      ["/-- Its table's index in `tables64` and `tables32`. -/",
+        s!"def tableIndex : Nat := {i}"],
+      ["/-- What C fills in `d`'s pointers from on this target. -/",
+        "@[inline]",
+        s!"def toTargets (d : {t}) : Array Target :=",
+        "  if System.Platform.numBits = 64 then targets64 d else targets32 d"]]
+    | none => []
   let decls := widthDecls s .bits64 size64 entries64
-    ++ widthDecls s .bits32 size32 entries32 ++ [
+    ++ (relocs .bits64 size64 entries64).getD []
+    ++ widthDecls s .bits32 size32 entries32
+    ++ (relocs .bits32 size32 entries32).getD [] ++ [
       ["/--",
         "Whether each `size_t` of `d` fits the target: on wasm32, " ++
           "in 32 bits, or",
@@ -344,7 +546,7 @@ def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
       ["@[inline]",
         s!"def toBytes (d : {t}) : ByteArray :=",
         "  if System.Platform.numBits = 64 then encode64 d else encode32 d"]
-    ]
+    ] ++ tableDecls
   pure (text s!"namespace {t}" ++ hardline ++ hardline
     ++ join (hardline ++ hardline) (decls.map Doc.lines) ++ hardline
     ++ hardline ++ text s!"end {t}")
@@ -352,13 +554,52 @@ def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
 /-- The encoders of every bound struct; none if one cannot be made. -/
 def encoderDecls (spec : Lowered.Spec) : Option (List Doc) :=
   let structs := spec.structs.toList
-  (boundStructs structs).mapM (structEncoders structs)
+  (boundStructs structs).mapM (structEncoders structs (tabled structs))
 
 /-- The bound structs that cannot be encoded, by their C names. -/
 def unencodable (spec : Lowered.Spec) : List String :=
   let structs := spec.structs.toList
+  let tables := tabled structs
   (boundStructs structs).filterMap fun s =>
-    if (structEncoders structs s).isSome then none else some s.names.c
+    if (structEncoders structs tables s).isSome then none else some s.names.c
+
+/-- Each object type's conversion to `Object`, the same Lean value. -/
+def objectDecls (spec : Lowered.Spec) : List Doc :=
+  [Doc.lines ["/-! ## Objects", "",
+    "Each object type as an `Object`, the same Lean value: what C fills in a",
+    "pointer to one from. -/"]]
+    ++ spec.objects.toList.map fun o => Doc.lines [
+      s!"/-- `{o.names.lean}`, as an `Object`. -/",
+      "@[extern c inline \"#1\"]",
+      s!"opaque Internal.{o.names.lean}.toObject : {o.names.lean} → Object"]
+
+/-- Every table on each width, by its index in a relocation. -/
+def tablesDecls (spec : Lowered.Spec) : List Doc :=
+  let tables := tabled spec.structs.toList
+  let widths := [Width.bits64, .bits32].map fun w =>
+    let n := suffix w
+    let on := match w with
+      | .bits32 => "wasm32"
+      | .bits64 => "64-bit targets"
+    let names := tables.map fun s => s!"{s.names.lean}.table{n}"
+    Doc.lines ([s!"/-- Every struct's table on {on}, by its index. -/",
+      s!"def tables{n} : Array ByteArray := #["] ++ indent 2 (fill 2 names)
+      ++ ["]"])
+  let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
+    "def tables : Array ByteArray :=",
+    "  if System.Platform.numBits = 64 then tables64 else tables32"]
+  -- Each struct's index finds its tables.
+  let indices := tables.map fun s => Doc.lines [
+    s!"namespace {s.names.lean}",
+    "",
+    "/-- Its index finds its tables. -/",
+    "theorem tables_index :",
+    "    tables64[tableIndex]? = some table64 ∧",
+    "      tables32[tableIndex]? = some table32 :=",
+    "  ⟨rfl, rfl⟩",
+    "",
+    s!"end {s.names.lean}"]
+  [Doc.lines ["/-! ## Tables -/"]] ++ widths ++ [current] ++ indices
 
 /-- The encoders' module, `WebGPU/Raw/Encoders.lean`; none if one is missing. -/
 def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
@@ -366,7 +607,8 @@ def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
   pure <| Lean.moduleFile p
     [
       "public import WebGPU.Raw.Structs",
-      "public import WebGPU.Raw.Internal.Encode"
+      "public import WebGPU.Raw.Internal.Encode",
+      "public import WebGPU.Raw.Internal.Reloc"
     ]
     [
       "# Encoders",
@@ -376,8 +618,13 @@ def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
       "fields are the specification (`WebGPU.Raw.Encode.encode`); its",
       "encoder, a poke for each field into a fresh block, is proved the same,",
       "its fields well-formed, and its pointers 0. The C compiler checks the",
-      "layouts against `webgpu.h` (`c/generated/layouts.c`)."
+      "layouts against `webgpu.h` (`c/generated/layouts.c`).",
+      "",
+      "Where C fills in a struct's pointers is its table (`tables`, at its",
+      "`tableIndex`), proved to be its pointers; what it fills each in from,",
+      "its targets (`toTargets`)."
     ]
-    (text "open Encode Bytes" :: decls)
+    (text "open Encode Bytes Reloc" :: objectDecls spec ++ decls
+      ++ tablesDecls spec)
 
 end WebGPUGen.Emit.Encoders
