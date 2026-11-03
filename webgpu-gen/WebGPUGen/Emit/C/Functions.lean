@@ -175,7 +175,7 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
   | .string b          =>
     some (.call (if b then optionStringViewName else stringViewName) [.name x])
   -- Not passed to functions yet: their conversions come with descriptors.
-  | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .unsupported _     => none
 
 /--
@@ -215,7 +215,7 @@ def resultExpr (objects : List Lowered.Object) : Value → Option Expr
   | .bitflag _      => some (box "lean_box_uint64" (.cast "uint64_t" result))
   | .object names b => (objectNamed objects names.c).map fun o =>
     box (shimName o (if b then "box_option" else "box")) result
-  | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .string _       => none
   | .unsupported _  => none
 where

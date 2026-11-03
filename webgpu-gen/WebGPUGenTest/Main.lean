@@ -326,6 +326,7 @@ where
       | _ => "?"
     | some .null             => match v with
       | .string _ => "WGPU_STRING_VIEW_INIT"
+      | .nullableFloat32 => "(NAN)"
       | _ => "NULL"
     | some .empty            => "WGPU_STRING_VIEW_INIT"
     | none                   => match v with
@@ -441,7 +442,11 @@ def main : IO Unit := do
       (expectedInits initName s).filterMap fun (name, expected) =>
       match members.lookup name with
       | some actual =>
-        if initsAgree actual expected then none
+        -- A nullable float's `none` is NaN, which the header may give by a
+        -- #define's name: compare that one's value, and only that one's.
+        let defined := if expected != "(NAN)" then actual
+          else (defines.lookup actual).getD actual
+        if initsAgree actual expected || initsAgree defined expected then none
         else some s!"{s.names.c}.{name}: {actual}, not {expected}"
       | none => some s!"{s.names.c}.{name}: not in its initialiser"
   unless wrongDefaults.isEmpty do

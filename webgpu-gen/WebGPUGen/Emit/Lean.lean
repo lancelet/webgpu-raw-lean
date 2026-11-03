@@ -327,8 +327,12 @@ enum entry, as the field's type is known.
 def leanDefault (v : Value) : Lowered.Default → String
   | .bool b          => if b then "true" else "false"
   | .int n           => intLiteral n
-  | .float literal   => literal
-  | .constant names  => names.lean
+  | .float literal   => match v with
+    | .nullableFloat32 => s!"some {literal}"
+    | _ => literal
+  | .constant names  => match v with
+    | .nullableFloat32 => s!"some {names.lean}"
+    | _ => names.lean
   -- The field's type is known, so an entry or zero value needs no type name.
   | .entry _ e       => "." ++ e.lean
   -- Settled, a zero default is `fields`; unsettled, `.zero` still names the
@@ -340,12 +344,19 @@ def leanDefault (v : Value) : Lowered.Default → String
     | .array .. => "#[]"
     | _ => "\"\""
 
-/-- A struct's fields, aligned in columns, each with its doc. -/
+/--
+A struct's fields, aligned in columns, each with its doc: a nullable float's
+says what `none` is, as upstream's speaks of NaN.
+-/
 def structFields (s : Lowered.Struct) : Doc :=
   documentedRows 2 (s.members.toList.filterMap fun m => do
     let type ← m.value.leanType
     let cells := [m.names.lean, ":", type]
-    pure (m.doc, cells ++ match m.default with
+    let doc := match m.value with
+      | .nullableFloat32 =>
+        addParagraph m.doc "In Lean, `none` is C's NaN, as is `some` of a NaN."
+      | _ => m.doc
+    pure (doc, cells ++ match m.default with
       | some d => [":=", leanDefault m.value d]
       | none   => []))
 

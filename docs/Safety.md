@@ -166,6 +166,9 @@ Rules that later parts of the bindings must follow, decided in advance:
 - A struct's string is passed as a view of its bytes, so `""` is `{ptr, 0}`,
   the empty string, and never the null view; an `Option String` that is `none`
   is the null view, `{NULL, WGPU_STRLEN}`.
+- An `Option Float32` (upstream's `nullable_float32`) that is `none` is passed
+  as NaN, and `some x` as `x`; NaN from C becomes `none`. So `some` of a NaN
+  means `none` too, which C accepts: no float is invalid to pass.
 - A struct C fills in (one whose members C frees, as `SurfaceTexture` or
   `Limits`) can be built in Lean but is never read as an input: the bindings
   pass C zeroed memory for it, and read it back.

@@ -351,6 +351,23 @@ def resultValue? (methods : String) : Option (Option Value) :=
     "
   resultValue? input == some (some (.unsupported "string_with_default_empty"))
 
+-- A nullable float is not passed to or from a function yet: its conversions
+-- come with the structs'.
+#guard
+  let input := dedent "
+    - name: m
+      doc: x
+      args:
+        - name: depth
+          doc: x
+          type: nullable_float32
+      returns:
+        doc: x
+        type: nullable_float32
+    "
+  argValues input == some [.unsupported "nullable_float32"]
+    && resultValue? input == some (some (.unsupported "nullable_float32"))
+
 -- A method that takes a callback is not bound yet, whatever its arguments.
 #guard
   let methods := dedent "
@@ -607,8 +624,8 @@ def membersOf (structs name : String) :
     .float64
   ]
 
--- What the bindings cannot pass yet is said: an output string, a callback,
--- untyped memory, an optional number.
+-- What the bindings cannot pass yet is said: an output string, untyped memory,
+-- an optional number.
 #guard
   let input := dedent "
     - name: unsure
@@ -622,14 +639,15 @@ def membersOf (structs name : String) :
           doc: x
           type: c_void
           pointer: mutable
-        - name: depth
+        - name: count
           doc: x
-          type: nullable_float32
+          type: uint32
+          optional: true
     "
   (lowerStructNamed input "Unsure").map (·.unsupported) == some [
     "out_string",
     "c_void (mutable pointer)",
-    "nullable_float32"
+    "uint32"
   ]
 
 -- An extension names the structs it attaches to; a struct whose members C
@@ -858,6 +876,41 @@ def membersOf (structs name : String) :
     "array<uint32> (immutable pointer)"
   ]
 
+-- A nullable float is an `Option Float32`, which C holds as NaN for `none`: a
+-- default of a NaN constant is `none`, a number is itself, and with no default
+-- the member is required, as nothing says what C would set.
+#guard
+  let input := spec
+    (constants := dedent "
+      - name: undefined_depth
+        value: nan
+        doc: x
+      ")
+    (structs := dedent "
+      - name: attachment
+        doc: x
+        type: standalone
+        members:
+          - name: clear
+            doc: x
+            type: nullable_float32
+            default: constant.undefined_depth
+          - name: bias
+            doc: x
+            type: nullable_float32
+            default: 0.5
+          - name: given
+            doc: x
+            type: nullable_float32
+      ")
+  let attachment := (lowerText input).bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Attachment")
+  attachment.map (·.members.toList.map fun m => (m.value, m.default)) == some [
+    (.nullableFloat32, some .null),
+    (.nullableFloat32, some (.float "0.5")),
+    (.nullableFloat32, none)
+  ]
+
 -- A nested struct at its own defaults stands only if it needs nothing given;
 -- one with a required member makes the member that holds it required too.
 #guard
@@ -959,7 +1012,8 @@ def membersOf (structs name : String) :
   holder.map (·.members.toList.map (·.default)) == some [none]
 
 -- Every byte zero: a nullable string is the null string view, `none`, and not
--- the empty string; a struct in it is its own zero values in turn.
+-- the empty string; a nullable float is 0, not NaN; a struct in it is its own
+-- zero values in turn.
 #guard
   let input := spec
     (structs := dedent "
@@ -977,6 +1031,9 @@ def membersOf (structs name : String) :
           - name: label
             doc: x
             type: nullable_string
+          - name: depth
+            doc: x
+            type: nullable_float32
           - name: inner
             doc: x
             type: struct.inner
@@ -993,6 +1050,7 @@ def membersOf (structs name : String) :
     l.structs.toList.find? (·.names.lean == "Holder")
   let fields : List (Names × Lowered.Default) := [
     (⟨"label", "label"⟩, .null),
+    (⟨"depth", "depth"⟩, .float "0.0"),
     (⟨"inner", "inner"⟩, .fields [(⟨"count", "count"⟩, .int 0)])
   ]
   holder.map (·.members.toList.map (·.default)) == some [some (.fields fields)]

@@ -37,6 +37,22 @@ open WebGPU.Raw
     && entry.texture.sampleType matches .bindingNotUsed
     && entry.storageTexture.access matches .bindingNotUsed
 
+-- A nullable float is an `Option Float32`; the depth clear value's default, C's
+-- NaN, is `none`.
+example (view : TextureView) :
+    ({ view } : RenderPassDepthStencilAttachment).depthClearValue = none := rfl
+
+-- A value is `some`; so is the constant for C's NaN, which also means `none`.
+#accepts example (view : TextureView) : RenderPassDepthStencilAttachment :=
+  { view, depthClearValue := some 1.0 }
+#accepts example (view : TextureView) : RenderPassDepthStencilAttachment :=
+  { view, depthClearValue := some depthClearValueUndefined }
+
+-- A render pass needs nothing given: no attachments, no depth.
+#guard
+  let pass : RenderPassDescriptor := {}
+  pass.colorAttachments.isEmpty && pass.depthStencilAttachment.isNone
+
 -- A field with no valid default must be given: here, a vertex attribute's
 -- format, whose enum has no `undefined` entry.
 #rejects example : VertexAttribute := { offset := 0, shaderLocation := 0 }

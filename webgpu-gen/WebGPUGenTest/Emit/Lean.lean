@@ -569,6 +569,29 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
   let inner : Names := ⟨"WGPUInner", "Inner"⟩
   leanDefault (.struct inner) .zero == ".zero"
 
+-- A nullable float is an `Option Float32`: a number as its default is `some`.
+#guard
+  leanDefault .nullableFloat32 (.float "0.5") == "some 0.5"
+    && leanDefault .nullableFloat32 .null == "none"
+    && leanDefault .nullableFloat32 (.constant ⟨"WGPU_HALF", "half"⟩)
+      == "some half"
+
+-- A nullable float's doc, which speaks of C's NaN, says what `none` is.
+#guard
+  let clear : Member :=
+    ⟨⟨"clear", "clear"⟩, "If `NaN`, undefined.", .nullableFloat32, some .null⟩
+  let input := struct "WGPUAttachment" "Attachment" [clear]
+  let expected := dedent "
+    structure Attachment where
+      /--
+      If `NaN`, undefined.
+
+      In Lean, `none` is C's NaN, as is `some` of a NaN.
+      -/
+      clear : Option Float32 := none
+    "
+  render (structDecl input) == expected
+
 -- Integer defaults: decimal, except a large mask of ones, which is in hex.
 #guard
   intLiteral 0 == "0" && intLiteral 50000000 == "50000000"

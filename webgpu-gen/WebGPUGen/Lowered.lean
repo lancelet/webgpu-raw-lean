@@ -82,6 +82,11 @@ inductive Value where
   | float32
   | float64
   /--
+  A `float` that C holds as NaN for none (upstream's `nullable_float32`): in
+  Lean, an `Option Float32`.
+  -/
+  | nullableFloat32
+  /--
   A `size_t`. Lean passes it as a `UInt64`, as WebGPU's JavaScript API does, and
   the shim checks it fits (`size_t` is 32 bits on the web), except that the
   largest `UInt64` stands for `SIZE_MAX`, both ways.
@@ -118,6 +123,7 @@ def Value.leanType : Value → Option String
   | .int32             => "Int32"
   | .float32           => "Float32"
   | .float64           => "Float"
+  | .nullableFloat32   => "Option Float32"
   | .usize             => "UInt64"
   | .enum names        => names.lean
   | .bitflag names     => names.lean
@@ -151,6 +157,7 @@ def Value.cType : Value → Option String
   | .int32             => "int32_t"
   | .float32           => "float"
   | .float64           => "double"
+  | .nullableFloat32   => "float"
   | .usize             => "size_t"
   | .enum names        => names.c
   | .bitflag names     => names.c
@@ -175,13 +182,14 @@ Whether the value crosses as a Lean object (`lean_object *`): borrowed (`@&`)
 as an argument, and owned as a result.
 -/
 def Value.isObject : Value → Bool
-  | .object .. | .string _ | .struct _ | .structPointer .. | .array .. => true
-  | _                      => false
+  | .object .. | .string _ | .nullableFloat32 | .struct _ | .structPointer ..
+  | .array ..   => true
+  | _           => false
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
   -- Not passed to functions yet: their shims come with descriptors.
-  | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .enum _    => "UInt32"
   | .bitflag _ => "UInt64"
   | v          => v.leanType
@@ -204,7 +212,7 @@ def Value.abiCType : Value → Option String
   | .bitflag _       => "uint64_t"
   | .object ..       => "b_lean_obj_arg"
   | .string _        => "b_lean_obj_arg"
-  | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .unsupported _   => none
 
 /-- What the bindings cannot pass yet, if anything. -/

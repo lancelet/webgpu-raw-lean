@@ -81,6 +81,7 @@ def scalarValue (t : TypeRef) : Primitive → Value
   | .int16                  => .int16
   | .int32                  => .int32
   | .float32                => .float32
+  | .nullableFloat32        => .nullableFloat32
   | .float64                => .float64
   | .stringWithDefaultEmpty => .string false
   | .nullableString         => .string true
@@ -106,16 +107,19 @@ def named (r : Resolved.Spec) (t : Named) (value : Names → Value) : Value :=
 /--
 How an argument crosses into C, borrowed for the call. Only the shapes the
 bindings handle are passed: a primitive, enum, bitflag or object, not behind a
-pointer. An object can be optional: NULL in C. An argument with ownership stated
-is an output struct whose members the caller must free, which is not handled
-yet.
+pointer; a nullable float is not passed yet, its conversion coming with the
+structs'. An object can be optional: NULL in C. An argument with ownership
+stated is an output struct whose members the caller must free, which is not
+handled yet.
 -/
 def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
   let unsupported := Value.unsupported (describe p.type p.pointer)
   if p.pointer.isSome || p.passedWithOwnership.isSome then unsupported else
   match p.type with
   | .primitive (.scalar s) =>
-    if p.optional then unsupported else scalarValue p.type s
+    match scalarValue p.type s with
+    | .nullableFloat32 => unsupported
+    | v => if p.optional then unsupported else v
   | .named (.enum id) =>
     if p.optional then unsupported else named r (.enum id) .enum
   | .named (.bitflag id) =>
@@ -126,8 +130,8 @@ def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
 /--
 How a result crosses back into Lean. An object is passed only if the spec says
 it comes with its own reference (`passed_with_ownership`), which the Lean value
-takes; a string is not passed yet. Optional means it can be NULL: `none` in
-Lean.
+takes; a string or nullable float is not passed yet. Optional means it can be
+NULL: `none` in Lean.
 -/
 def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
   let unsupported := Value.unsupported (describe ret.type ret.pointer)
@@ -135,8 +139,8 @@ def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
   match ret.type with
   | .primitive (.scalar s) =>
     match scalarValue ret.type s with
-    | .string _ => unsupported
-    | v         =>
+    | .string _ | .nullableFloat32 => unsupported
+    | v =>
       if ret.optional || ret.passedWithOwnership.isSome then unsupported else v
   | .named (.object id) =>
     if ret.passedWithOwnership != some true then
@@ -255,8 +259,9 @@ rules (`DefaultValue` in its gen.go): zero for a number, `false`, an empty
 array or string, a nested struct at its own defaults, `none` for an optional
 object or pointer; for an enum its `undefined` entry, and for a bitflag type its
 `none` flag. None where those give no valid value, so the member is required:
-an enum with no `undefined` entry (C would set a code no entry has), or an
-object or pointer that is not optional (C would set NULL).
+an enum with no `undefined` entry (C would set a code no entry has), an
+object or pointer that is not optional (C would set NULL), or a nullable float:
+the spec gives each one a default, so none is guessed.
 -/
 def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
     Value → Option Lowered.Default
@@ -268,6 +273,7 @@ def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
   | .object _ nullable          => if nullable then some .null else none
   | .structPointer _ nullable   => if nullable then some .null else none
   | .struct _                   => some .nested
+  | .nullableFloat32            => none
   | .enum _ => match p.type with
     | .named (.enum id) => do
       let e ← r.enums[id.idx]?
@@ -309,8 +315,14 @@ def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
       names   := bothNames memberName leanName m.name
       doc     := translateDoc ctx m.doc
       value   := value
-      default := (m.default.bind (lowerDefault r)).orElse fun _ =>
-        implicitDefault r m value
+      default := match value, m.default with
+        -- C holds NaN for none, so a NaN constant is `none` in Lean.
+        | .nullableFloat32, some (.constant id) =>
+          match r.constants[id.idx]? with
+          | some { value := .nan, .. } => some .null
+          | _ => lowerDefault r (.constant id)
+        | _, _ => (m.default.bind (lowerDefault r)).orElse fun _ =>
+          implicitDefault r m value
     }
 
 /-! ## Functions and objects -/
@@ -383,7 +395,7 @@ where
   zeroOf (fuel : Nat) : Value → Option Lowered.Default
     | .bool => some (.bool false)
     | .uint16 | .uint32 | .uint64 | .int16 | .int32 | .usize => some (.int 0)
-    | .float32 | .float64 => some (.float "0.0")
+    | .float32 | .float64 | .nullableFloat32 => some (.float "0.0")
     -- A nullable string is the null string view, not the empty string.
     | .string true => some .null
     | .string false | .array .. => some .empty
