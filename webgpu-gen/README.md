@@ -116,9 +116,12 @@ The main proofs we have (not a complete list) are:
   targets (`CLayout.lean`). For every struct, however deeply nested: each field,
   and each scalar within it, is aligned, lies within the struct, and ends
   before the next begins; and each scalar is at its field's offset, so
-  checking fields' offsets checks scalars' too. That the model gives what the
-  C compiler does is tested for examples, on both widths; checking every
-  struct against `webgpu.h` is *not yet* done.
+  checking fields' offsets checks scalars' too. The model is not trusted to
+  match C: for every bound struct, the generated `layouts.c` asserts each
+  field's offset and the struct's size and alignment, so the C compiler checks
+  the model against `webgpu.h` on every target the build runs on. The test
+  driver also checks each bound struct's fields are `webgpu.h`'s, named, in
+  order, so none is left out where it could hide in padding.
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`

@@ -86,6 +86,18 @@ inductive Decl where
   | prototype (f : Function)
   /-- A function definition. -/
   | function (f : Function)
+  /-- A comment of its own: `// text`. -/
+  | comment (text : String)
+  /--
+  A macro: `#define name(params) body`, each line of `body` after the first
+  continuing the definition.
+  -/
+  | define (name : String) (params : List String) (body : List String)
+  /--
+  Calls of the macro `macro`, one per row of arguments: `macro(a, b);`, the
+  arguments aligned in columns.
+  -/
+  | invocations («macro» : String) (rows : List (List String))
   deriving Repr, Inhabited
 
 end WebGPUGen.Emit.C

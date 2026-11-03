@@ -7,8 +7,8 @@ of `webgpu.h` as C would lay it out. The rules are C's for the structs
 aligned as its most aligned field, and its size rounded up to that alignment.
 Every scalar is aligned to its size, as on every target the bindings support
 (64-bit, and wasm32, where pointers and `size_t` are 4 bytes but 64-bit
-integers and doubles are still aligned to 8). The tests compare examples with
-what the C compiler gives, on both widths.
+integers and doubles are still aligned to 8). The C compiler checks the layouts
+of every bound struct against `webgpu.h`, on each target (`Emit/C/Layouts`).
 
 For any struct, its layout has the properties packing needs:
 

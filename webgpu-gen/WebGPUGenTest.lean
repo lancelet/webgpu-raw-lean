@@ -17,12 +17,14 @@ import WebGPUGenTest.Lowered.CNames
 import WebGPUGenTest.Lowered.LeanNames
 import WebGPUGenTest.Lowered.Docs
 import WebGPUGenTest.Lowered.Lower
+import WebGPUGenTest.Lowered.CFields
 import WebGPUGenTest.CLayout
 import WebGPUGenTest.Emit.Layout
 import WebGPUGenTest.Emit.Pretty
 import WebGPUGenTest.Emit.C.Print
 import WebGPUGenTest.Emit.C.Objects
 import WebGPUGenTest.Emit.C.Functions
+import WebGPUGenTest.Emit.C.Layouts
 import WebGPUGenTest.Emit.Lean
 import WebGPUGenTest.Source
 import WebGPUGenTest.Stubs

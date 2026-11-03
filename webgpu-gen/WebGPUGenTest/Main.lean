@@ -7,6 +7,7 @@ import WebGPUGen.Lowered.CNames
 import WebGPUGen.Lowered.Lower
 import WebGPUGen.Emit.C.Objects
 import WebGPUGen.Emit.C.Functions
+import WebGPUGen.Emit.C.Layouts
 import WebGPUGenTest
 
 /-!
@@ -221,6 +222,7 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     let files :=
       WebGPUGen.Emit.C.objectsFiles provenance spec
         ++ WebGPUGen.Emit.C.functionsFiles provenance spec
+        ++ WebGPUGen.Emit.C.layoutsFiles provenance spec
     for (name, text) in files do
       IO.FS.writeFile (dir / name) text
     let leanPrefix := (← IO.Process.output { cmd := "lean", args := #["--print-prefix"] }).stdout
@@ -233,6 +235,7 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
       ("objects", #[]),
       ("functions", #[]),
       ("functions", #["-DWEBGPU_RAW_DAWN"]),
+      ("layouts", #[]),
       ("probe", #[])
     ]
     for (source, defines) in builds do
@@ -249,6 +252,48 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
       unless out.exitCode == 0 do
         return some errors
     return none
+
+/--
+The structs the header defines, each with its fields' names, in order: the last
+identifier of each declaration between `typedef struct X {` and `} X`.
+-/
+def headerStructFields (header : String) : List (String × List String) :=
+  let step := fun
+      (acc : List (String × List String) × Option (String × Array String))
+      (line : String) =>
+    let (done, current) := acc
+    let trimmed := line.trimAscii.toString
+    match current with
+    | none =>
+      match trimmed.splitOn " " with
+      | ["typedef", "struct", name, "{"] => (done, some (name, #[]))
+      | _ => (done, none)
+    | some (name, fields) =>
+      if trimmed.startsWith "}" then (done ++ [(name, fields.toList)], none)
+      else if trimmed.endsWith ";" && !trimmed.startsWith "*"
+          && !trimmed.startsWith "/" then
+        let words := ((trimmed.dropEnd 1).toString.splitOn " ").filter
+          fun w => !w.isEmpty && w != "*"
+        (done, some (name, fields.push ((words.getLast?.getD "").dropWhile
+          (· == '*')).toString))
+      else (done, some (name, fields))
+  ((header.splitOn "\n").foldl step ([], none)).1
+
+-- A struct's fields, by the last identifier of each declaration; its doc
+-- comments and lines that are not declarations are not fields.
+#guard
+  let input := WebGPUGenTest.dedent "
+    typedef struct WGPUThing {
+        /**
+         * A doc;
+         */
+        WGPUChainedStruct * nextInChain;
+        WGPUStringView label;
+        void *userdata1;
+    } WGPUThing WGPU_STRUCTURE_ATTRIBUTE;
+    "
+  headerStructFields input
+    == [("WGPUThing", ["nextInChain", "label", "userdata1"])]
 
 /--
 The header's initialisers: for each `WGPU_X_INIT` macro, its struct's C name
@@ -460,6 +505,22 @@ def main : IO Unit := do
   let clashes := leanClashes lowered
   unless clashes.isEmpty do
     failWith s!"Lean names that clash: {clashes}"
+
+  -- Every bound struct has its C fields, so the layout checks miss none.
+  let structs := lowered.structs.toList
+  let unlaid := (WebGPUGen.Lowered.boundStructs structs).filter fun s =>
+    (s.cFields structs).isNone
+  unless unlaid.isEmpty do
+    failWith s!"bound structs with no C fields: {unlaid.map (·.names.c)}"
+  -- And their C fields are the header's, each named, in order: so no field is
+  -- left out, as one could hide in padding from the layout checks.
+  let headerFields := headerStructFields header
+  let unlike := (WebGPUGen.Lowered.boundStructs structs).filterMap fun s =>
+    let ours := (s.cFields structs).map (·.map (·.1))
+    if ours == headerFields.lookup s.names.c then none
+    else some s!"{s.names.c}: {ours}, not {headerFields.lookup s.names.c}"
+  unless unlike.isEmpty do
+    failWith s!"bound structs whose C fields differ from webgpu.h: {unlike}"
 
   -- The generated C shims compile.
   -- Every function lowering says can be bound has a shim: none is lost.

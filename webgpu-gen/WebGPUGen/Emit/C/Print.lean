@@ -133,6 +133,29 @@ def function (f : Function) : Doc :=
 def prototype (f : Function) : Doc :=
   docBefore f ++ signature f ++ text ";"
 
+/--
+A macro definition, its body's lines after the first indented and each line
+but the last continued with `\`.
+-/
+def define (name : String) (params : List String) (body : List String) : Doc :=
+  let head := "#define " ++ name
+    ++ (if params.isEmpty then "" else "(" ++ ", ".intercalate params ++ ")")
+  -- A one-line body follows the name; a longer one starts on a line of its own.
+  let out := match body with
+    | [] => [head]
+    | [only] => [head ++ " " ++ only]
+    | body => head :: body.map ("    " ++ ·)
+  let n := out.length
+  lines (out.zipIdx.map fun (s, i) => if i + 1 == n then s else s ++ " \\")
+
+/-- Calls of a macro, one per row, the arguments aligned in columns. -/
+def invocations (m : String) (rows : List (List String)) : Doc :=
+  lines (columns (rows.map fun row =>
+    let n := row.length
+    row.zipIdx.map fun (arg, i) =>
+      (if i == 0 then m ++ "(" else "") ++ arg
+        ++ (if i + 1 == n then ");" else ",")))
+
 /-- A top-level declaration. -/
 def decl : Decl → Doc
   | .pragma t                        => text ("#pragma " ++ t)
@@ -143,6 +166,9 @@ def decl : Decl → Doc
       ++ (match init with | some e => text " = " ++ expr e | none => nil) ++ text ";"
   | .prototype f                     => prototype f
   | .function f                      => function f
+  | .comment t                       => comment 0 t
+  | .define name params body         => define name params body
+  | .invocations m rows              => invocations m rows
 
 /-- Declarations of one kind that stay together, with no blank line between. -/
 def Decl.together : Decl → Decl → Bool
@@ -151,6 +177,9 @@ def Decl.together : Decl → Decl → Bool
   | .includeLocal _, .include _      => true
   | .includeLocal _, .includeLocal _ => true
   | .variable ..,    .variable ..    => true
+  | .comment _,      .invocations .. => true
+  | .invocations .., .invocations .. => true
+  | .define ..,      .define ..      => true
   | _,               _               => false
 
 /--

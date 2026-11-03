@@ -91,6 +91,13 @@ def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
     unless decide lowered.structNamesDistinct do
       throw (IO.userError
         s!"structs that share a C name: {lowered.sharedStructNames}")
+    -- Every bound struct's layout is checked: none may lack its C fields.
+    let structs := lowered.structs.toList
+    let unlaid := (Lowered.boundStructs structs).filter fun s =>
+      (s.cFields structs).isNone
+    unless unlaid.isEmpty do
+      throw (IO.userError
+        s!"bound structs with no C fields: {unlaid.map (·.names.c)}")
     return lowered
   | .error problems =>
     for p in problems do IO.eprintln p
@@ -110,7 +117,8 @@ def generate : IO Unit := do
     (lean / "Functions.lean", Emit.Lean.functionsFile p spec),
     (lean / "Constants.lean", Emit.Lean.constantsFile p spec),
     (lean / "Structs.lean", Emit.Lean.structsFile p spec)
-  ] ++ (Emit.C.objectsFiles p spec ++ Emit.C.functionsFiles p spec).map
+  ] ++ (Emit.C.objectsFiles p spec ++ Emit.C.functionsFiles p spec
+      ++ Emit.C.layoutsFiles p spec).map
     fun (name, text) => (c / name, text)
   for (path, text) in files do
     IO.FS.writeFile path text
