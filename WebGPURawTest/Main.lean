@@ -43,5 +43,9 @@ def main : IO Unit := do
     (hasInstanceFeature .timedWaitAny)
   expectNotImplemented "Instance.hasWGSLLanguageFeature"
     (wgpu.hasWGSLLanguageFeature .readonlyAndReadwriteStorageTextures)
+  -- The byte writers' C fast paths agree with their Lean definitions.
+  let wrong := WebGPURawTest.Internal.Bytes.disagreements 1
+  unless wrong.isEmpty do
+    throw (IO.userError s!"FAIL: byte writers: {wrong.take 5}")
   -- The instance's reference is released when `wgpu` is freed, at the end.
   IO.println "The WebGPU bindings called through their shims."

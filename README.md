@@ -19,4 +19,18 @@ support WebAssembly; the web build is a workaround whose lifespan is unknown
 
 [pages]: https://lancelet.github.io/webgpu-raw-lean/
 
-Status: WIP: approximately 57% complete.
+## Proofs
+
+The generator's are in [its README](webgpu-gen/README.md#proofs). The
+bindings prove, in Lean:
+
+- **Enum codes.** Every enum's C codes and its values correspond one to one
+  (`CEnum`), checked by Lean's kernel for every enum.
+- **Byte writers.** Writing a number into a `ByteArray` little-endian, as C lays
+  it out, keeps the array's size; reading it back gives the number; and every
+  byte outside it is left as it was (`WebGPU/Raw/Internal/Bytes.lean`). Each
+  integer writer runs as one store in C; that the C agrees with the Lean
+  definition is tested, natively and on the web, not proved. A float is written
+  as its bits, so any NaN is written as Lean's one NaN.
+
+Status: WIP: approximately 58% complete.

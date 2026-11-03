@@ -86,6 +86,12 @@ unimplemented.)
 - **C does not keep a string, or any other input, after the call.** Upstream
   implies this (only outputs belong to the application) but does not state it.
   *Checked by:* not checked.
+- **A byte writer changes a byte array in place only if nothing else holds
+  it**, and only within it: a shared array is copied first, and a value that
+  does not fit is not written. *Checked by:* proof that the Lean definitions
+  each C writer implements write only within the array, and whole or not at
+  all; and test that each C writer agrees with its definition, in place and on
+  shared arrays, natively and on the web.
 
 ## Threads
 

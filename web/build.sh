@@ -199,18 +199,24 @@ compile_module() {
 export -f compile_module
 export app
 # The modules in the sources, not every C file in .lake/build/ir, which may
-# hold C of modules since removed.
+# hold C of modules since removed; and the native tests' module the self-test
+# shares, the byte writers' differential test.
 # shellcheck disable=SC2016 # the $1 is the inner bash's
-{ find WebGPU WebGPURawWebTest -name '*.lean'; echo WebGPURawWebTest.lean; } \
+{
+  find WebGPU WebGPURawWebTest -name '*.lean'
+  echo WebGPURawWebTest.lean
+  echo WebGPURawTest/Internal/Bytes.lean
+} \
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
 
-# The shims and the test helper, against emdawnwebgpu's webgpu.h. The shims
-# are told they are built against Dawn: those of functions wgpu-native leaves
-# unimplemented then call them, rather than raise an IO error.
+# The shims, the byte writers and the test helper, against emdawnwebgpu's
+# webgpu.h. The shims are told they are built against Dawn: those of functions
+# wgpu-native leaves unimplemented then call them, rather than raise an IO
+# error.
 port=--use-port=emdawnwebgpu
 read_flags
-for f in c/generated/*.c WebGPURawTest/c/instance.c; do
+for f in c/*.c c/generated/*.c WebGPURawTest/c/instance.c; do
   emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN -I c/generated -c "$f" \
     -o "$app/shim_$(basename "$f" .c).o"
 done

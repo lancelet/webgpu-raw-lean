@@ -71,9 +71,10 @@ target wgpuNative pkg : Dynlib := do
   return (← inputBinFile file).map fun path => { path, name := "wgpu_native" }
 
 /--
-The C shims, generated into `c/generated/` by `webgpu-gen`: every `.c` file
-there, compiled with the system C compiler (`cc`, or `CC`) into one static
-library. Each is rebuilt when it, or any header beside it or in wgpu-native's
+The C shims, generated into `c/generated/` by `webgpu-gen`, and the hand-written
+C beside them in `c/` (the byte writers): every `.c` file in either, compiled
+with the system C compiler (`cc`, or `CC`) into one static library. Each is
+rebuilt when it, or any header in `c/`, `c/generated/` or wgpu-native's
 `include/webgpu/`, changes.
 -/
 target wgpuShim pkg : FilePath := do
@@ -85,7 +86,7 @@ target wgpuShim pkg : FilePath := do
   -- Sorted, since directory order varies, and the traces depend on the order.
   let paths (dir : FilePath) : IO (Array FilePath) := do
     return ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
-  let files ← paths sources
+  let files := (← paths (pkg.dir / "c")) ++ (← paths sources)
   let wgpuHeaders ← paths (wgpuInclude / "webgpu")
   let headers := (files ++ wgpuHeaders).filter (·.extension == some "h")
   let headerJobs ← headers.mapM fun h => inputTextFile h
@@ -97,7 +98,11 @@ target wgpuShim pkg : FilePath := do
     -- The source, with the headers' traces mixed into its own.
     let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
       (Job.mixArray headerJobs "headers")
-    buildO (pkg.buildDir / "c" / s!"{stem}.o") srcJob
+    -- Under a path like its source's, so generated and hand-written C with
+    -- one name cannot share an object.
+    let dir := if src.parent == some sources
+      then pkg.buildDir / "c" / "generated" else pkg.buildDir / "c"
+    buildO (dir / s!"{stem}.o") srcJob
       includes (#["-O2"] ++ picArgs) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
 

@@ -1,4 +1,5 @@
 import WebGPU.Raw
+import WebGPURawTest.Internal.Bytes
 
 /-!
 # The web self-test
@@ -62,11 +63,12 @@ def checks : List (String × Bool) :=
         matches .ok .rgba8Unorm),
     ("an unknown code kept",
       (CEnum.decode (runtime 0x7FFF0000) : Except UInt32 TextureFormat)
-        matches .error 0x7FFF0000)
-,
+        matches .error 0x7FFF0000),
     ("the NaN constant is a NaN", (runtime depthClearValueUndefined).isNaN),
     ("SIZE_MAX is the largest UInt64",
-      runtime wholeMapSize == 0xFFFF_FFFF_FFFF_FFFF)
+      runtime wholeMapSize == 0xFFFF_FFFF_FFFF_FFFF),
+    ("the byte writers agree with their Lean definitions",
+      (WebGPURawTest.Internal.Bytes.disagreements (runtime 1)).isEmpty)
   ]
 
 end WebGPURawWebTest

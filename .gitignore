@@ -7,3 +7,6 @@
 /vendor/libuv/*/
 # CI only: the Emscripten SDK, cached by setup-emsdk
 /emsdk-cache/
+
+# Claude Code's local state, such as agents' worktrees
+/.claude/
