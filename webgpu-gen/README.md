@@ -37,7 +37,9 @@ It consists of the following stages:
    need (`Lowered.lean`, `Lowered/`): names on both sides, how each value
    crosses between C and Lean, struct defaults as C's initialisers give
    them, and what cannot be passed yet, so that it is not bound.
-6. **Generate.** Print the C shims and the Lean bindings (`Emit/`).
+6. **Generate.** Print the C shims and the Lean bindings (`Emit/`): among them,
+   each bound struct's encoders, with the proofs Lean checks as the bindings
+   build (`Emit/Encoders.lean`).
 
 ## Proofs
 

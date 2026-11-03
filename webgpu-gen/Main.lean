@@ -98,6 +98,10 @@ def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
     unless unlaid.isEmpty do
       throw (IO.userError
         s!"bound structs with no C fields: {unlaid.map (·.names.c)}")
+    -- And none may lack its encoders.
+    let unencodable := Emit.Encoders.unencodable lowered
+    unless unencodable.isEmpty do
+      throw (IO.userError s!"bound structs with no encoders: {unencodable}")
     return lowered
   | .error problems =>
     for p in problems do IO.eprintln p
@@ -111,12 +115,16 @@ def generate : IO Unit := do
   let lean := root / "WebGPU" / "Raw"
   let c := root / "c" / "generated"
   IO.FS.createDirAll c
+  -- `loadSpec` refused a struct with no encoders, so there are some.
+  let some encoders := Emit.Encoders.encodersFile p spec
+    | throw (IO.userError "a bound struct has no encoders")
   let files := [
     (lean / "Enums.lean",   Emit.Lean.enumsFile p spec),
     (lean / "Objects.lean", Emit.Lean.objectsFile p spec),
     (lean / "Functions.lean", Emit.Lean.functionsFile p spec),
     (lean / "Constants.lean", Emit.Lean.constantsFile p spec),
-    (lean / "Structs.lean", Emit.Lean.structsFile p spec)
+    (lean / "Structs.lean", Emit.Lean.structsFile p spec),
+    (lean / "Encoders.lean", encoders)
   ] ++ (Emit.C.objectsFiles p spec ++ Emit.C.functionsFiles p spec
       ++ Emit.C.layoutsFiles p spec).map
     fun (name, text) => (c / name, text)

@@ -25,6 +25,7 @@ import WebGPUGenTest.Emit.C.Print
 import WebGPUGenTest.Emit.C.Objects
 import WebGPUGenTest.Emit.C.Functions
 import WebGPUGenTest.Emit.C.Layouts
+import WebGPUGenTest.Emit.Encoders
 import WebGPUGenTest.Emit.Lean
 import WebGPUGenTest.Source
 import WebGPUGenTest.Stubs

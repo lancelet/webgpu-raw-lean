@@ -33,20 +33,16 @@ bindings prove, in Lean:
   agrees with the Lean definition is tested, natively and on the web, not
   proved. A float is written as its bits, so any NaN is written as Lean's one
   NaN.
-- **Packing structs.** For a well-formed layout (scalars in order, aligned,
-  none overlapping, all within the struct), packing a struct gives bytes of
-  its size in which every scalar reads back as its value, and each pointer is
-  a slot, its bytes 0 for C to fill in: aligned, and apart from every other
-  scalar and slot (`WebGPU/Raw/Internal/Pack.lean`). A `size_t` that does not
-  fit the target is refused, as for a function's argument. A packed buffer
-  descriptor is tested to be byte for byte one C fills in.
 - **Encoding structs.** A struct is encoded field by field: each field an
   offset, a kind of scalar, and the number its bytes hold. For well-formed
   fields (in order, apart, within the struct), every field reads back as its
   number, and every other byte, the pointers and padding, as 0
   (`WebGPU/Raw/Internal/Encode.lean`). The encoders that run are straight-line
-  pokes into a fresh block, each proved the same as the general encoding, so
-  these hold of them; their bounds are proved, and that their block is
-  unshared is checked in CI (see `docs/Safety.md`).
+  pokes into a fresh block, generated for every bound struct and both widths
+  (`WebGPU/Raw/Encoders.lean`), each proved the same as the general encoding,
+  with its fields well-formed and its pointers 0, so these hold of every one;
+  their bounds are proved, and that their block is unshared is checked in CI
+  (see `docs/Safety.md`). Encoded structs of every kind of field are tested to
+  be byte for byte ones C fills in, natively and on the web.
 
-Status: WIP: approximately 61% complete.
+Status: WIP: approximately 62% complete.

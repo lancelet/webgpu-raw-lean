@@ -1,6 +1,5 @@
 import WebGPU.Raw
 import WebGPURawTest.Internal.Bytes
-import WebGPURawTest.Internal.Pack
 import WebGPURawTest.Internal.Encode
 
 /-!
@@ -72,13 +71,8 @@ def checks : List (String × Bool) :=
     ("the byte writers agree with their Lean definitions",
       (WebGPURawTest.Internal.Bytes.disagreements (runtime 1)).isEmpty),
     ("this target's width is 32 bits",
-      WebGPU.Raw.Pack.Width.current == .bits32)
-  ] ++ (WebGPURawTest.Internal.Pack.checks (runtime .bits32)).map
-      (fun (what, ok) => (what ++ " (wasm32)", ok))
-    ++ (WebGPURawTest.Internal.Pack.checks (runtime .bits64)).map
-      (fun (what, ok) => (what ++ " (64-bit)", ok))
-    ++ WebGPURawTest.Internal.Pack.cChecks
-    ++ WebGPURawTest.Internal.Encode.checks
+      WebGPU.Raw.Encode.Width.current == .bits32)
+  ] ++ WebGPURawTest.Internal.Encode.checks
 
 end WebGPURawWebTest
 

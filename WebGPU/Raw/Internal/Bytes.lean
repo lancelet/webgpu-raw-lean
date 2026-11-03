@@ -3,11 +3,12 @@ module
 /-!
 # Bytes, little-endian
 
-A helper for the generated bindings, not part of the API: the bindings import
-this module privately, so it never reaches their users.
+A helper for the generated bindings, not part of the API: of the bindings,
+only the generated encoders (`WebGPU.Raw.Encoders`) import it publicly,
+through `Encode`, as their theorems mention it.
 
 Writing numbers into a `ByteArray` as C lays them out in memory, and reading
-them back: what packing a struct of `webgpu.h` writes. Every target the
+them back: what encoding a struct of `webgpu.h` writes. Every target the
 bindings support is little-endian, which the C side checks as it compiles.
 
 Each typed writer (`writeU32`, `writeF64`, ...) is defined in Lean, one byte at

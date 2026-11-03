@@ -213,14 +213,12 @@ export -f compile_module
 export app
 # The modules in the sources, not every C file in .lake/build/ir, which may
 # hold C of modules since removed; and the native tests' modules the self-test
-# shares: the byte writers' differential test, and the packing and encoding
-# checks.
+# shares: the byte writers' differential test, and the encoding checks.
 # shellcheck disable=SC2016 # the $1 is the inner bash's
 {
   find WebGPU WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
   echo WebGPURawTest/Internal/Bytes.lean
-  echo WebGPURawTest/Internal/Pack.lean
   echo WebGPURawTest/Internal/Encode.lean
 } \
   | sed 's/\.lean$//' \

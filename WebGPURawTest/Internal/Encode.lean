@@ -1,137 +1,117 @@
 import WebGPU.Raw
-import WebGPU.Raw.Internal.Encode
-import WebGPURawTest.Internal.Pack
+import WebGPU.Raw.Encoders
 
 /-!
 # Tests for encoding
 
-A buffer descriptor's encoders, written by hand as the generator is to write
-every struct's: its fields, for the specification (`encode`), and a
-straight-line encoder of pokes, the same as `encode` of its fields. The encoders
-are compared with C at run time, natively and on the web; the rest is checked as
-this module builds.
+The generated encoders (`WebGPU.Raw.Encoders`), compared with structs C fills
+in, at run time, natively and on the web: a buffer descriptor, its label full
+and empty; a depth-stencil state, with enums, an optional bool, nested structs,
+a negative integer and floats; a WGSL source, a chained struct; and instance
+limits, a `size_t` at its largest. Their proofs are checked as the generated
+module builds; `EncodeAttrs` checks each is `@[noinline]`.
 -/
 
 namespace WebGPURawTest.Internal.Encode
-open WebGPU.Raw WebGPU.Raw.Bytes WebGPU.Raw.Pack WebGPU.Raw.Encode
+open WebGPU.Raw WebGPU.Raw.Encode
 
-/-! ## A buffer descriptor, on 64-bit targets -/
+/-! ## Values as C holds them -/
 
-/--
-`WGPUBufferDescriptor`'s scalar fields on 64-bit targets; `nextInChain` (0) and
-`label.data` (8) are pointers, for C to fill in.
--/
-def bufferDescriptorFields64 : List (Field BufferDescriptor) := [
-  ⟨16, .size, fun d => d.label.utf8ByteSize.toUInt64.toNat⟩,
-  ⟨24, .u64, fun d => d.usage.bits.toNat⟩,
-  ⟨32, .u64, fun d => d.size.toNat⟩,
-  ⟨40, .u32, fun d => (if d.mappedAtCreation then 1 else 0 : UInt32).toNat⟩
-]
+#guard wgpuBool true == 1
+#guard wgpuBool false == 0
+#guard viewLength64 none == 0xFFFFFFFFFFFFFFFF
+#guard viewLength64 (some "abc") == 3
+#guard viewLength32 none == 0xFFFFFFFF
+#guard viewLength32 (some "é") == 2
+#guard nanOr none == 0x7FC00000
+#guard nanOr (some 1.5) == (1.5 : Float32).toBits
+#guard sizeFits 0xFFFFFFFF
+#guard !sizeFits 0x100000000
+#guard sizeFits 0xFFFFFFFFFFFFFFFF
+#guard size32 0xFFFFFFFFFFFFFFFF == 0xFFFFFFFF
+#guard size32 0x1234 == 0x1234
 
-/-- The fields are well-formed: in order, apart, within the struct. -/
-theorem bufferDescriptorFields64_wellFormed :
-    Fields.WellFormed .bits64 48 bufferDescriptorFields64 := by
-  unfold Fields.WellFormed; decide
-
-/-- A buffer descriptor encoded for 64-bit targets: a poke for each field. -/
-@[noinline]
-def encodeBufferDescriptor64 (d : BufferDescriptor) : ByteArray :=
-  let b := freshZeros 48
-  let b := pokeU64 b 16 d.label.utf8ByteSize.toUInt64
-    (by simp +zetaDelta [size_freshZeros])
-  let b := pokeU64 b 24 d.usage.bits
-    (by simp +zetaDelta [size_pokeU64, size_freshZeros])
-  let b := pokeU64 b 32 d.size
-    (by simp +zetaDelta [size_pokeU64, size_freshZeros])
-  pokeU32 b 40 (if d.mappedAtCreation then 1 else 0)
-    (by simp +zetaDelta [size_pokeU64, size_freshZeros])
-
-/-- The encoder is `encode` of the fields: so `readLE_encode` holds of it. -/
-theorem encodeBufferDescriptor64_eq (d : BufferDescriptor) :
-    encodeBufferDescriptor64 d
-      = encode .bits64 48 bufferDescriptorFields64 d := by
-  simp only [encodeBufferDescriptor64, encode, bufferDescriptorFields64,
-    List.map, Field.write, writeAll, List.foldl, pokeU64_eq, pokeU32_eq,
-    freshZeros, Scalar.bytes, Width.bytes]
-
-/-- Its pointers, `nextInChain` and `label.data`, read as 0, for C to fill. -/
-theorem encodeBufferDescriptor64_pointers (d : BufferDescriptor) :
-    readLE (encodeBufferDescriptor64 d) 0 8 = 0
-      ∧ readLE (encodeBufferDescriptor64 d) 8 8 = 0 := by
-  rw [encodeBufferDescriptor64_eq]
-  exact ⟨readLE_encode_apart d 0 8 (by unfold bufferDescriptorFields64; decide),
-    readLE_encode_apart d 8 8 (by unfold bufferDescriptorFields64; decide)⟩
-
-/-! ## A buffer descriptor, on wasm32 -/
+/-! ## Structs, against C -/
 
 /--
-`WGPUBufferDescriptor`'s scalar fields on wasm32; `nextInChain` (0) and
-`label.data` (4) are pointers, for C to fill in. The label's length is a 32-bit
-`size_t`: no string on wasm32 can be 2^32 bytes, so its length always fits.
+A buffer descriptor C fills in: no chain, a label of `labelLength` bytes at
+NULL, these fields, and its padding zero.
 -/
-def bufferDescriptorFields32 : List (Field BufferDescriptor) := [
-  ⟨8, .size, fun d => d.label.utf8ByteSize.toUInt32.toNat⟩,
-  ⟨16, .u64, fun d => d.usage.bits.toNat⟩,
-  ⟨24, .u64, fun d => d.size.toNat⟩,
-  ⟨32, .u32, fun d => (if d.mappedAtCreation then 1 else 0 : UInt32).toNat⟩
-]
+@[extern "lean_wgpu_test_buffer_descriptor"]
+opaque cBufferDescriptor (usage size : UInt64) (mappedAtCreation : UInt32)
+  (labelLength : USize) : ByteArray
 
-/-- The fields are well-formed: in order, apart, within the struct. -/
-theorem bufferDescriptorFields32_wellFormed :
-    Fields.WellFormed .bits32 40 bufferDescriptorFields32 := by
-  unfold Fields.WellFormed; decide
+/-- A depth-stencil state C fills in: see `descriptors.c`. -/
+@[extern "lean_wgpu_test_depth_stencil_state"]
+opaque cDepthStencilState : Unit → ByteArray
 
-/-- A buffer descriptor encoded for wasm32: a poke for each field. -/
-@[noinline]
-def encodeBufferDescriptor32 (d : BufferDescriptor) : ByteArray :=
-  let b := freshZeros 40
-  let b := pokeU32 b 8 d.label.utf8ByteSize.toUInt32
-    (by simp +zetaDelta [size_freshZeros])
-  let b := pokeU64 b 16 d.usage.bits
-    (by simp +zetaDelta [size_pokeU32, size_freshZeros])
-  let b := pokeU64 b 24 d.size
-    (by simp +zetaDelta [size_pokeU64, size_pokeU32, size_freshZeros])
-  pokeU32 b 32 (if d.mappedAtCreation then 1 else 0)
-    (by simp +zetaDelta [size_pokeU64, size_pokeU32, size_freshZeros])
+/-- A WGSL source C fills in, with code of `codeLength` bytes at NULL. -/
+@[extern "lean_wgpu_test_shader_source_wgsl"]
+opaque cShaderSourceWGSL (codeLength : USize) : ByteArray
 
-/-- The encoder is `encode` of the fields: so `readLE_encode` holds of it. -/
-theorem encodeBufferDescriptor32_eq (d : BufferDescriptor) :
-    encodeBufferDescriptor32 d
-      = encode .bits32 40 bufferDescriptorFields32 d := by
-  simp only [encodeBufferDescriptor32, encode, bufferDescriptorFields32,
-    List.map, Field.write, writeAll, List.foldl, pokeU64_eq, pokeU32_eq,
-    freshZeros, Scalar.bytes, Width.bytes]
-
-/-- Its pointers, `nextInChain` and `label.data`, read as 0, for C to fill. -/
-theorem encodeBufferDescriptor32_pointers (d : BufferDescriptor) :
-    readLE (encodeBufferDescriptor32 d) 0 4 = 0
-      ∧ readLE (encodeBufferDescriptor32 d) 4 4 = 0 := by
-  rw [encodeBufferDescriptor32_eq]
-  exact ⟨readLE_encode_apart d 0 4 (by unfold bufferDescriptorFields32; decide),
-    readLE_encode_apart d 4 4 (by unfold bufferDescriptorFields32; decide)⟩
-
-/-! ## The encoders against C -/
+/-- Instance limits C fills in, with this count. -/
+@[extern "lean_wgpu_test_instance_limits"]
+opaque cInstanceLimits (timedWaitAnyMaxCount : USize) : ByteArray
 
 /-- A buffer descriptor's values for the comparison with C. -/
-def descriptor : BufferDescriptor :=
-  { label := "vertices", usage := ⟨0x28⟩, size := 0x10000,
-    mappedAtCreation := true }
+def descriptor : BufferDescriptor := {
+  label            := "vertices"
+  usage            := ⟨0x28⟩
+  size             := 0x10000
+  mappedAtCreation := true
+}
+
+/-- The same as C's in `descriptors.c`. -/
+def depthStencil : DepthStencilState := {
+  format              := .depth24PlusStencil8
+  depthWriteEnabled   := .true
+  depthCompare        := .less
+  stencilFront        := {
+    compare     := .always
+    failOp      := .keep
+    depthFailOp := .replace
+    passOp      := .incrementClamp
+  }
+  stencilBack         := {
+    compare     := .never
+    failOp      := .zero
+    depthFailOp := .invert
+    passOp      := .decrementWrap
+  }
+  stencilReadMask     := 0xFF
+  stencilWriteMask    := 0x0F
+  depthBias           := -3
+  depthBiasSlopeScale := 1.5
+  depthBiasClamp      := -0.25
+}
+
+/-- Whether two byte arrays hold the same bytes. -/
+def same (a b : ByteArray) : Bool :=
+  a.data.toList == b.data.toList
 
 /-- Each check: what it is, and whether it held. -/
 @[noinline]
-def checks : List (String × Bool) :=
-  match Width.current with
-  | .bits64 => [
-      ("a buffer descriptor encodes as C lays it out",
-        (encodeBufferDescriptor64 descriptor).data.toList
-          == (WebGPURawTest.Internal.Pack.cBufferDescriptor 0x28 0x10000 1
-            8).data.toList)
-    ]
-  | .bits32 => [
-      ("a buffer descriptor encodes as C lays it out",
-        (encodeBufferDescriptor32 descriptor).data.toList
-          == (WebGPURawTest.Internal.Pack.cBufferDescriptor 0x28 0x10000 1
-            8).data.toList)
-    ]
+def checks : List (String × Bool) := [
+  ("a buffer descriptor encodes as C lays it out",
+    same (BufferDescriptor.toBytes descriptor)
+      (cBufferDescriptor 0x28 0x10000 1 8)),
+  ("a buffer descriptor's empty label encodes as C's, of length 0",
+    same (BufferDescriptor.toBytes { descriptor with label := "" })
+      (cBufferDescriptor 0x28 0x10000 1 0)),
+  ("a depth-stencil state encodes as C lays it out",
+    same (DepthStencilState.toBytes depthStencil) (cDepthStencilState ())),
+  ("a WGSL source encodes as C lays it out, with its chain's sType",
+    same (ShaderSourceWGSL.toBytes { code := "fn main() {}" })
+      (cShaderSourceWGSL 12)),
+  ("instance limits encode as C lays them out",
+    same (InstanceLimits.toBytes { timedWaitAnyMaxCount := 64 })
+      (cInstanceLimits 64)),
+  ("instance limits' largest count encodes as C's SIZE_MAX",
+    same (InstanceLimits.toBytes { timedWaitAnyMaxCount := UInt64.ofNat 0 - 1 })
+      (cInstanceLimits (USize.ofNat 0 - 1))),
+  ("a count past 32 bits fits only on 64-bit targets",
+    InstanceLimits.sizesFit { timedWaitAnyMaxCount := 0x100000000 }
+      == (System.Platform.numBits == 64))
+]
 
 end WebGPURawTest.Internal.Encode

@@ -131,7 +131,7 @@ lean_lib WebGPURaw where
 /--
 C helpers for the tests only, every `.c` file in `WebGPURawTest/c/`: an
 instance to call functions on, until the bindings can create one, and structs
-as C lays them out, to compare packing with.
+as C lays them out, to compare encoding with.
 -/
 target testHelpers pkg : FilePath := do
   let dir := pkg.dir / "WebGPURawTest" / "c"

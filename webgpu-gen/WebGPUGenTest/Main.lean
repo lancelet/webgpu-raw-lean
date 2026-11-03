@@ -8,6 +8,7 @@ import WebGPUGen.Lowered.Lower
 import WebGPUGen.Emit.C.Objects
 import WebGPUGen.Emit.C.Functions
 import WebGPUGen.Emit.C.Layouts
+import WebGPUGen.Emit.Encoders
 import WebGPUGenTest
 
 /-!
@@ -25,6 +26,19 @@ Run with `lake test` inside `webgpu-gen`; the built executable
 -/
 
 open WebGPUGen.Yaml WebGPUGen.Common WebGPUGen.Parsed
+
+/-- Provenance for files the tests generate: none, as they are not kept. -/
+def testProvenance : WebGPUGen.Emit.Provenance := {
+  generator    := "webgpu-gen-test"
+  time         := ""
+  commit       := ""
+  dirty        := false
+  source       := ""
+  sourceRepo   := ""
+  sourceCommit := ""
+  sourceDate   := ""
+  pinnedBy     := ""
+}
 
 /--
 The vendored spec, found from this executable's location
@@ -208,21 +222,10 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
   IO.FS.withTempDir fun dir => do
     IO.FS.createDirAll (dir / "webgpu")
     IO.FS.writeFile (dir / "webgpu" / "webgpu.h") (← IO.FS.readFile header)
-    let provenance : WebGPUGen.Emit.Provenance := {
-      generator    := "webgpu-gen-test"
-      time         := ""
-      commit       := ""
-      dirty        := false
-      source       := ""
-      sourceRepo   := ""
-      sourceCommit := ""
-      sourceDate   := ""
-      pinnedBy     := ""
-    }
     let files :=
-      WebGPUGen.Emit.C.objectsFiles provenance spec
-        ++ WebGPUGen.Emit.C.functionsFiles provenance spec
-        ++ WebGPUGen.Emit.C.layoutsFiles provenance spec
+      WebGPUGen.Emit.C.objectsFiles testProvenance spec
+        ++ WebGPUGen.Emit.C.functionsFiles testProvenance spec
+        ++ WebGPUGen.Emit.C.layoutsFiles testProvenance spec
     for (name, text) in files do
       IO.FS.writeFile (dir / name) text
     let leanPrefix := (← IO.Process.output { cmd := "lean", args := #["--print-prefix"] }).stdout
@@ -521,6 +524,17 @@ def main : IO Unit := do
     else some s!"{s.names.c}: {ours}, not {headerFields.lookup s.names.c}"
   unless unlike.isEmpty do
     failWith s!"bound structs whose C fields differ from webgpu.h: {unlike}"
+
+  -- And every bound struct has its encoders.
+  let unencodable := WebGPUGen.Emit.Encoders.unencodable lowered
+  unless unencodable.isEmpty do
+    failWith s!"bound structs with no encoders: {unencodable}"
+  -- And they print within the width: no member's expression is too long.
+  let encoders :=
+    (WebGPUGen.Emit.Encoders.encodersFile testProvenance lowered).getD ""
+  let wide := (encoders.splitOn "\n").filter (·.length > WebGPUGen.Emit.width)
+  unless wide.isEmpty do
+    failWith s!"encoder lines over the width: {wide}"
 
   -- The generated C shims compile.
   -- Every function lowering says can be bound has a shim: none is lost.

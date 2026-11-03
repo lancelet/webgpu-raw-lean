@@ -74,8 +74,10 @@ unimplemented.)
   32 bits on the web. The largest `UInt64` stands for `SIZE_MAX`, both ways:
   passed to C as `SIZE_MAX` rather than refused, and `SIZE_MAX` from C becomes
   it; so `wholeMapSize` means the same on every platform. A `size_t` in a struct
-  follows the same rule: packing refuses one that does not fit. *Checked by:*
-  compile (a probe of every conversion), and test.
+  follows the same rule, but a struct's encoder cannot refuse one: it has its
+  `sizesFit` for the caller to check first, and on wasm32 cuts one that does
+  not fit to its low 32 bits.
+  *Checked by:* compile (a probe of every conversion), and test.
 - **An enum C returns can hold a code the bindings do not know**, from an
   implementation's extensions or a newer `webgpu.h`; it is kept, as
   `Except UInt32 E`. *Checked by:* test.
