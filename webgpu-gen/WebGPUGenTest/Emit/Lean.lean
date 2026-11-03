@@ -500,7 +500,7 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
     member "mask" .uint32 (some (.int 0xFFFFFFFF)),
     member "buffer" (.object bufferNames false) none,
     member "maybe" (.object bufferNames true) (some .null),
-    member "inner" (.struct inner) (some (.fields [])),
+    member "inner" (.struct inner) (some (.fields inner [])),
     member "nested" (.struct inner) (some .nested),
     member "items" (.array (.struct inner) "itemCount") (some .empty)
   ]
@@ -551,16 +551,47 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
     (⟨"count", "count"⟩, .int 0)
   ]
   let middleZero : List (Names × Lowered.Default) := [
-    (⟨"inner", "inner"⟩, .fields innerZero)
+    (⟨"inner", "inner"⟩, .fields inner innerZero)
   ]
   let structs := [
     struct "WGPUInner" "Inner" [member "count" .uint32 none],
     struct "WGPUMiddle" "Middle" [member "inner" (.struct inner) none],
     struct "WGPUOuter" "Outer" [
-      member "middle" (.struct middle) (some (.fields middleZero))
+      member "middle" (.struct middle) (some (.fields middle middleZero))
     ]
   ]
   (zeroValues structs).map (·.1.lean) == ["Middle", "Inner"]
+
+-- A default's zero values: itself, then each field's, outermost first; found
+-- from the default alone, without the structs it names.
+#guard
+  let a : Names := ⟨"WGPUA", "A"⟩
+  let b : Names := ⟨"WGPUB", "B"⟩
+  let c : Names := ⟨"WGPUC", "C"⟩
+  let input := Lowered.Default.fields a [
+    (⟨"b", "b"⟩, .fields b [(⟨"n", "n"⟩, .int 0)]),
+    (⟨"flag", "flag"⟩, .bool false),
+    (⟨"c", "c"⟩, .fields c [])
+  ]
+  input.zeroValues.map (·.1.lean) == ["A", "B", "C"]
+    && (Lowered.Default.int 0).zeroValues.isEmpty
+    && (zeroValues [struct "WGPUOuter" "Outer" [
+      member "a" (.struct a) (some input)
+    ]]).map (·.1.lean) == ["A", "B", "C"]
+
+-- Each struct has one zero value, the first a default gives.
+#guard
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let first := [(⟨"n", "n"⟩, Lowered.Default.int 0)]
+  let structs := [
+    struct "WGPUOne" "One" [
+      member "x" (.struct inner) (some (.fields inner first))
+    ],
+    struct "WGPUTwo" "Two" [
+      member "y" (.struct inner) (some (.fields inner []))
+    ]
+  ]
+  zeroValues structs == [(inner, first)]
 
 -- A default of every byte zero not yet settled into its fields' values is
 -- printed as `.zero`, so that it fails to elaborate if there is no `T.zero`,

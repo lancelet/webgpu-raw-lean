@@ -316,11 +316,11 @@ inductive Default where
   -/
   | zero
   /--
-  A nested struct with the fields given, each at its value: what lowering makes
-  of `zero`, the field values that are all-zero bytes, so that a printer can
-  write them out.
+  The nested struct `struct` with the fields given, each at its value: what
+  lowering makes of `zero`, the field values that are all-zero bytes, so that a
+  printer can write them out, as `T.zero`.
   -/
-  | fields (values : List (Names × Default))
+  | fields (struct : Names) (values : List (Names × Default))
   /-- A nested struct at its own defaults (its `WGPU_X_INIT`). -/
   | nested
   /-- NULL: an optional object or struct pointer that is absent, `none`. -/
@@ -328,6 +328,30 @@ inductive Default where
   /-- An empty array (a count of 0, NULL), or an empty string. -/
   | empty
   deriving Repr, BEq
+
+/--
+The zero values a default is or holds, however deep: each `fields`, with its
+struct and its field values, outermost first.
+-/
+def Default.zeroValues : Default → List (Names × List (Names × Default))
+  | .fields struct values => (struct, values) :: inner values
+  | _ => []
+where
+  /-- The zero values of each field value. -/
+  inner : List (Names × Default) → List (Names × List (Names × Default))
+    | [] => []
+    | (_, d) :: rest => d.zeroValues ++ inner rest
+
+/--
+The zero value `z`, a struct with its field values, is or is held by a default,
+however deep: what a printer must declare a `T.zero` for.
+-/
+inductive Default.Within (z : Names × List (Names × Default)) : Default → Prop
+  | here : Default.Within z (.fields z.1 z.2)
+  | field {struct : Names} {values : List (Names × Default)} {field : Names}
+      {d : Default} :
+      (field, d) ∈ values → Default.Within z d →
+        Default.Within z (.fields struct values)
 
 /-- A struct member: how its value crosses, and its default. -/
 structure Member where

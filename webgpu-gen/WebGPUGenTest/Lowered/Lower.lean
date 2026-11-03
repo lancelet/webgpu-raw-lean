@@ -559,6 +559,7 @@ def membersOf (structs name : String) :
           default: zero
     "
   let mode : Names := ⟨"WGPUMode", "Mode"⟩
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
   let usage : Names := ⟨"WGPUUsage", "Usage"⟩
   membersOf input "Descriptor" == some [
     ("label", .string false, some .empty),
@@ -566,8 +567,7 @@ def membersOf (structs name : String) :
     ("mode", .enum mode, some (.entry mode ⟨"WGPUMode_Fast", "fast"⟩)),
     ("usage", .bitflag usage, some (.entry usage ⟨"WGPUUsage_Read", "read"⟩)),
     ("mapped", .bool, some (.bool false)),
-    ("inner", .struct ⟨"WGPUInner", "Inner"⟩,
-      some (.fields [(⟨"n", "n"⟩, .int 0)]))
+    ("inner", .struct inner, some (.fields inner [(⟨"n", "n"⟩, .int 0)]))
   ]
 
 -- Structs behind pointers (NULL if optional), arrays of each kind, an optional
@@ -1048,11 +1048,14 @@ def membersOf (structs name : String) :
       ")
   let holder := (lowerText input).bind fun l =>
     l.structs.toList.find? (·.names.lean == "Holder")
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let setting : Names := ⟨"WGPUSetting", "Setting"⟩
   let fields : List (Names × Lowered.Default) := [
     (⟨"label", "label"⟩, .null),
     (⟨"depth", "depth"⟩, .float "0.0"),
-    (⟨"inner", "inner"⟩, .fields [(⟨"count", "count"⟩, .int 0)])
+    (⟨"inner", "inner"⟩, .fields inner [(⟨"count", "count"⟩, .int 0)])
   ]
-  holder.map (·.members.toList.map (·.default)) == some [some (.fields fields)]
+  holder.map (·.members.toList.map (·.default))
+    == some [some (.fields setting fields)]
 
 end WebGPUGenTest.Lowered.Lower

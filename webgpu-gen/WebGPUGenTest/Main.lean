@@ -320,7 +320,7 @@ where
     | some (.entry _ entry)  => entry.c
     | some .zero             => "_wgpu_STRUCT_ZERO_INIT"
     -- Lowering writes out a `zero` default's field values.
-    | some (.fields _)       => "_wgpu_STRUCT_ZERO_INIT"
+    | some (.fields ..)      => "_wgpu_STRUCT_ZERO_INIT"
     | some .nested           => match v with
       | .struct names => (initName names.c).getD "?"
       | _ => "?"

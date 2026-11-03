@@ -408,7 +408,7 @@ where
       let b ← spec.bitflags.find? (·.names.c == type.c)
       let flag ← b.flags.find? (·.value == 0)
       pure (.entry type flag.names)
-    | .struct nested => (zeroFields spec nested fuel).map .fields
+    | .struct nested => (zeroFields spec nested fuel).map (.fields nested)
     | _ => none
 
 /--
@@ -440,7 +440,7 @@ def settleZero (spec : Lowered.Spec) (m : Member) : Member :=
   match m.default, m.value with
   | some .zero, .struct nested =>
     let fields := zeroFields spec nested (spec.structs.size + 1)
-    { m with default := fields.map .fields }
+    { m with default := fields.map (.fields nested) }
   | _, _ => m
 
 /--

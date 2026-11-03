@@ -337,7 +337,7 @@ def leanDefault (v : Value) : Lowered.Default → String
   | .entry _ e       => "." ++ e.lean
   -- Settled, a zero default is `fields`; unsettled, `.zero` still names the
   -- value, and fails to elaborate rather than give another if there is none.
-  | .fields _ | .zero  => ".zero"
+  | .fields .. | .zero => ".zero"
   | .nested            => "{}"
   | .null            => "none"
   | .empty           => match v with
@@ -379,32 +379,29 @@ def zeroDecl (s : Lowered.Struct) (fields : List (Names × Lowered.Default)) :
       fun (m, (n, d)) => [n.lean, ":=", leanDefault m.value d])))
 
 /--
-The zero values the structs' defaults refer to: each struct with its fields'
-values, in the order of `structs`, and after each those its own zero value
-refers to. Its fuel bounds the nesting: structs do not contain themselves.
+The first zero value of each struct, by its C name, in order: a struct has
+one `T.zero`, whichever default refers to it.
+-/
+def firstOfEach (zeros : List (Names × List (Names × Lowered.Default))) :
+    List (Names × List (Names × Lowered.Default)) :=
+  go [] zeros
+where
+  /-- Those kept so far (`acc`), and those still to look at. -/
+  go (acc : List (Names × List (Names × Lowered.Default))) :
+      List (Names × List (Names × Lowered.Default)) →
+        List (Names × List (Names × Lowered.Default))
+    | [] => acc
+    | (n, f) :: rest =>
+      go (if acc.any (·.1.c == n.c) then acc else acc ++ [(n, f)]) rest
+
+/--
+The zero values the structs' defaults are or hold, however deep, in the order
+of `structs`, each once.
 -/
 def zeroValues (structs : List Lowered.Struct) :
     List (Names × List (Names × Lowered.Default)) :=
-  let rec refersTo (s : Lowered.Struct) :
-      Nat → List (Names × Lowered.Default) →
-        List (Names × List (Names × Lowered.Default))
-    | 0, _ => []
-    | fuel + 1, fields =>
-      (s.members.toList.zip fields).flatMap fun (m, (_, d)) =>
-        match m.value, d with
-        | .struct names, .fields inner =>
-          let nested := match structs.find? (·.names.c == names.c) with
-            | some n => refersTo n fuel inner
-            | none   => []
-          (names, inner) :: nested
-        | _, _ => []
-  -- A member with no default refers to no zero value: `.null` stands for none.
-  let used := structs.flatMap fun s =>
-    let defaults := s.members.toList.map fun m =>
-      (m.names, m.default.getD .null)
-    refersTo s (structs.length + 1) defaults
-  used.foldl (init := []) fun acc (n, f) =>
-    if acc.any (·.1.c == n.c) then acc else acc ++ [(n, f)]
+  firstOfEach (structs.flatMap fun s => s.members.toList.flatMap fun m =>
+    (m.default.map (·.zeroValues)).getD [])
 
 /-- The bound structs' declarations, each followed by its zero value if used. -/
 def structDecls (spec : Lowered.Spec) : List Doc :=

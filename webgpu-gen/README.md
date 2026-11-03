@@ -91,6 +91,14 @@ The main proofs we have (not a complete list) are:
   That `{}` then elaborates is *not yet* proved: each printed default must
   elaborate too (a `.zero` needs its `T.zero`), and the struct found, by its
   C name, must be the one the Lean file names.
+- **Finding Zero Values.** A default of every byte zero is printed `.zero`,
+  naming a `T.zero` to declare, both as a struct member's default and among
+  the field values of a `T.zero`. `zeroValues` lists every such value the
+  structs' defaults are or hold, however deep, and nothing else; so each
+  `.zero` printed, in either place, names a listed one
+  (`Emit/ZeroValues.lean`). That each listed struct is bound, so that its
+  `T.zero` is printed, and that its field values line up with its members, is
+  *not yet* proved.
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`
