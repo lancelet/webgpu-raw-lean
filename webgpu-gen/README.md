@@ -33,9 +33,11 @@ It consists of the following stages:
    on ownership, defaults and namespaces. If there are none, `build` replaces
    each name with a typed ID of the entry it names, giving a `Resolved.Spec`
    (`Resolved/`).
-5. **Lower** *(planned)*. Turn the resolved spec into the shapes the C and Lean
-   printers need.
-6. **Generate** *(planned)*. Print the C shim and the Lean bindings.
+5. **Lower.** Turn the resolved spec into the shapes the C and Lean printers
+   need (`Lowered.lean`, `Lowered/`): names on both sides, how each value
+   crosses between C and Lean, struct defaults as C's initialisers give
+   them, and what cannot be passed yet, so that it is not bound.
+6. **Generate.** Print the C shims and the Lean bindings (`Emit/`).
 
 ## Proofs
 
@@ -70,6 +72,25 @@ The main proofs we have (not a complete list) are:
 
   Together: `WellFormed r ↔ ∃ s, resolve s = .ok r`. The resolved specs are
   exactly the well-formed ones.
+- **Binding Structs.** `boundStructs` picks the structs to bind, in the order
+  the Lean file declares them (`Lowered/BoundStructs.lean`):
+  - each bound struct comes after every struct it refers to, so the file
+    elaborates in order
+  - every struct a bound struct refers to, however its type names it, is
+    bound too, matched by both its C and its Lean name
+  - a bound struct holds nothing the bindings cannot pass; nor, by the
+    above, does any struct it refers to
+- **Agreeing on Functions.** The C shims and the Lean declarations are both
+  printed from one list of bound functions; each side prints a value only if
+  it has a type for it. Wherever C has a shim, Lean has its `@[extern]`
+  declaration and the function that calls it (`Emit/Agreement.lean`). That
+  the two types of each value agree by Lean's ABI is *not* proved: it is
+  checked by compiling them together (the repository's
+  `scripts/check-abi.sh`).
+
+Lowering's other results are tested rather than proved, most against
+`webgpu.h` itself: every C name, value and default it computes is checked
+against the header upstream generates from the same spec.
 
 ## LLM Usage
 

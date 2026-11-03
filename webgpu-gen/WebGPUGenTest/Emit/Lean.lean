@@ -611,6 +611,31 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
   ]
   (boundStructs structs).map (·.names.lean) == ["A", "B"]
 
+-- A struct refers to another however its type names it, as in an array of
+-- pointers: one that refers to a struct not given is not bound.
+#guard
+  let missing : Names := ⟨"WGPUMissing", "Missing"⟩
+  let structs := [
+    struct "WGPUE" "E" [
+      member "items" (.array (.structPointer missing true) "itemCount") none
+    ],
+    struct "WGPUF" "F" [
+      member "rows" (.array (.array (.struct missing) "n") "rowCount") none
+    ]
+  ]
+  boundStructs structs == []
+
+-- A struct is referred to by both of its names: one that refers to a struct's C
+-- name under another Lean name is not bound.
+#guard
+  let a : Names := ⟨"WGPUA", "A"⟩
+  let structs := [
+    struct "WGPUA" "A" [member "n" .uint32 (some (.int 0))],
+    struct "WGPUB" "B" [member "a" (.struct ⟨"WGPUA", "Other"⟩) (some .nested)],
+    struct "WGPUC" "C" [member "a" (.struct a) (some .nested)]
+  ]
+  (boundStructs structs).map (·.names.lean) == ["A", "C"]
+
 /-! ## Joining declarations -/
 
 -- One-line declarations stay together; a longer one has blank lines around it.

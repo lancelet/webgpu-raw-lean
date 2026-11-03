@@ -23,6 +23,7 @@ import WebGPUGen.Lowered.LeanNames
 import WebGPUGen.Lowered
 import WebGPUGen.Lowered.Docs
 import WebGPUGen.Lowered.Lower
+import WebGPUGen.Lowered.BoundStructs
 import WebGPUGen.Emit.Layout
 import WebGPUGen.Emit.Pretty
 import WebGPUGen.Emit.C
@@ -31,4 +32,5 @@ import WebGPUGen.Emit.C.Objects
 import WebGPUGen.Emit.C.Functions
 import WebGPUGen.Stubs
 import WebGPUGen.Emit.Lean
+import WebGPUGen.Emit.Agreement
 import WebGPUGen.Source

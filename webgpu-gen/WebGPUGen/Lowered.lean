@@ -373,20 +373,23 @@ def Struct.unsupported (s : Struct) : List String :=
     ++ s.members.toList.filterMap (·.value.unsupported?)
 
 /--
-The structs a struct's members refer to: by value, by pointer, or in an array.
+The struct a value names, if any: by value, by pointer, or as the elements of
+an array, however nested, as `leanType` names it.
 -/
+def Value.structRef? : Value → Option Names
+  | .struct names | .structPointer names _ => some names
+  | .array element _ => element.structRef?
+  | _ => none
+
+/-- The structs a struct's members refer to. -/
 def Struct.references (s : Struct) : List Names :=
-  s.members.toList.filterMap fun m =>
-    match m.value with
-    | .struct names | .structPointer names _ => some names
-    | .array (.struct names) _ => some names
-    | _ => none
+  s.members.toList.filterMap (·.value.structRef?)
 
 /--
 The structs the bindings can bind, in an order in which each comes after the
 structs it refers to: those whose members can all be passed, and whose
-referred structs can be bound too. `fuel` bounds the passes over the structs;
-structs do not refer to themselves.
+referred structs, matched by both their names, can be bound too. `fuel` bounds
+the passes over the structs; structs do not refer to themselves.
 -/
 def boundStructs (structs : List Struct) : List Struct :=
   go structs.length [] (structs.filter (·.unsupported.isEmpty))
@@ -396,7 +399,7 @@ where
     | 0, done, _ => done
     | fuel + 1, done, rest =>
       let ready := rest.filter fun s =>
-        s.references.all fun r => done.any (·.names.c == r.c)
+        s.references.all fun r => done.any (·.names == r)
       if ready.isEmpty then done
       else go fuel (done ++ ready) (rest.filter fun s => !ready.contains s)
 
