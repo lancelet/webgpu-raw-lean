@@ -4,7 +4,7 @@
 # (A regression test: the headers' traces were once dropped.) Linux only.
 set -eu
 cd "$(dirname "$0")/.."
-obj=.lake/build/c/objects.o
+obj=.lake/build/c/generated/objects.o
 header=c/generated/objects.h
 lake build webgpu-raw-test >/dev/null
 before=$(stat -c %Y "$obj")
