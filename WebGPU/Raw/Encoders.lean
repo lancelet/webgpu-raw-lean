@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: d69d4c8 (clean)
-  Generated:        2026-11-03 11:54:13 UTC
+  Generator commit: 6b642f5 (clean)
+  Generated:        2026-11-03 12:18:17 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -30,7 +30,8 @@ layouts against `webgpu.h` (`c/generated/layouts.c`).
 
 Where C fills in a struct's pointers is its table (`tables`, at its
 `tableIndex`), proved to be its pointers; what it fills each in from,
-its targets (`toTargets`).
+its targets (`toTargets`), proved to be what walking its table takes
+(`walk64`, `walk32`).
 -/
 
 @[expose] public section
@@ -152,6 +153,11 @@ def pointers64 : List Nat := [0, 16, 40, 48]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 56 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 56 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -174,6 +180,11 @@ theorem encode64_eq (d : BindGroupEntry) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BindGroupEntry) :
+    (encode64 d).size = 56 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BindGroupEntry) :
@@ -232,6 +243,11 @@ def pointers32 : List Nat := [0, 8, 32, 36]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 40 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 40 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -254,6 +270,11 @@ theorem encode32_eq (d : BindGroupEntry) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BindGroupEntry) :
+    (encode32 d).size = 40 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BindGroupEntry) :
@@ -337,6 +358,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 12 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -358,6 +384,11 @@ theorem encode64_eq (d : BlendComponent) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BlendComponent) :
+    (encode64 d).size = 12 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BlendComponent) :
@@ -408,6 +439,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -429,6 +465,11 @@ theorem encode32_eq (d : BlendComponent) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BlendComponent) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BlendComponent) :
@@ -504,6 +545,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -526,6 +572,11 @@ theorem encode64_eq (d : BufferBindingLayout) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BufferBindingLayout) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BufferBindingLayout) :
@@ -578,6 +629,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -600,6 +656,11 @@ theorem encode32_eq (d : BufferBindingLayout) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BufferBindingLayout) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BufferBindingLayout) :
@@ -678,6 +739,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 48 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -701,6 +767,11 @@ theorem encode64_eq (d : BufferDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BufferDescriptor) :
+    (encode64 d).size = 48 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BufferDescriptor) :
@@ -755,6 +826,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 40 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 40 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -778,6 +854,11 @@ theorem encode32_eq (d : BufferDescriptor) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BufferDescriptor) :
+    (encode32 d).size = 40 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BufferDescriptor) :
@@ -857,6 +938,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -879,6 +965,11 @@ theorem encode64_eq (d : Color) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeF64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : Color) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : Color) :
@@ -930,6 +1021,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 32 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -952,6 +1048,11 @@ theorem encode32_eq (d : Color) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeF64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : Color) :
+    (encode32 d).size = 32 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : Color) :
@@ -1025,6 +1126,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1044,6 +1150,11 @@ theorem encode64_eq (d : CommandBufferDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : CommandBufferDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : CommandBufferDescriptor) :
@@ -1095,6 +1206,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1114,6 +1230,11 @@ theorem encode32_eq (d : CommandBufferDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : CommandBufferDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : CommandBufferDescriptor) :
@@ -1190,6 +1311,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1209,6 +1335,11 @@ theorem encode64_eq (d : CommandEncoderDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : CommandEncoderDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : CommandEncoderDescriptor) :
@@ -1260,6 +1391,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1279,6 +1415,11 @@ theorem encode32_eq (d : CommandEncoderDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : CommandEncoderDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : CommandEncoderDescriptor) :
@@ -1359,6 +1500,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1382,6 +1528,11 @@ theorem encode64_eq (d : CompatibilityModeLimits) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : CompatibilityModeLimits) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : CompatibilityModeLimits) :
@@ -1436,6 +1587,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1459,6 +1615,11 @@ theorem encode32_eq (d : CompatibilityModeLimits) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : CompatibilityModeLimits) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : CompatibilityModeLimits) :
@@ -1535,6 +1696,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1556,6 +1722,11 @@ theorem encode64_eq (d : ConstantEntry) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeF64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ConstantEntry) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ConstantEntry) :
@@ -1608,6 +1779,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1629,6 +1805,11 @@ theorem encode32_eq (d : ConstantEntry) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ConstantEntry) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ConstantEntry) :
@@ -1707,6 +1888,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 12 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1728,6 +1914,11 @@ theorem encode64_eq (d : Extent3D) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : Extent3D) :
+    (encode64 d).size = 12 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : Extent3D) :
@@ -1778,6 +1969,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1799,6 +1995,11 @@ theorem encode32_eq (d : Extent3D) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : Extent3D) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : Extent3D) :
@@ -1872,6 +2073,11 @@ def pointers64 : List Nat := [0, 16]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -1891,6 +2097,11 @@ theorem encode64_eq (d : ExternalTextureBindingEntry) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ExternalTextureBindingEntry) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ExternalTextureBindingEntry) :
@@ -1942,6 +2153,11 @@ def pointers32 : List Nat := [0, 8]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -1961,6 +2177,11 @@ theorem encode32_eq (d : ExternalTextureBindingEntry) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ExternalTextureBindingEntry) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ExternalTextureBindingEntry) :
@@ -2037,6 +2258,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -2058,6 +2284,11 @@ theorem encode64_eq (d : ExternalTextureBindingLayout) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ExternalTextureBindingLayout) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ExternalTextureBindingLayout) :
@@ -2108,6 +2339,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -2129,6 +2365,11 @@ theorem encode32_eq (d : ExternalTextureBindingLayout) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ExternalTextureBindingLayout) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ExternalTextureBindingLayout) :
@@ -2204,6 +2445,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 8 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 8 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -2223,6 +2469,11 @@ theorem encode64_eq (d : Future) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : Future) :
+    (encode64 d).size = 8 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : Future) :
@@ -2271,6 +2522,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -2290,6 +2546,11 @@ theorem encode32_eq (d : Future) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : Future) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : Future) :
@@ -2363,6 +2624,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -2382,6 +2648,11 @@ theorem encode64_eq (d : InstanceLimits) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : InstanceLimits) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : InstanceLimits) :
@@ -2432,6 +2703,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -2451,6 +2727,11 @@ theorem encode32_eq (d : InstanceLimits) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : InstanceLimits) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : InstanceLimits) :
@@ -2561,6 +2842,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 152 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 152 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -2612,6 +2898,11 @@ theorem encode64_eq (d : Limits) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : Limits) :
+    (encode64 d).size = 152 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : Limits) :
@@ -2693,6 +2984,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 152 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 152 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -2744,6 +3040,11 @@ theorem encode32_eq (d : Limits) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : Limits) :
+    (encode32 d).size = 152 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : Limits) :
@@ -2821,6 +3122,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -2842,6 +3148,11 @@ theorem encode64_eq (d : MultisampleState) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : MultisampleState) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : MultisampleState) :
@@ -2894,6 +3205,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -2915,6 +3231,11 @@ theorem encode32_eq (d : MultisampleState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : MultisampleState) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : MultisampleState) :
@@ -2992,6 +3313,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 12 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3013,6 +3339,11 @@ theorem encode64_eq (d : Origin3D) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : Origin3D) :
+    (encode64 d).size = 12 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : Origin3D) :
@@ -3063,6 +3394,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -3084,6 +3420,11 @@ theorem encode32_eq (d : Origin3D) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : Origin3D) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : Origin3D) :
@@ -3158,6 +3499,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3178,6 +3524,11 @@ theorem encode64_eq (d : PassTimestampWrites) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : PassTimestampWrites) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : PassTimestampWrites) :
@@ -3230,6 +3581,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -3250,6 +3606,11 @@ theorem encode32_eq (d : PassTimestampWrites) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : PassTimestampWrites) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : PassTimestampWrites) :
@@ -3328,6 +3689,11 @@ def pointers64 : List Nat := [0, 8, 32]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 48 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3351,6 +3717,11 @@ theorem encode64_eq (d : PipelineLayoutDescriptor) :
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : PipelineLayoutDescriptor) :
+    (encode64 d).size = 48 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : PipelineLayoutDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -3371,6 +3742,11 @@ def pointers32 : List Nat := [0, 4, 16]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -3393,6 +3769,11 @@ theorem encode32_eq (d : PipelineLayoutDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : PipelineLayoutDescriptor) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : PipelineLayoutDescriptor) :
@@ -3434,6 +3815,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3457,6 +3843,11 @@ theorem encode64_eq (d : PrimitiveState) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : PrimitiveState) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : PrimitiveState) :
@@ -3511,6 +3902,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -3534,6 +3930,11 @@ theorem encode32_eq (d : PrimitiveState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : PrimitiveState) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : PrimitiveState) :
@@ -3611,6 +4012,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3633,6 +4039,11 @@ theorem encode64_eq (d : QuerySetDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : QuerySetDescriptor) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : QuerySetDescriptor) :
@@ -3686,6 +4097,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 20 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 20 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -3707,6 +4123,11 @@ theorem encode32_eq (d : QuerySetDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : QuerySetDescriptor) :
+    (encode32 d).size = 20 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : QuerySetDescriptor) :
@@ -3783,6 +4204,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3802,6 +4228,11 @@ theorem encode64_eq (d : QueueDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : QueueDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : QueueDescriptor) :
@@ -3853,6 +4284,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -3872,6 +4308,11 @@ theorem encode32_eq (d : QueueDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : QueueDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : QueueDescriptor) :
@@ -3948,6 +4389,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -3967,6 +4413,11 @@ theorem encode64_eq (d : RenderBundleDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderBundleDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderBundleDescriptor) :
@@ -4018,6 +4469,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -4037,6 +4493,11 @@ theorem encode32_eq (d : RenderBundleDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderBundleDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderBundleDescriptor) :
@@ -4118,6 +4579,11 @@ def pointers64 : List Nat := [0, 8, 32]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 56 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 56 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4144,6 +4610,11 @@ theorem encode64_eq (d : RenderBundleEncoderDescriptor) :
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderBundleEncoderDescriptor) :
+    (encode64 d).size = 56 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderBundleEncoderDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -4167,6 +4638,11 @@ def pointers32 : List Nat := [0, 4, 16]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 36 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 36 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -4192,6 +4668,11 @@ theorem encode32_eq (d : RenderBundleEncoderDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderBundleEncoderDescriptor) :
+    (encode32 d).size = 36 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderBundleEncoderDescriptor) :
@@ -4236,6 +4717,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 48 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4262,6 +4748,11 @@ theorem encode64_eq (d : RenderPassDepthStencilAttachment) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderPassDepthStencilAttachment) :
+    (encode64 d).size = 48 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderPassDepthStencilAttachment) :
@@ -4320,6 +4811,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 40 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 40 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -4346,6 +4842,11 @@ theorem encode32_eq (d : RenderPassDepthStencilAttachment) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderPassDepthStencilAttachment) :
+    (encode32 d).size = 40 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderPassDepthStencilAttachment) :
@@ -4423,6 +4924,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4444,6 +4950,11 @@ theorem encode64_eq (d : RenderPassMaxDrawCount) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderPassMaxDrawCount) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderPassMaxDrawCount) :
@@ -4495,6 +5006,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -4516,6 +5032,11 @@ theorem encode32_eq (d : RenderPassMaxDrawCount) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderPassMaxDrawCount) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderPassMaxDrawCount) :
@@ -4594,6 +5115,11 @@ def pointers64 : List Nat := [0, 24]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4616,6 +5142,11 @@ theorem encode64_eq (d : RequestAdapterOptions) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RequestAdapterOptions) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RequestAdapterOptions) :
@@ -4670,6 +5201,11 @@ def pointers32 : List Nat := [0, 20]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -4692,6 +5228,11 @@ theorem encode32_eq (d : RequestAdapterOptions) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RequestAdapterOptions) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RequestAdapterOptions) :
@@ -4769,6 +5310,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4789,6 +5335,11 @@ theorem encode64_eq (d : RequestAdapterWebXROptions) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RequestAdapterWebXROptions) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RequestAdapterWebXROptions) :
@@ -4840,6 +5391,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -4860,6 +5416,11 @@ theorem encode32_eq (d : RequestAdapterWebXROptions) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RequestAdapterWebXROptions) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RequestAdapterWebXROptions) :
@@ -4935,6 +5496,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -4954,6 +5520,11 @@ theorem encode64_eq (d : SamplerBindingLayout) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SamplerBindingLayout) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SamplerBindingLayout) :
@@ -5004,6 +5575,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5023,6 +5599,11 @@ theorem encode32_eq (d : SamplerBindingLayout) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SamplerBindingLayout) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SamplerBindingLayout) :
@@ -5108,6 +5689,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -5138,6 +5724,11 @@ theorem encode64_eq (d : SamplerDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, Block.val_pokeF32, Block.val_pokeU16, List.map,
     Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SamplerDescriptor) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SamplerDescriptor) :
@@ -5199,6 +5790,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 52 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 52 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5229,6 +5825,11 @@ theorem encode32_eq (d : SamplerDescriptor) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF32, Block.val_pokeU16, List.map, Field.write, writeAll,
     List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SamplerDescriptor) :
+    (encode32 d).size = 52 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SamplerDescriptor) :
@@ -5305,6 +5906,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -5324,6 +5930,11 @@ theorem encode64_eq (d : ShaderModuleDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ShaderModuleDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ShaderModuleDescriptor) :
@@ -5375,6 +5986,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5394,6 +6010,11 @@ theorem encode32_eq (d : ShaderModuleDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ShaderModuleDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ShaderModuleDescriptor) :
@@ -5471,6 +6092,11 @@ def pointers64 : List Nat := [0, 16]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -5492,6 +6118,11 @@ theorem encode64_eq (d : ShaderSourceWGSL) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ShaderSourceWGSL) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ShaderSourceWGSL) :
@@ -5544,6 +6175,11 @@ def pointers32 : List Nat := [0, 8]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5564,6 +6200,11 @@ theorem encode32_eq (d : ShaderSourceWGSL) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ShaderSourceWGSL) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ShaderSourceWGSL) :
@@ -5643,6 +6284,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -5665,6 +6311,11 @@ theorem encode64_eq (d : StencilFaceState) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : StencilFaceState) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : StencilFaceState) :
@@ -5716,6 +6367,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5738,6 +6394,11 @@ theorem encode32_eq (d : StencilFaceState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : StencilFaceState) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : StencilFaceState) :
@@ -5813,6 +6474,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -5834,6 +6500,11 @@ theorem encode64_eq (d : StorageTextureBindingLayout) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : StorageTextureBindingLayout) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : StorageTextureBindingLayout) :
@@ -5886,6 +6557,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -5907,6 +6583,11 @@ theorem encode32_eq (d : StorageTextureBindingLayout) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : StorageTextureBindingLayout) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : StorageTextureBindingLayout) :
@@ -5982,6 +6663,11 @@ def pointers64 : List Nat := [8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6002,6 +6688,11 @@ theorem encode64_eq (d : SupportedFeatures) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SupportedFeatures) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SupportedFeatures) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -6020,6 +6711,11 @@ def pointers32 : List Nat := [4]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -6040,6 +6736,11 @@ theorem encode32_eq (d : SupportedFeatures) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SupportedFeatures) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SupportedFeatures) :
@@ -6077,6 +6778,11 @@ def pointers64 : List Nat := [8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6097,6 +6803,11 @@ theorem encode64_eq (d : SupportedInstanceFeatures) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SupportedInstanceFeatures) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SupportedInstanceFeatures) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -6115,6 +6826,11 @@ def pointers32 : List Nat := [4]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -6135,6 +6851,11 @@ theorem encode32_eq (d : SupportedInstanceFeatures) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SupportedInstanceFeatures) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SupportedInstanceFeatures) :
@@ -6172,6 +6893,11 @@ def pointers64 : List Nat := [8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6192,6 +6918,11 @@ theorem encode64_eq (d : SupportedWGSLLanguageFeatures) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SupportedWGSLLanguageFeatures) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SupportedWGSLLanguageFeatures) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -6210,6 +6941,11 @@ def pointers32 : List Nat := [4]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 8 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 8 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -6230,6 +6966,11 @@ theorem encode32_eq (d : SupportedWGSLLanguageFeatures) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SupportedWGSLLanguageFeatures) :
+    (encode32 d).size = 8 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SupportedWGSLLanguageFeatures) :
@@ -6270,6 +7011,11 @@ def pointers64 : List Nat := [0, 24, 40, 56]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6293,6 +7039,11 @@ theorem encode64_eq (d : SurfaceCapabilities) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SurfaceCapabilities) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SurfaceCapabilities) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -6314,6 +7065,11 @@ def pointers32 : List Nat := [0, 20, 28, 36]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 40 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 40 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -6338,6 +7094,11 @@ theorem encode32_eq (d : SurfaceCapabilities) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SurfaceCapabilities) :
+    (encode32 d).size = 40 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SurfaceCapabilities) :
@@ -6377,6 +7138,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6398,6 +7164,11 @@ theorem encode64_eq (d : SurfaceColorManagement) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SurfaceColorManagement) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SurfaceColorManagement) :
@@ -6450,6 +7221,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -6471,6 +7247,11 @@ theorem encode32_eq (d : SurfaceColorManagement) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SurfaceColorManagement) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SurfaceColorManagement) :
@@ -6552,6 +7333,11 @@ def pointers64 : List Nat := [0, 8, 48]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6579,6 +7365,11 @@ theorem encode64_eq (d : SurfaceConfiguration) :
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SurfaceConfiguration) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SurfaceConfiguration) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -6603,6 +7394,11 @@ def pointers32 : List Nat := [0, 4, 36]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 48 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 48 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -6630,6 +7426,11 @@ theorem encode32_eq (d : SurfaceConfiguration) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SurfaceConfiguration) :
+    (encode32 d).size = 48 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SurfaceConfiguration) :
@@ -6667,6 +7468,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6686,6 +7492,11 @@ theorem encode64_eq (d : SurfaceDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SurfaceDescriptor) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SurfaceDescriptor) :
@@ -6737,6 +7548,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -6756,6 +7572,11 @@ theorem encode32_eq (d : SurfaceDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SurfaceDescriptor) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SurfaceDescriptor) :
@@ -6832,6 +7653,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -6851,6 +7677,11 @@ theorem encode64_eq (d : SurfaceTexture) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : SurfaceTexture) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : SurfaceTexture) :
@@ -6902,6 +7733,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -6921,6 +7757,11 @@ theorem encode32_eq (d : SurfaceTexture) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : SurfaceTexture) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : SurfaceTexture) :
@@ -6999,6 +7840,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7021,6 +7867,11 @@ theorem encode64_eq (d : TexelCopyBufferLayout) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TexelCopyBufferLayout) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TexelCopyBufferLayout) :
@@ -7071,6 +7922,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7093,6 +7949,11 @@ theorem encode32_eq (d : TexelCopyBufferLayout) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TexelCopyBufferLayout) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TexelCopyBufferLayout) :
@@ -7168,6 +8029,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7189,6 +8055,11 @@ theorem encode64_eq (d : TextureBindingLayout) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureBindingLayout) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureBindingLayout) :
@@ -7241,6 +8112,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7262,6 +8138,11 @@ theorem encode32_eq (d : TextureBindingLayout) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureBindingLayout) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureBindingLayout) :
@@ -7338,6 +8219,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7358,6 +8244,11 @@ theorem encode64_eq (d : TextureBindingViewDimension) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureBindingViewDimension) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureBindingViewDimension) :
@@ -7409,6 +8300,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 12 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 12 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7429,6 +8325,11 @@ theorem encode32_eq (d : TextureBindingViewDimension) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureBindingViewDimension) :
+    (encode32 d).size = 12 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureBindingViewDimension) :
@@ -7507,6 +8408,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7529,6 +8435,11 @@ theorem encode64_eq (d : TextureComponentSwizzle) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureComponentSwizzle) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureComponentSwizzle) :
@@ -7580,6 +8491,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7602,6 +8518,11 @@ theorem encode32_eq (d : TextureComponentSwizzle) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureComponentSwizzle) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureComponentSwizzle) :
@@ -7683,6 +8604,11 @@ def pointers64 : List Nat := [0, 8]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7711,6 +8637,11 @@ theorem encode64_eq (d : TextureViewDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureViewDescriptor) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureViewDescriptor) :
@@ -7770,6 +8701,11 @@ def pointers32 : List Nat := [0, 4]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 48 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7798,6 +8734,11 @@ theorem encode32_eq (d : TextureViewDescriptor) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureViewDescriptor) :
+    (encode32 d).size = 48 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureViewDescriptor) :
@@ -7876,6 +8817,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -7898,6 +8844,11 @@ theorem encode64_eq (d : VertexAttribute) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : VertexAttribute) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : VertexAttribute) :
@@ -7950,6 +8901,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -7972,6 +8928,11 @@ theorem encode32_eq (d : VertexAttribute) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : VertexAttribute) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : VertexAttribute) :
@@ -8048,6 +9009,11 @@ def pointers64 : List Nat := [0, 8, 24, 40]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 48 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8069,6 +9035,11 @@ theorem encode64_eq (d : BindGroupDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BindGroupDescriptor) :
+    (encode64 d).size = 48 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BindGroupDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -8088,6 +9059,11 @@ def pointers32 : List Nat := [0, 4, 12, 20]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -8109,6 +9085,11 @@ theorem encode32_eq (d : BindGroupDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BindGroupDescriptor) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BindGroupDescriptor) :
@@ -8158,6 +9139,11 @@ def pointers64 : List Nat := [0, 32, 56, 72, 96]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 120 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 120 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8190,6 +9176,11 @@ theorem encode64_eq (d : BindGroupLayoutEntry) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BindGroupLayoutEntry) :
+    (encode64 d).size = 120 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BindGroupLayoutEntry) :
@@ -8254,6 +9245,11 @@ def pointers32 : List Nat := [0, 24, 48, 56, 72]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 88 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 88 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -8286,6 +9282,11 @@ theorem encode32_eq (d : BindGroupLayoutEntry) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BindGroupLayoutEntry) :
+    (encode32 d).size = 88 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BindGroupLayoutEntry) :
@@ -8368,6 +9369,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8392,6 +9398,11 @@ theorem encode64_eq (d : BlendState) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BlendState) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BlendState) :
@@ -8445,6 +9456,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -8469,6 +9485,11 @@ theorem encode32_eq (d : BlendState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BlendState) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BlendState) :
@@ -8542,6 +9563,11 @@ def pointers64 : List Nat := [0, 8, 24]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8561,6 +9587,11 @@ theorem encode64_eq (d : ComputePassDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ComputePassDescriptor) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ComputePassDescriptor) :
@@ -8613,6 +9644,11 @@ def pointers32 : List Nat := [0, 4, 12]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -8632,6 +9668,11 @@ theorem encode32_eq (d : ComputePassDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ComputePassDescriptor) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ComputePassDescriptor) :
@@ -8710,6 +9751,11 @@ def pointers64 : List Nat := [0, 8, 16, 40]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 48 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 48 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8731,6 +9777,11 @@ theorem encode64_eq (d : ComputeState) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ComputeState) :
+    (encode64 d).size = 48 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ComputeState) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -8750,6 +9801,11 @@ def pointers32 : List Nat := [0, 4, 8, 20]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -8771,6 +9827,11 @@ theorem encode32_eq (d : ComputeState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ComputeState) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ComputeState) :
@@ -8823,6 +9884,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 72 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 72 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -8858,6 +9924,11 @@ theorem encode64_eq (d : DepthStencilState) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : DepthStencilState) :
+    (encode64 d).size = 72 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : DepthStencilState) :
@@ -8923,6 +9994,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 68 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 68 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -8958,6 +10034,11 @@ theorem encode32_eq (d : DepthStencilState) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : DepthStencilState) :
+    (encode32 d).size = 68 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : DepthStencilState) :
@@ -9034,6 +10115,11 @@ def pointers64 : List Nat := []
 theorem fields64_wellFormed : Fields.WellFormed .bits64 16 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9055,6 +10141,11 @@ theorem encode64_eq (d : FutureWaitInfo) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : FutureWaitInfo) :
+    (encode64 d).size = 16 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : FutureWaitInfo) :
@@ -9104,6 +10195,11 @@ def pointers32 : List Nat := []
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -9125,6 +10221,11 @@ theorem encode32_eq (d : FutureWaitInfo) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : FutureWaitInfo) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : FutureWaitInfo) :
@@ -9198,6 +10299,11 @@ def pointers64 : List Nat := [0, 16, 24]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9218,6 +10324,11 @@ theorem encode64_eq (d : InstanceDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : InstanceDescriptor) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : InstanceDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -9236,6 +10347,11 @@ def pointers32 : List Nat := [0, 8, 12]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 16 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 16 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -9256,6 +10372,11 @@ theorem encode32_eq (d : InstanceDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : InstanceDescriptor) :
+    (encode32 d).size = 16 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : InstanceDescriptor) :
@@ -9304,6 +10425,11 @@ def pointers64 : List Nat := [0, 8, 24]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 72 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 72 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9330,6 +10456,11 @@ theorem encode64_eq (d : RenderPassColorAttachment) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderPassColorAttachment) :
+    (encode64 d).size = 72 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderPassColorAttachment) :
@@ -9390,6 +10521,11 @@ def pointers32 : List Nat := [0, 4, 12]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 56 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 56 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -9416,6 +10552,11 @@ theorem encode32_eq (d : RenderPassColorAttachment) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeF64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderPassColorAttachment) :
+    (encode32 d).size = 56 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderPassColorAttachment) :
@@ -9497,6 +10638,11 @@ def pointers64 : List Nat := [16]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 24 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9519,6 +10665,11 @@ theorem encode64_eq (d : TexelCopyBufferInfo) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TexelCopyBufferInfo) :
+    (encode64 d).size = 24 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TexelCopyBufferInfo) :
@@ -9571,6 +10722,11 @@ def pointers32 : List Nat := [16]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -9593,6 +10749,11 @@ theorem encode32_eq (d : TexelCopyBufferInfo) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU64,
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TexelCopyBufferInfo) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TexelCopyBufferInfo) :
@@ -9672,6 +10833,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9695,6 +10861,11 @@ theorem encode64_eq (d : TexelCopyTextureInfo) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TexelCopyTextureInfo) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TexelCopyTextureInfo) :
@@ -9749,6 +10920,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -9772,6 +10948,11 @@ theorem encode32_eq (d : TexelCopyTextureInfo) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TexelCopyTextureInfo) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TexelCopyTextureInfo) :
@@ -9851,6 +11032,11 @@ def pointers64 : List Nat := [0]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -9876,6 +11062,11 @@ theorem encode64_eq (d : TextureComponentSwizzleDescriptor) :
   simp only [
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureComponentSwizzleDescriptor) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureComponentSwizzleDescriptor) :
@@ -9930,6 +11121,11 @@ def pointers32 : List Nat := [0]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -9955,6 +11151,11 @@ theorem encode32_eq (d : TextureComponentSwizzleDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureComponentSwizzleDescriptor) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureComponentSwizzleDescriptor) :
@@ -10039,6 +11240,11 @@ def pointers64 : List Nat := [0, 8, 72]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 80 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 80 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10069,6 +11275,11 @@ theorem encode64_eq (d : TextureDescriptor) :
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : TextureDescriptor) :
+    (encode64 d).size = 80 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : TextureDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10096,6 +11307,11 @@ def pointers32 : List Nat := [0, 4, 56]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 64 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 64 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10126,6 +11342,11 @@ theorem encode32_eq (d : TextureDescriptor) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : TextureDescriptor) :
+    (encode32 d).size = 64 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : TextureDescriptor) :
@@ -10165,6 +11386,11 @@ def pointers64 : List Nat := [0, 32]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 40 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 40 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10188,6 +11414,11 @@ theorem encode64_eq (d : VertexBufferLayout) :
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : VertexBufferLayout) :
+    (encode64 d).size = 40 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : VertexBufferLayout) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10208,6 +11439,11 @@ def pointers32 : List Nat := [0, 20]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10231,6 +11467,11 @@ theorem encode32_eq (d : VertexBufferLayout) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : VertexBufferLayout) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : VertexBufferLayout) :
@@ -10269,6 +11510,11 @@ def pointers64 : List Nat := [0, 8, 32]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 40 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 40 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10290,6 +11536,11 @@ theorem encode64_eq (d : BindGroupLayoutDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : BindGroupLayoutDescriptor) :
+    (encode64 d).size = 40 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : BindGroupLayoutDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10309,6 +11560,11 @@ def pointers32 : List Nat := [0, 4, 16]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 20 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 20 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10330,6 +11586,11 @@ theorem encode32_eq (d : BindGroupLayoutDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : BindGroupLayoutDescriptor) :
+    (encode32 d).size = 20 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : BindGroupLayoutDescriptor) :
@@ -10368,6 +11629,11 @@ def pointers64 : List Nat := [0, 16]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 32 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 32 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10389,6 +11655,11 @@ theorem encode64_eq (d : ColorTargetState) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ColorTargetState) :
+    (encode64 d).size = 32 := by
+  rw [encode64_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ColorTargetState) :
@@ -10441,6 +11712,11 @@ def pointers32 : List Nat := [0, 8]
 theorem fields32_wellFormed : Fields.WellFormed .bits32 24 fields32 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 24 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
     ∀ o ∈ pointers32, ∀ f ∈ fields32,
@@ -10462,6 +11738,11 @@ theorem encode32_eq (d : ColorTargetState) :
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     Block.val_pokeU64, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ColorTargetState) :
+    (encode32 d).size = 24 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ColorTargetState) :
@@ -10540,6 +11821,11 @@ def pointers64 : List Nat := [0, 8, 24, 32, 40, 48, 72]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 80 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 80 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10562,6 +11848,11 @@ theorem encode64_eq (d : ComputePipelineDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : ComputePipelineDescriptor) :
+    (encode64 d).size = 80 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : ComputePipelineDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10582,6 +11873,11 @@ def pointers32 : List Nat := [0, 4, 12, 16, 20, 24, 36]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 40 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 40 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10604,6 +11900,11 @@ theorem encode32_eq (d : ComputePipelineDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : ComputePipelineDescriptor) :
+    (encode32 d).size = 40 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : ComputePipelineDescriptor) :
@@ -10642,6 +11943,11 @@ def pointers64 : List Nat := [0, 8, 32, 40, 48, 56]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10663,6 +11969,11 @@ theorem encode64_eq (d : RenderPassDescriptor) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderPassDescriptor) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderPassDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10682,6 +11993,11 @@ def pointers32 : List Nat := [0, 4, 16, 20, 24, 28]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 32 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 32 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10703,6 +12019,11 @@ theorem encode32_eq (d : RenderPassDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderPassDescriptor) :
+    (encode32 d).size = 32 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderPassDescriptor) :
@@ -10742,6 +12063,11 @@ def pointers64 : List Nat := [0, 8, 16, 40, 56]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10764,6 +12090,11 @@ theorem encode64_eq (d : VertexState) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : VertexState) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : VertexState) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10784,6 +12115,11 @@ def pointers32 : List Nat := [0, 4, 8, 20, 28]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 32 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 32 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10806,6 +12142,11 @@ theorem encode32_eq (d : VertexState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : VertexState) :
+    (encode32 d).size = 32 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : VertexState) :
@@ -10845,6 +12186,11 @@ def pointers64 : List Nat := [0, 8, 16, 40, 56]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 64 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 64 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10867,6 +12213,11 @@ theorem encode64_eq (d : FragmentState) :
     encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : FragmentState) :
+    (encode64 d).size = 64 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : FragmentState) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -10887,6 +12238,11 @@ def pointers32 : List Nat := [0, 4, 8, 20, 28]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 32 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 32 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -10909,6 +12265,11 @@ theorem encode32_eq (d : FragmentState) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : FragmentState) :
+    (encode32 d).size = 32 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : FragmentState) :
@@ -10957,6 +12318,11 @@ def pointers64 : List Nat := [0, 8, 24, 32, 40, 48, 72, 88, 96, 128, 136, 160]
 theorem fields64_wellFormed : Fields.WellFormed .bits64 168 fields64 := by
   unfold Fields.WellFormed; decide
 
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 168 := by
+  decide
+
 /-- The pointers are apart from every field. -/
 theorem pointers64_apart :
     ∀ o ∈ pointers64, ∀ f ∈ fields64,
@@ -10991,6 +12357,11 @@ theorem encode64_eq (d : RenderPipelineDescriptor) :
     Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
     Scalar.bytes, Width.bytes]
 
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : RenderPipelineDescriptor) :
+    (encode64 d).size = 168 := by
+  rw [encode64_eq, size_encode]
+
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode64_pointers (d : RenderPipelineDescriptor) :
     ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
@@ -11020,6 +12391,11 @@ def pointers32 : List Nat := [0, 4, 12, 16, 20, 24, 36, 44, 48, 72, 76, 92]
 /-- The fields are well-formed: in order, apart, within the struct. -/
 theorem fields32_wellFormed : Fields.WellFormed .bits32 96 fields32 := by
   unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 96 := by
+  decide
 
 /-- The pointers are apart from every field. -/
 theorem pointers32_apart :
@@ -11053,6 +12429,11 @@ theorem encode32_eq (d : RenderPipelineDescriptor) :
   simp only [
     encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
     List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : RenderPipelineDescriptor) :
+    (encode32 d).size = 96 := by
+  rw [encode32_eq, size_encode]
 
 /-- Its pointers read as 0, for C to fill in. -/
 theorem encode32_pointers (d : RenderPipelineDescriptor) :
@@ -11105,6 +12486,46 @@ def tables64 : Array ByteArray := #[
   TextureComponentSwizzleDescriptor.table64, ColorTargetState.table64
 ]
 
+/-- Every struct's table on 64-bit targets, as the walk reads it. -/
+noncomputable def specs64 : Array Spec := #[
+  (56, BindGroupEntry.relocs64), (12, BlendComponent.relocs64),
+  (24, BufferBindingLayout.relocs64), (48, BufferDescriptor.relocs64),
+  (32, Color.relocs64), (24, CommandBufferDescriptor.relocs64),
+  (24, CommandEncoderDescriptor.relocs64),
+  (32, CompatibilityModeLimits.relocs64), (32, ConstantEntry.relocs64),
+  (12, Extent3D.relocs64), (24, ExternalTextureBindingEntry.relocs64),
+  (16, ExternalTextureBindingLayout.relocs64), (8, Future.relocs64),
+  (16, InstanceLimits.relocs64), (152, Limits.relocs64),
+  (24, MultisampleState.relocs64), (12, Origin3D.relocs64),
+  (24, PassTimestampWrites.relocs64), (32, PrimitiveState.relocs64),
+  (32, QuerySetDescriptor.relocs64), (24, QueueDescriptor.relocs64),
+  (24, RenderBundleDescriptor.relocs64),
+  (48, RenderPassDepthStencilAttachment.relocs64),
+  (24, RenderPassMaxDrawCount.relocs64), (32, RequestAdapterOptions.relocs64),
+  (24, RequestAdapterWebXROptions.relocs64),
+  (16, SamplerBindingLayout.relocs64), (64, SamplerDescriptor.relocs64),
+  (24, ShaderModuleDescriptor.relocs64), (32, ShaderSourceWGSL.relocs64),
+  (16, StencilFaceState.relocs64), (24, StorageTextureBindingLayout.relocs64),
+  (24, SurfaceColorManagement.relocs64), (24, SurfaceDescriptor.relocs64),
+  (24, SurfaceTexture.relocs64), (16, TexelCopyBufferLayout.relocs64),
+  (24, TextureBindingLayout.relocs64),
+  (24, TextureBindingViewDimension.relocs64),
+  (16, TextureComponentSwizzle.relocs64), (64, TextureViewDescriptor.relocs64),
+  (32, VertexAttribute.relocs64), (120, BindGroupLayoutEntry.relocs64),
+  (24, BlendState.relocs64), (32, ComputePassDescriptor.relocs64),
+  (72, DepthStencilState.relocs64), (16, FutureWaitInfo.relocs64),
+  (72, RenderPassColorAttachment.relocs64), (24, TexelCopyBufferInfo.relocs64),
+  (32, TexelCopyTextureInfo.relocs64),
+  (32, TextureComponentSwizzleDescriptor.relocs64),
+  (32, ColorTargetState.relocs64)
+]
+
+/-- The tables C reads are the tables the walk reads. -/
+theorem tables64_eq :
+    tables64.toList = specs64.toList.map fun (size, relocs) =>
+      serialize size relocs :=
+  rfl
+
 /-- Every struct's table on wasm32, by its index. -/
 def tables32 : Array ByteArray := #[
   BindGroupEntry.table32, BlendComponent.table32, BufferBindingLayout.table32,
@@ -11132,6 +12553,46 @@ def tables32 : Array ByteArray := #[
   TextureComponentSwizzleDescriptor.table32, ColorTargetState.table32
 ]
 
+/-- Every struct's table on wasm32, as the walk reads it. -/
+noncomputable def specs32 : Array Spec := #[
+  (40, BindGroupEntry.relocs32), (12, BlendComponent.relocs32),
+  (24, BufferBindingLayout.relocs32), (40, BufferDescriptor.relocs32),
+  (32, Color.relocs32), (12, CommandBufferDescriptor.relocs32),
+  (12, CommandEncoderDescriptor.relocs32),
+  (24, CompatibilityModeLimits.relocs32), (24, ConstantEntry.relocs32),
+  (12, Extent3D.relocs32), (12, ExternalTextureBindingEntry.relocs32),
+  (8, ExternalTextureBindingLayout.relocs32), (8, Future.relocs32),
+  (8, InstanceLimits.relocs32), (152, Limits.relocs32),
+  (16, MultisampleState.relocs32), (12, Origin3D.relocs32),
+  (16, PassTimestampWrites.relocs32), (24, PrimitiveState.relocs32),
+  (20, QuerySetDescriptor.relocs32), (12, QueueDescriptor.relocs32),
+  (12, RenderBundleDescriptor.relocs32),
+  (40, RenderPassDepthStencilAttachment.relocs32),
+  (16, RenderPassMaxDrawCount.relocs32), (24, RequestAdapterOptions.relocs32),
+  (12, RequestAdapterWebXROptions.relocs32), (8, SamplerBindingLayout.relocs32),
+  (52, SamplerDescriptor.relocs32), (12, ShaderModuleDescriptor.relocs32),
+  (16, ShaderSourceWGSL.relocs32), (16, StencilFaceState.relocs32),
+  (16, StorageTextureBindingLayout.relocs32),
+  (16, SurfaceColorManagement.relocs32), (12, SurfaceDescriptor.relocs32),
+  (12, SurfaceTexture.relocs32), (16, TexelCopyBufferLayout.relocs32),
+  (16, TextureBindingLayout.relocs32),
+  (12, TextureBindingViewDimension.relocs32),
+  (16, TextureComponentSwizzle.relocs32), (48, TextureViewDescriptor.relocs32),
+  (24, VertexAttribute.relocs32), (88, BindGroupLayoutEntry.relocs32),
+  (24, BlendState.relocs32), (16, ComputePassDescriptor.relocs32),
+  (68, DepthStencilState.relocs32), (16, FutureWaitInfo.relocs32),
+  (56, RenderPassColorAttachment.relocs32), (24, TexelCopyBufferInfo.relocs32),
+  (24, TexelCopyTextureInfo.relocs32),
+  (24, TextureComponentSwizzleDescriptor.relocs32),
+  (24, ColorTargetState.relocs32)
+]
+
+/-- The tables C reads are the tables the walk reads. -/
+theorem tables32_eq :
+    tables32.toList = specs32.toList.map fun (size, relocs) =>
+      serialize size relocs :=
+  rfl
+
 /-- Every table on this target. -/
 @[inline]
 def tables : Array ByteArray :=
@@ -11145,6 +12606,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[0]? = some (56, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BindGroupEntry) (ts : List Target) :
+    walk specs64 0 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BindGroupEntry) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[0]? = some (40, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BindGroupEntry) (ts : List Target) :
+    walk specs32 0 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BindGroupEntry) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end BindGroupEntry
 
 namespace BlendComponent
@@ -11154,6 +12649,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[1]? = some (12, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BlendComponent) (ts : List Target) :
+    walk specs64 1 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BlendComponent) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[1]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BlendComponent) (ts : List Target) :
+    walk specs32 1 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BlendComponent) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end BlendComponent
 
@@ -11165,6 +12694,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[2]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BufferBindingLayout) (ts : List Target) :
+    walk specs64 2 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BufferBindingLayout) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[2]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BufferBindingLayout) (ts : List Target) :
+    walk specs32 2 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BufferBindingLayout) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end BufferBindingLayout
 
 namespace BufferDescriptor
@@ -11174,6 +12737,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[3]? = some (48, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BufferDescriptor) (ts : List Target) :
+    walk specs64 3 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BufferDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[3]? = some (40, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BufferDescriptor) (ts : List Target) :
+    walk specs32 3 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BufferDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end BufferDescriptor
 
@@ -11185,6 +12782,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[4]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : Color) (ts : List Target) :
+    walk specs64 4 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : Color) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[4]? = some (32, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : Color) (ts : List Target) :
+    walk specs32 4 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : Color) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end Color
 
 namespace CommandBufferDescriptor
@@ -11194,6 +12825,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[5]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : CommandBufferDescriptor) (ts : List Target) :
+    walk specs64 5 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : CommandBufferDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[5]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : CommandBufferDescriptor) (ts : List Target) :
+    walk specs32 5 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : CommandBufferDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end CommandBufferDescriptor
 
@@ -11205,6 +12870,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[6]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : CommandEncoderDescriptor) (ts : List Target) :
+    walk specs64 6 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : CommandEncoderDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[6]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : CommandEncoderDescriptor) (ts : List Target) :
+    walk specs32 6 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : CommandEncoderDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end CommandEncoderDescriptor
 
 namespace CompatibilityModeLimits
@@ -11214,6 +12913,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[7]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : CompatibilityModeLimits) (ts : List Target) :
+    walk specs64 7 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : CompatibilityModeLimits) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[7]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : CompatibilityModeLimits) (ts : List Target) :
+    walk specs32 7 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : CompatibilityModeLimits) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end CompatibilityModeLimits
 
@@ -11225,6 +12958,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[8]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ConstantEntry) (ts : List Target) :
+    walk specs64 8 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ConstantEntry) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[8]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ConstantEntry) (ts : List Target) :
+    walk specs32 8 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ConstantEntry) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end ConstantEntry
 
 namespace Extent3D
@@ -11234,6 +13001,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[9]? = some (12, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : Extent3D) (ts : List Target) :
+    walk specs64 9 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : Extent3D) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[9]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : Extent3D) (ts : List Target) :
+    walk specs32 9 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : Extent3D) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end Extent3D
 
@@ -11245,6 +13046,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[10]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ExternalTextureBindingEntry) (ts : List Target) :
+    walk specs64 10 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ExternalTextureBindingEntry) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[10]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ExternalTextureBindingEntry) (ts : List Target) :
+    walk specs32 10 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ExternalTextureBindingEntry) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end ExternalTextureBindingEntry
 
 namespace ExternalTextureBindingLayout
@@ -11254,6 +13089,42 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[11]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ExternalTextureBindingLayout) (ts : List Target) :
+    walk specs64 11 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ExternalTextureBindingLayout)
+    (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[11]? = some (8, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ExternalTextureBindingLayout) (ts : List Target) :
+    walk specs32 11 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ExternalTextureBindingLayout)
+    (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end ExternalTextureBindingLayout
 
@@ -11265,6 +13136,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[12]? = some (8, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : Future) (ts : List Target) :
+    walk specs64 12 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : Future) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[12]? = some (8, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : Future) (ts : List Target) :
+    walk specs32 12 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : Future) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end Future
 
 namespace InstanceLimits
@@ -11274,6 +13179,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[13]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : InstanceLimits) (ts : List Target) :
+    walk specs64 13 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : InstanceLimits) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[13]? = some (8, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : InstanceLimits) (ts : List Target) :
+    walk specs32 13 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : InstanceLimits) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end InstanceLimits
 
@@ -11285,6 +13224,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[14]? = some (152, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : Limits) (ts : List Target) :
+    walk specs64 14 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : Limits) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[14]? = some (152, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : Limits) (ts : List Target) :
+    walk specs32 14 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : Limits) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end Limits
 
 namespace MultisampleState
@@ -11294,6 +13267,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[15]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : MultisampleState) (ts : List Target) :
+    walk specs64 15 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : MultisampleState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[15]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : MultisampleState) (ts : List Target) :
+    walk specs32 15 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : MultisampleState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end MultisampleState
 
@@ -11305,6 +13312,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[16]? = some (12, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : Origin3D) (ts : List Target) :
+    walk specs64 16 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : Origin3D) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[16]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : Origin3D) (ts : List Target) :
+    walk specs32 16 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : Origin3D) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end Origin3D
 
 namespace PassTimestampWrites
@@ -11314,6 +13355,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[17]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : PassTimestampWrites) (ts : List Target) :
+    walk specs64 17 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : PassTimestampWrites) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[17]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : PassTimestampWrites) (ts : List Target) :
+    walk specs32 17 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : PassTimestampWrites) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end PassTimestampWrites
 
@@ -11325,6 +13400,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[18]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : PrimitiveState) (ts : List Target) :
+    walk specs64 18 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : PrimitiveState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[18]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : PrimitiveState) (ts : List Target) :
+    walk specs32 18 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : PrimitiveState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end PrimitiveState
 
 namespace QuerySetDescriptor
@@ -11334,6 +13443,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[19]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : QuerySetDescriptor) (ts : List Target) :
+    walk specs64 19 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : QuerySetDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[19]? = some (20, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : QuerySetDescriptor) (ts : List Target) :
+    walk specs32 19 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : QuerySetDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end QuerySetDescriptor
 
@@ -11345,6 +13488,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[20]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : QueueDescriptor) (ts : List Target) :
+    walk specs64 20 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : QueueDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[20]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : QueueDescriptor) (ts : List Target) :
+    walk specs32 20 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : QueueDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end QueueDescriptor
 
 namespace RenderBundleDescriptor
@@ -11354,6 +13531,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[21]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RenderBundleDescriptor) (ts : List Target) :
+    walk specs64 21 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RenderBundleDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[21]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RenderBundleDescriptor) (ts : List Target) :
+    walk specs32 21 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RenderBundleDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end RenderBundleDescriptor
 
@@ -11365,6 +13576,42 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[22]? = some (48, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RenderPassDepthStencilAttachment) (ts : List Target) :
+    walk specs64 22 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RenderPassDepthStencilAttachment)
+    (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[22]? = some (40, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RenderPassDepthStencilAttachment) (ts : List Target) :
+    walk specs32 22 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RenderPassDepthStencilAttachment)
+    (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end RenderPassDepthStencilAttachment
 
 namespace RenderPassMaxDrawCount
@@ -11374,6 +13621,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[23]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RenderPassMaxDrawCount) (ts : List Target) :
+    walk specs64 23 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RenderPassMaxDrawCount) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[23]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RenderPassMaxDrawCount) (ts : List Target) :
+    walk specs32 23 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RenderPassMaxDrawCount) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end RenderPassMaxDrawCount
 
@@ -11385,6 +13666,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[24]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RequestAdapterOptions) (ts : List Target) :
+    walk specs64 24 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RequestAdapterOptions) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[24]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RequestAdapterOptions) (ts : List Target) :
+    walk specs32 24 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RequestAdapterOptions) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end RequestAdapterOptions
 
 namespace RequestAdapterWebXROptions
@@ -11394,6 +13709,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[25]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RequestAdapterWebXROptions) (ts : List Target) :
+    walk specs64 25 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RequestAdapterWebXROptions) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[25]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RequestAdapterWebXROptions) (ts : List Target) :
+    walk specs32 25 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RequestAdapterWebXROptions) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end RequestAdapterWebXROptions
 
@@ -11405,6 +13754,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[26]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : SamplerBindingLayout) (ts : List Target) :
+    walk specs64 26 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : SamplerBindingLayout) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[26]? = some (8, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : SamplerBindingLayout) (ts : List Target) :
+    walk specs32 26 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : SamplerBindingLayout) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end SamplerBindingLayout
 
 namespace SamplerDescriptor
@@ -11414,6 +13797,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[27]? = some (64, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : SamplerDescriptor) (ts : List Target) :
+    walk specs64 27 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : SamplerDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[27]? = some (52, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : SamplerDescriptor) (ts : List Target) :
+    walk specs32 27 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : SamplerDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end SamplerDescriptor
 
@@ -11425,6 +13842,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[28]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ShaderModuleDescriptor) (ts : List Target) :
+    walk specs64 28 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ShaderModuleDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[28]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ShaderModuleDescriptor) (ts : List Target) :
+    walk specs32 28 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ShaderModuleDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end ShaderModuleDescriptor
 
 namespace ShaderSourceWGSL
@@ -11434,6 +13885,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[29]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ShaderSourceWGSL) (ts : List Target) :
+    walk specs64 29 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ShaderSourceWGSL) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[29]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ShaderSourceWGSL) (ts : List Target) :
+    walk specs32 29 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ShaderSourceWGSL) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end ShaderSourceWGSL
 
@@ -11445,6 +13930,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[30]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : StencilFaceState) (ts : List Target) :
+    walk specs64 30 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : StencilFaceState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[30]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : StencilFaceState) (ts : List Target) :
+    walk specs32 30 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : StencilFaceState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end StencilFaceState
 
 namespace StorageTextureBindingLayout
@@ -11454,6 +13973,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[31]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : StorageTextureBindingLayout) (ts : List Target) :
+    walk specs64 31 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : StorageTextureBindingLayout) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[31]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : StorageTextureBindingLayout) (ts : List Target) :
+    walk specs32 31 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : StorageTextureBindingLayout) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end StorageTextureBindingLayout
 
@@ -11465,6 +14018,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[32]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : SurfaceColorManagement) (ts : List Target) :
+    walk specs64 32 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : SurfaceColorManagement) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[32]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : SurfaceColorManagement) (ts : List Target) :
+    walk specs32 32 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : SurfaceColorManagement) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end SurfaceColorManagement
 
 namespace SurfaceDescriptor
@@ -11474,6 +14061,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[33]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : SurfaceDescriptor) (ts : List Target) :
+    walk specs64 33 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : SurfaceDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[33]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : SurfaceDescriptor) (ts : List Target) :
+    walk specs32 33 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : SurfaceDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end SurfaceDescriptor
 
@@ -11485,6 +14106,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[34]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : SurfaceTexture) (ts : List Target) :
+    walk specs64 34 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : SurfaceTexture) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[34]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : SurfaceTexture) (ts : List Target) :
+    walk specs32 34 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : SurfaceTexture) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end SurfaceTexture
 
 namespace TexelCopyBufferLayout
@@ -11494,6 +14149,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[35]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TexelCopyBufferLayout) (ts : List Target) :
+    walk specs64 35 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TexelCopyBufferLayout) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[35]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TexelCopyBufferLayout) (ts : List Target) :
+    walk specs32 35 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TexelCopyBufferLayout) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end TexelCopyBufferLayout
 
@@ -11505,6 +14194,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[36]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TextureBindingLayout) (ts : List Target) :
+    walk specs64 36 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TextureBindingLayout) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[36]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TextureBindingLayout) (ts : List Target) :
+    walk specs32 36 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TextureBindingLayout) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end TextureBindingLayout
 
 namespace TextureBindingViewDimension
@@ -11514,6 +14237,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[37]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TextureBindingViewDimension) (ts : List Target) :
+    walk specs64 37 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TextureBindingViewDimension) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[37]? = some (12, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TextureBindingViewDimension) (ts : List Target) :
+    walk specs32 37 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TextureBindingViewDimension) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end TextureBindingViewDimension
 
@@ -11525,6 +14282,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[38]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TextureComponentSwizzle) (ts : List Target) :
+    walk specs64 38 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TextureComponentSwizzle) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[38]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TextureComponentSwizzle) (ts : List Target) :
+    walk specs32 38 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TextureComponentSwizzle) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end TextureComponentSwizzle
 
 namespace TextureViewDescriptor
@@ -11534,6 +14325,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[39]? = some (64, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TextureViewDescriptor) (ts : List Target) :
+    walk specs64 39 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TextureViewDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[39]? = some (48, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TextureViewDescriptor) (ts : List Target) :
+    walk specs32 39 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TextureViewDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end TextureViewDescriptor
 
@@ -11545,6 +14370,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[40]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : VertexAttribute) (ts : List Target) :
+    walk specs64 40 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : VertexAttribute) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[40]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : VertexAttribute) (ts : List Target) :
+    walk specs32 40 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : VertexAttribute) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end VertexAttribute
 
 namespace BindGroupLayoutEntry
@@ -11554,6 +14413,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[41]? = some (120, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BindGroupLayoutEntry) (ts : List Target) :
+    walk specs64 41 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BindGroupLayoutEntry) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[41]? = some (88, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BindGroupLayoutEntry) (ts : List Target) :
+    walk specs32 41 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BindGroupLayoutEntry) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end BindGroupLayoutEntry
 
@@ -11565,6 +14458,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[42]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : BlendState) (ts : List Target) :
+    walk specs64 42 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : BlendState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[42]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : BlendState) (ts : List Target) :
+    walk specs32 42 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : BlendState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end BlendState
 
 namespace ComputePassDescriptor
@@ -11574,6 +14501,48 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[43]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ComputePassDescriptor) (ts : List Target) :
+    walk specs64 43 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  cases h0 : d.timestampWrites <;>
+    simp [
+      relocs64, targets64, step, h0, PassTimestampWrites.block64,
+      PassTimestampWrites.walk64,
+      walk_empty PassTimestampWrites.specs64_index (by decide)]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ComputePassDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[43]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ComputePassDescriptor) (ts : List Target) :
+    walk specs32 43 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  cases h0 : d.timestampWrites <;>
+    simp [
+      relocs32, targets32, step, h0, PassTimestampWrites.block32,
+      PassTimestampWrites.walk32,
+      walk_empty PassTimestampWrites.specs32_index (by decide)]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ComputePassDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end ComputePassDescriptor
 
@@ -11585,6 +14554,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[44]? = some (72, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : DepthStencilState) (ts : List Target) :
+    walk specs64 44 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : DepthStencilState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[44]? = some (68, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : DepthStencilState) (ts : List Target) :
+    walk specs32 44 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : DepthStencilState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end DepthStencilState
 
 namespace FutureWaitInfo
@@ -11594,6 +14597,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[45]? = some (16, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : FutureWaitInfo) (ts : List Target) :
+    walk specs64 45 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : FutureWaitInfo) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[45]? = some (16, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : FutureWaitInfo) (ts : List Target) :
+    walk specs32 45 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : FutureWaitInfo) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end FutureWaitInfo
 
@@ -11605,6 +14642,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[46]? = some (72, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : RenderPassColorAttachment) (ts : List Target) :
+    walk specs64 46 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : RenderPassColorAttachment) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[46]? = some (56, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : RenderPassColorAttachment) (ts : List Target) :
+    walk specs32 46 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : RenderPassColorAttachment) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end RenderPassColorAttachment
 
 namespace TexelCopyBufferInfo
@@ -11614,6 +14685,40 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[47]? = some (24, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TexelCopyBufferInfo) (ts : List Target) :
+    walk specs64 47 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TexelCopyBufferInfo) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[47]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TexelCopyBufferInfo) (ts : List Target) :
+    walk specs32 47 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TexelCopyBufferInfo) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end TexelCopyBufferInfo
 
@@ -11625,6 +14730,40 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[48]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TexelCopyTextureInfo) (ts : List Target) :
+    walk specs64 48 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TexelCopyTextureInfo) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[48]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TexelCopyTextureInfo) (ts : List Target) :
+    walk specs32 48 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TexelCopyTextureInfo) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end TexelCopyTextureInfo
 
 namespace TextureComponentSwizzleDescriptor
@@ -11635,6 +14774,42 @@ theorem tables_index :
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
 
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[49]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : TextureComponentSwizzleDescriptor) (ts : List Target) :
+    walk specs64 49 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  simp [relocs64, targets64, step]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : TextureComponentSwizzleDescriptor)
+    (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[49]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : TextureComponentSwizzleDescriptor) (ts : List Target) :
+    walk specs32 49 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  simp [relocs32, targets32, step]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : TextureComponentSwizzleDescriptor)
+    (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
+
 end TextureComponentSwizzleDescriptor
 
 namespace ColorTargetState
@@ -11644,6 +14819,46 @@ theorem tables_index :
     tables64[tableIndex]? = some table64 ∧
       tables32[tableIndex]? = some table32 :=
   ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs64_index : specs64[50]? = some (32, relocs64) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk64 (d : ColorTargetState) (ts : List Target) :
+    walk specs64 50 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts := by
+  rw [walk, specs64_index, size_encode64]
+  cases h0 : d.blend <;>
+    simp [
+      relocs64, targets64, step, h0, BlendState.block64, BlendState.walk64,
+      walk_empty BlendState.specs64_index (by decide)]
+
+/-- The same, at its index. -/
+theorem walk64_tableIndex (d : ColorTargetState) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem specs32_index : specs32[50]? = some (24, relocs32) :=
+  rfl
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk32 (d : ColorTargetState) (ts : List Target) :
+    walk specs32 50 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts := by
+  rw [walk, specs32_index, size_encode32]
+  cases h0 : d.blend <;>
+    simp [
+      relocs32, targets32, step, h0, BlendState.block32, BlendState.walk32,
+      walk_empty BlendState.specs32_index (by decide)]
+
+/-- The same, at its index. -/
+theorem walk32_tableIndex (d : ColorTargetState) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk32 d ts
 
 end ColorTargetState
 
