@@ -65,7 +65,7 @@ def member (name : String) (value : Value) : Member :=
     .int "d.bias.toUInt32",
     .int size,
     .pointer (.object ⟨"WGPUBuffer", "Buffer"⟩ "d.buffer"),
-    .int s!"d.items.size.toUInt{w}", .pointer .array,
+    .int s!"d.items.size.toUInt{w}", .pointer (.array (.words "id") "d.items"),
     .int "d.inner.n"
   ]
   items [inner, input] .bits64 input "d" 3 == some (expected "64" "d.count")
@@ -174,7 +174,8 @@ def member (name : String) (value : Value) : Member :=
 ]
 
 -- Each kind of pointer: its name, its code and its table; a block's table its
--- struct's index; an array's elements, not yet filled in, none.
+-- struct's index; an array of numbers or objects a block of a shared table;
+-- an array of anything else, not yet filled in, none.
 #guard
   let inner : Names := ⟨"WGPUInner", "Inner"⟩
   let index (names : Names) := if names == inner then some 7 else none
@@ -182,7 +183,11 @@ def member (name : String) (value : Value) : Member :=
     .chain, .string "d.a", .optString "d.b",
     .object ⟨"WGPUBuffer", "Buffer"⟩ "d.c",
     .optObject ⟨"WGPUBuffer", "Buffer"⟩ "d.e",
-    .struct inner "d.f" false, .array
+    .struct inner "d.f" false,
+    .array (.words "id") "d.g",
+    .array (.objects ⟨"WGPUBuffer", "Buffer"⟩) "d.h",
+    .array (.structs inner) "d.i",
+    .array .other "d.j"
   ]
   pointers.map (kind index) == [
     some (".null", 5, 0),
@@ -191,15 +196,18 @@ def member (name : String) (value : Value) : Member :=
     some (".object", 2, 0),
     some (".optObject", 3, 0),
     some (".block 7", 4, 7),
+    some (".block 0", 4, 0),
+    some (".block 1", 4, 1),
+    some (".block 7", 4, 7),
     none
   ]
 
 -- The structs with tables: each after those it points to, by its index; not
--- one with an array, nor one that points to one with no table.
+-- one with an array of strings, nor one that points to one with no table.
 #guard
   let leaf := struct "WGPULeaf" "Leaf" .standalone [member "s" (.string false)]
   let listed := struct "WGPUListed" "Listed" .standalone
-    [member "xs" (.array .uint32 "xsCount")]
+    [member "xs" (.array (.string false) "xsCount")]
   let top := struct "WGPUTop" "Top" .standalone [
     member "leaf" (.structPointer leaf.names true)
   ]
@@ -208,6 +216,63 @@ def member (name : String) (value : Value) : Member :=
   ]
   (tabled [leaf, listed, top, above]).map (·.names.lean)
     == ["Leaf", "Top"]
+
+-- An array's targets: of numbers, its block; of objects, its block of handles
+-- then its objects; of structs, its block and its elements' targets.
+#guard
+  let buffer : Names := ⟨"WGPUBuffer", "Buffer"⟩
+  let inner : Names := ⟨"WGPUInner", "Inner"⟩
+  let ps := [
+    pieces .bits64 (.array (.words "CEnum.toC") "d.a"),
+    pieces .bits32 (.array (.objects buffer) "d.b"),
+    pieces .bits64 (.array (.structs inner) "d.c")
+  ]
+  ps.map (piecesLines 2) == [
+    ["#[.block (encodeU32s CEnum.toC d.a)]"],
+    ["#[.block (objectsBlock 4 d.b)] ++ " ++
+      "objectsOf Internal.Buffer.toObject d.b"],
+    ["Inner.array64 d.c"]
+  ]
+
+-- The elements of arrays: each struct once, of the structs with tables.
+#guard
+  let leaf := struct "WGPULeaf" "Leaf" .standalone [member "n" .uint32]
+  let a := struct "WGPUA" "A" .standalone
+    [member "xs" (.array (.struct leaf.names) "xsCount")]
+  let b := struct "WGPUB" "B" .standalone
+    [member "ys" (.array (.struct leaf.names) "ysCount")]
+  arrayed [leaf, a, b] [leaf, a, b] == [leaf.names]
+
+-- A struct that is the element of an array: its array's encoder, its size,
+-- its targets and both, after its own.
+#guard
+  let input := struct "WGPUOne" "One" .standalone [member "s" (.string false)]
+  let decls (isArrayed : Bool) :=
+    match structEntries [input] .bits64 input with
+    | some (size, entries) =>
+      relocDecls input .bits64 size entries (fun _ => none) isArrayed
+    | none => none
+  let tail := (decls true).map fun ds =>
+    ds.drop ((decls false).getD []).length
+  tail == some [
+    ["/-- An array of them, encoded in turn, on 64-bit targets. -/",
+      "@[noinline, never_extract]",
+      "def encodeAll64 (xs : Array One) : ByteArray :=",
+      "  encodeAll 16 encode64 xs"],
+    ["/-- An array of them is their size. -/",
+      "theorem size_encodeAll64 (xs : Array One) :",
+      "    (encodeAll64 xs).size = xs.size * 16 :=",
+      "  size_encodeAll 16 encode64 size_encode64 xs"],
+    ["/-- What C fills in an array of them's pointers from on 64-bit " ++
+        "targets. -/",
+      "@[never_extract]",
+      "def targetsAll64 (xs : Array One) : Array Target :=",
+      "  (xs.toList.flatMap fun d => (targets64 d).toList).toArray"],
+    ["/-- An array of them as a block on 64-bit targets, and its targets. -/",
+      "@[never_extract]",
+      "def array64 (xs : Array One) : Array Target :=",
+      "  #[.block (encodeAll64 xs)] ++ targetsAll64 xs"]
+  ]
 
 -- Targets: each run of targets one literal, joined with arrays by `++`; on one
 -- line if they fit, else each run on its own, and a long literal one a line.
@@ -252,13 +317,13 @@ def member (name : String) (value : Value) : Member :=
     (Emit.Doc.pretty Emit.width)
   let has (s : String) := printed.any fun text => (text.splitOn s).length > 1
   has ("noncomputable def relocs64 : List Reloc := [\n" ++
-      "  ⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .block 0⟩\n]")
+      "  ⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .block 2⟩\n]")
     && has "theorem table64_eq : table64 = serialize 32 relocs64 := rfl"
     && has ("theorem relocs64_offsets : " ++
       "relocs64.map (·.offset) = pointers64 :=\n  rfl")
     && has ("def targets64 (d : Outer) : Array Target :=\n" ++
-      "  #[.string d.label] ++ (d.inner.elim #[.block .empty] Inner.block64)")
-    && has "def tableIndex : Nat := 1"
+      "  #[.string d.label] ++ optBlock Inner.block64 d.inner")
+    && has "def tableIndex : Nat := 3"
 
 /-! ## Walks -/
 
@@ -272,35 +337,54 @@ def member (name : String) (value : Value) : Member :=
       s!"    {long "c"}]"
     ]
 
--- A walk's proof: its index, and for an optional struct, a case for each, by
--- that struct's block, walk and empty walk.
+-- A struct's walk proofs: its index; its element's walk, a case for each
+-- optional struct, by that struct's block, walk and empty walk, and an array
+-- of enums by `walk_words`; its walk from its element's; and, as it is the
+-- element of an array, an array of them's.
 #guard
   let inner := struct "WGPUInner" "Inner" .standalone
     [member "s" (.string false)]
   let input := struct "WGPUOuter" "Outer" .extensible [
-    member "inner" (.structPointer inner.names true)
+    member "inner" (.structPointer inner.names true),
+    member "xs" (.array (.enum ⟨"WGPUMode", "Mode"⟩) "xsCount")
   ]
   let lines := match structEntries [inner, input] .bits64 input with
-    | some (size, entries) => walkDecls input .bits64 size entries 1
+    | some (size, entries) => walkDecls input .bits64 size entries 3 true
     | none                 => []
   lines == [
     ["/-- Its index finds its table as the walk reads it. -/",
-      "theorem specs64_index : specs64[1]? = some (16, relocs64) :=",
+      "theorem specs64_index : specs64[3]? = some (32, relocs64) :=",
       "  rfl"],
-    ["/-- Walking its table over its bytes takes exactly its targets. -/",
-      "theorem walk64 (d : Outer) (ts : List Target) :",
-      "    walk specs64 1 (encode64 d).size",
+    ["/-- An element's walk takes exactly its targets. -/",
+      "theorem element64 (d : Outer) (ts : List Target) :",
+      "    element specs64 3 relocs64",
       "      ((targets64 d).toList ++ ts) = some ts := by",
-      "  rw [walk, specs64_index, size_encode64]",
       "  cases h0 : d.inner <;>",
       "    simp [",
-      "      relocs64, targets64, step, h0, Inner.block64, Inner.walk64,",
-      "      walk_empty Inner.specs64_index (by decide)]"],
+      "      element, relocs64, targets64, step, optBlock, h0, Inner.block64,",
+      "      Inner.walk64, walk_empty Inner.specs64_index (by decide),",
+      "      walk_words specs64_words]"],
+    ["/-- Walking its table over its bytes takes exactly its targets. -/",
+      "theorem walk64 (d : Outer) (ts : List Target) :",
+      "    walk specs64 3 (encode64 d).size",
+      "      ((targets64 d).toList ++ ts) = some ts :=",
+      ("  walk_one specs64_index (by decide) d " ++
+        "(fun d => (targets64 d).toList) _"),
+      "    (size_encode64 d) (element64 d) ts"],
     ["/-- The same, at its index. -/",
       "theorem walk64_tableIndex (d : Outer) (ts : List Target) :",
       "    walk specs64 tableIndex (encode64 d).size",
       "      ((targets64 d).toList ++ ts) = some ts :=",
-      "  walk64 d ts"]
+      "  walk64 d ts"],
+    ["/-- Walking an array of them takes exactly their targets, in turn. -/",
+      "theorem walkAll64 (xs : Array Outer) (ts : List Target) :",
+      "    walk specs64 3 (encodeAll64 xs).size",
+      "      ((targetsAll64 xs).toList ++ ts) = some ts := by",
+      "  rw [targetsAll64, List.toList_toArray]",
+      "  exact walk_elements specs64_index (by decide) xs.toList",
+      "    (fun d => (targets64 d).toList) _",
+      "    (by rw [size_encodeAll64, Array.length_toList])",
+      "    (fun d _ => element64 d) ts"]
   ]
 
 -- Several optional structs, one in a struct held by value: a case for each,
@@ -316,17 +400,17 @@ def member (name : String) (value : Value) : Member :=
     member "mid" (.struct middle.names)
   ]
   let lines := match structEntries [inner, middle, input] .bits64 input with
-    | some (size, entries) => walkDecls input .bits64 size entries 2
+    | some (size, entries) => walkDecls input .bits64 size entries 2 false
     | none                 => []
   let proof := (lines.drop 1).head?.getD []
   proof.drop 4 == [
-    "  rw [walk, specs64_index, size_encode64]",
     "  cases h0 : d.a <;>",
     "  cases h1 : d.b <;>",
     "  cases h2 : d.mid.c <;>",
     "    simp [",
-    "      relocs64, targets64, step, h0, h1, h2, Inner.block64, Inner.walk64,",
-    "      walk_empty Inner.specs64_index (by decide)]"
+    ("      element, relocs64, targets64, step, optBlock, h0, h1, h2, " ++
+      "Inner.block64,"),
+    "      Inner.walk64, walk_empty Inner.specs64_index (by decide)]"
   ]
 
 /-! ## Printing -/

@@ -17,15 +17,21 @@ target width, a struct has:
   and `@[never_extract]`;
 - proofs that its fields are well-formed, that the encoder is `encode` of its
   fields, and that its pointers read as 0;
-- if each of its pointers can be filled in yet (an array's cannot, nor a
-  pointer to a struct that has no table), its relocations (`relocs64`), each
+- if each of its pointers can be filled in yet (not an array of any element
+  but an enum, a `UInt32`, an object or a struct, nor a pointer to a struct
+  that has no table), its relocations (`relocs64`), each
   a pointer's offset and kind, and its table, their bytes for C (`table64`),
   proved to be every pointer and only them, and `serialize` of them; and what
   C fills each pointer in from (`targets64`), and itself as a block, both
-  `@[never_extract]`, so that no block is a constant.
+  `@[never_extract]`, so that no block is a constant; and if it is the
+  element of an array, an array of them encoded in turn (`encodeAll64`), their
+  targets (`targetsAll64`), and both (`array64`). An array of enums is a
+  block of `UInt32`s, of objects a block of handles, each by one of two
+  shared tables;
 - and, with every table known, at the end: that walking its table over its
   bytes (`WebGPU.Raw.Reloc.walk`, as C does) takes exactly its targets
-  (`walk64`), each of its kind, a pointer to a struct by that struct's own.
+  (`walk64`), each of its kind, a pointer to a struct by that struct's own,
+  an array by its elements' (`walkAll64`).
 
 Every struct's table is in `tables64`, at its `tableIndex`; each object type
 converts to the `Object` a pointer to one is filled in from.
@@ -41,6 +47,18 @@ open WebGPUGen.Lowered WebGPUGen.CLayout WebGPUGen.Emit Doc
 
 /-! ## What each scalar holds -/
 
+/-- What an array's elements are, as C fills in a pointer to them. -/
+inductive ArrayOf where
+  /-- Numbers of 4 bytes, each by this conversion from its element. -/
+  | words   (convert : String)
+  /-- Objects of the type with these names. -/
+  | objects (names : Names)
+  /-- Structs with these names, each encoded in turn. -/
+  | structs (names : Names)
+  /-- Anything else: not yet filled in. -/
+  | other
+  deriving Repr, BEq
+
 /--
 What a pointer of a struct points to, and the Lean expression of what C fills
 it in from: a member of a value at `d`.
@@ -55,8 +73,8 @@ inductive Pointer where
   | optObject (names : Names) (expr : String)
   /-- A struct with these names, encoded as a block of its own. -/
   | struct    (names : Names) (expr : String) (nullable : Bool)
-  /-- An array's elements: not yet filled in. -/
-  | array
+  /-- An array's elements. -/
+  | array     (of : ArrayOf) (expr : String)
   deriving Repr, BEq
 
 /-- What an encoder writes for one scalar of a struct. -/
@@ -128,7 +146,14 @@ where
     | .string true                  =>
       some [.pointer (.optString q), .int s!"viewLength{suffix w} {q}"]
     -- An array: its count, then a pointer to its elements.
-    | .array .. => some [.int s!"{q}.size.to{sizeType w}", .pointer .array]
+    | .array element _ =>
+      let of := match element with
+        | .enum _               => ArrayOf.words "CEnum.toC"
+        | .uint32               => .words "id"
+        | .object names false   => .objects names
+        | .struct names         => .structs names
+        | _                     => .other
+      some [.int s!"{q}.size.to{sizeType w}", .pointer (.array of q)]
     | .struct names => do
       let nested ← structs.find? (·.names.c == names.c)
       items structs w nested q fuel
@@ -357,16 +382,24 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
 /--
 A pointer's kind of relocation (`WebGPU.Raw.Reloc.Kind`): as the bindings
 write it, its code, and its table, a block's its struct's `index`; none for an
-array's elements, not yet filled in, or a struct with no table.
+array's elements of another kind, not yet filled in, or a struct with no table.
+An array of numbers is a block of table 0, of objects of table 1.
 -/
 def kind (index : Names → Option Nat) : Pointer → Option (String × Nat × Nat)
-  | .chain            => some (".null", 5, 0)
-  | .string _         => some (".string", 0, 0)
-  | .optString _      => some (".optString", 1, 0)
-  | .object ..        => some (".object", 2, 0)
-  | .optObject ..     => some (".optObject", 3, 0)
-  | .struct names _ _ => (index names).map fun i => (s!".block {i}", 4, i)
-  | .array            => none
+  | .chain                     => some (".null", 5, 0)
+  | .string _                  => some (".string", 0, 0)
+  | .optString _               => some (".optString", 1, 0)
+  | .object ..                 => some (".object", 2, 0)
+  | .optObject ..              => some (".optObject", 3, 0)
+  | .struct names _ _          => block names
+  | .array (.words _) _        => some (".block 0", 4, 0)
+  | .array (.objects _) _      => some (".block 1", 4, 1)
+  | .array (.structs names) _  => block names
+  | .array .other _            => none
+where
+  /-- A block of the struct with these names, by its table. -/
+  block (names : Names) : Option (String × Nat × Nat) :=
+    (index names).map fun i => (s!".block {i}", 4, i)
 
 /-- The number `n` in 4 bytes, little-endian. -/
 def le32 (n : Nat) : List Nat :=
@@ -380,24 +413,51 @@ def tableBytes (size : Nat) (relocs : List (Nat × Nat × Nat)) : List Nat :=
   le32 size ++ le32 relocs.length ++ relocs.flatMap fun (o, code, table) =>
     le32 o ++ [code, 0, 0, 0] ++ le32 table
 
+/--
+A struct's table's index among `tables`: after the two shared tables, of an
+array of numbers (0) and of objects (1).
+-/
+def tableOf (tables : List Struct) (names : Names) : Option Nat :=
+  (tables.findIdx? (·.names.c == names.c)).map (· + 2)
+
+/--
+The structs that are the elements of an array of one of `tables` (as laid out
+on 64-bit targets: what a pointer is to is the same on both).
+-/
+def arrayed (structs tables : List Struct) : List Names :=
+  (tables.flatMap fun s => match structEntries structs .bits64 s with
+    | some (_, entries) => entries.filterMap fun (_, _, i) => match i with
+      | .pointer (.array (.structs names) _) => some names
+      | _                                    => none
+    | none => []).eraseDups
+
 /-- Part of a struct's targets: one target, or an expression of an array. -/
 inductive Piece where
   | target (expr : String)
   | targets (expr : String)
 
-/-- What C fills a pointer in from, on the width of suffix `n`. -/
-def pieces (n : String) : Pointer → List Piece
-  | .chain                => []
-  | .string e             => [.target s!".string {e}"]
-  | .optString e          => [.target s!".optString {e}"]
-  | .object names e       =>
-    [.target s!".object (Internal.{names.lean}.toObject {e})"]
-  | .optObject names e    =>
-    [.target s!".optObject ({e}.map Internal.{names.lean}.toObject)"]
-  | .struct names e false => [.targets s!"{names.lean}.block{n} {e}"]
-  | .struct names e true  =>
-    [.targets s!"({e}.elim #[.block .empty] {names.lean}.block{n})"]
-  | .array                => []
+/-- What C fills a pointer in from, on a width. -/
+def pieces (w : Width) : Pointer → List Piece
+  | .chain                      => []
+  | .string e                   => [.target s!".string {e}"]
+  | .optString e                => [.target s!".optString {e}"]
+  | .object names e             => [.target s!".object ({object names} {e})"]
+  | .optObject names e          =>
+    [.target s!".optObject ({e}.map {object names})"]
+  | .struct names e false       => [.targets s!"{names.lean}.block{n} {e}"]
+  | .struct names e true        =>
+    [.targets s!"optBlock {names.lean}.block{n} {e}"]
+  | .array (.words f) e         => [.target s!".block (encodeU32s {f} {e})"]
+  | .array (.objects names) e   =>
+    [.target s!".block (objectsBlock {w.bytes} {e})",
+      .targets s!"objectsOf {object names} {e}"]
+  | .array (.structs names) e   => [.targets s!"{names.lean}.array{n} {e}"]
+  | .array .other _             => []
+where
+  /-- The width's suffix. -/
+  n : String := suffix w
+  /-- An object type's conversion to `Object`. -/
+  object (names : Names) : String := s!"Internal.{names.lean}.toObject"
 
 /-- Pieces in a row: a run of targets, an array literal, or an array. -/
 inductive Run where
@@ -441,7 +501,8 @@ its lines; none if a pointer cannot be filled in yet. `index` gives each
 struct's table.
 -/
 def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
-    (index : Names → Option Nat) : Option (List (List String)) := do
+    (index : Names → Option Nat) (isArrayed : Bool) :
+    Option (List (List String)) := do
   let t := s.names.lean
   let n := suffix w
   let on := widthOn w
@@ -454,20 +515,21 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let relocs := kinds.map (·.1)
   let codes := kinds.map (·.2)
   let bytes := (tableBytes size codes).map toString
-  let ps := pointers.flatMap fun (_, p) => pieces n p
+  let ps := pointers.flatMap fun (_, p) => pieces w p
   let body := piecesLines 2 ps
   let arg := if ps.isEmpty then "_" else "d"
   -- Only for the proofs: C reads the table, its bytes.
   let head := s!"noncomputable def relocs{n} : List Reloc :="
   let relocList := if relocs.isEmpty then [head ++ " []"]
     else [head ++ " ["] ++ indent 2 (fill 2 relocs) ++ ["]"]
-  pure [
+  pure ([
     [s!"/-- Its pointers' relocations on {on}: what C fills each in from. -/"]
       ++ relocList,
     [s!"/-- Its table on {on}, for C: `serialize` of its relocations. -/",
       s!"def table{n} : ByteArray := ⟨#["] ++ indent 2 (fill 2 bytes)
       ++ ["]⟩"],
-    ["/-- The table is its relocations. -/",
+    ["set_option maxRecDepth 4096 in",
+      "/-- The table is its relocations. -/",
       s!"theorem table{n}_eq : table{n} = serialize {size} relocs{n} := rfl"],
     ["/-- Every pointer has a relocation, and only a pointer. -/",
       s!"theorem relocs{n}_offsets : relocs{n}.map (·.offset) = pointers{n} :=",
@@ -481,7 +543,24 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
       "@[never_extract]",
       s!"def block{n} (d : {t}) : Array Target :=",
       s!"  #[.block (encode{n} d)] ++ targets{n} d"]
-  ]
+  ] ++ if !isArrayed then [] else [
+    [s!"/-- An array of them, encoded in turn, on {on}. -/",
+      "@[noinline, never_extract]",
+      s!"def encodeAll{n} (xs : Array {t}) : ByteArray :=",
+      s!"  encodeAll {size} encode{n} xs"],
+    ["/-- An array of them is their size. -/",
+      s!"theorem size_encodeAll{n} (xs : Array {t}) :",
+      s!"    (encodeAll{n} xs).size = xs.size * {size} :=",
+      s!"  size_encodeAll {size} encode{n} size_encode{n} xs"],
+    [s!"/-- What C fills in an array of them's pointers from on {on}. -/",
+      "@[never_extract]",
+      s!"def targetsAll{n} (xs : Array {t}) : Array Target :=",
+      s!"  (xs.toList.flatMap fun d => (targets{n} d).toList).toArray"],
+    [s!"/-- An array of them as a block on {on}, and its targets. -/",
+      "@[never_extract]",
+      s!"def array{n} (xs : Array {t}) : Array Target :=",
+      s!"  #[.block (encodeAll{n} xs)] ++ targetsAll{n} xs"]
+  ])
 
 /--
 The bound structs whose pointers can all be filled in, each after those it
@@ -490,7 +569,7 @@ each bound struct comes after those it refers to (`boundStructs_ordered`).
 -/
 def tabled (structs : List Struct) : List Struct :=
   (boundStructs structs).foldl (init := []) fun done s =>
-    let index (names : Names) := done.findIdx? (·.names.c == names.c)
+    let index := tableOf done
     let fills (w : Width) := match structEntries structs w s with
       | some (_, entries) => entries.all fun (_, _, i) => match i with
         | .pointer p => (kind index p).isSome
@@ -519,9 +598,12 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
           if i == cs.length then c ++ ")" else c ++ " &&")
   let t := s.names.lean
   let arg := if sizes.isEmpty then "_" else "d"
-  let index (names : Names) := tables.findIdx? (·.names.c == names.c)
+  let index := tableOf tables
+  let isArrayed := (arrayed structs tables).contains s.names
   let relocs (w : Width) (size : Nat) (entries : List Entry) :=
-    if (index s.names).isSome then relocDecls s w size entries index else none
+    if (index s.names).isSome then
+      relocDecls s w size entries index isArrayed
+    else none
   -- Its table's index, and its targets on this target, if it has a table.
   let tableDecls := match index s.names with
     | some i => [
@@ -607,11 +689,13 @@ def pointees (entries : List Entry) : List (Names × String × Bool) :=
 
 /--
 A struct's proofs that the walk (`WebGPU.Raw.Reloc.walk`) agrees with its
-table and targets on one width, its table's index `i` and those of the structs
-it points to: each declaration as its lines.
+table and targets on one width, its table's index `i`: each declaration as its
+lines. Its element's walk is proved by `simp`, a case for each optional struct,
+by the lemmas of the structs and arrays it points to; then its walk, and an
+array of them's if `isArrayed`, by `walk_one` and `walk_elements`.
 -/
 def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
-    (i : Nat) : List (List String) :=
+    (i : Nat) (isArrayed : Bool) : List (List String) :=
   let t := s.names.lean
   let n := suffix w
   let ps := pointees entries
@@ -619,44 +703,77 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let hyp (k : Nat) := s!"h{k}"
   -- The pointees' lemmas, and for each optional one, its case and its empty.
   let pointeeLemmas := (ps.map fun (names, _, _) =>
-      [s!"{names.lean}.block{n}", s!"{names.lean}.walk{n}"]).flatten.eraseDups
-  let empties := (optional.map fun (names, _, _) =>
-      s!"walk_empty {names.lean}.specs{n}_index (by decide)").eraseDups
+      [s!"{names.lean}.block{n}", s!"{names.lean}.walk{n}"]).flatten
+  let empties := optional.map fun (names, _, _) =>
+      s!"walk_empty {names.lean}.specs{n}_index (by decide)"
+  -- The arrays' lemmas: each kind's walk.
+  let arrayLemmas := (entries.filterMap fun (_, _, it) => match it with
+    | .pointer (.array (.words _) _)       =>
+      some [s!"walk_words specs{n}_words"]
+    | .pointer (.array (.objects _) _)     =>
+      some [s!"walk_objects specs{n}_objects (by decide)"]
+    | .pointer (.array (.structs names) _) =>
+      some [s!"{names.lean}.array{n}", s!"{names.lean}.walkAll{n}"]
+    | _                                    => none).flatten
   let relocs := entries.filter fun (_, _, it) => it.isPointer
-  let lemmas := [s!"relocs{n}", s!"targets{n}"]
+  let lemmas := ["element", s!"relocs{n}", s!"targets{n}"]
     ++ (if relocs.isEmpty then [] else ["step"])
-    ++ (optional.zipIdx.map fun (_, k) => hyp k) ++ pointeeLemmas ++ empties
+    ++ (if optional.isEmpty then [] else ["optBlock"])
+    ++ (optional.zipIdx.map fun (_, k) => hyp k)
+    ++ (pointeeLemmas ++ empties ++ arrayLemmas).eraseDups
   let cases := optional.zipIdx.map fun ((_, e, _), k) =>
     s!"cases {hyp k} : {e} <;>"
+  let statement (name : String) (args : String) (lhs : List String) :
+      List String :=
+    lineOrBroken 0 s!"theorem {name} {args}" ["(ts : List Target) :"] ++ lhs
   [
     ["/-- Its index finds its table as the walk reads it. -/",
       s!"theorem specs{n}_index : specs{n}[{i}]? = some ({size}, relocs{n}) :=",
       "  rfl"],
-    ["/-- Walking its table over its bytes takes exactly its targets. -/"]
-      ++ lineOrBroken 0 s!"theorem walk{n} (d : {t})" ["(ts : List Target) :"]
-      ++ [s!"    walk specs{n} {i} (encode{n} d).size",
-        s!"      ((targets{n} d).toList ++ ts) = some ts := by",
-        s!"  rw [walk, specs{n}_index, size_encode{n}]"]
+    ["/-- An element's walk takes exactly its targets. -/"]
+      ++ statement s!"element{n}" s!"(d : {t})"
+        [s!"    element specs{n} {i} relocs{n}",
+          s!"      ((targets{n} d).toList ++ ts) = some ts := by"]
       ++ indent 2 cases ++ simpLines (if cases.isEmpty then 2 else 4) lemmas,
+    ["/-- Walking its table over its bytes takes exactly its targets. -/"]
+      ++ statement s!"walk{n}" s!"(d : {t})"
+        [s!"    walk specs{n} {i} (encode{n} d).size",
+          s!"      ((targets{n} d).toList ++ ts) = some ts :=",
+          s!"  walk_one specs{n}_index (by decide) d " ++
+            s!"(fun d => (targets{n} d).toList) _",
+          s!"    (size_encode{n} d) (element{n} d) ts"],
     ["/-- The same, at its index. -/"]
-      ++ lineOrBroken 0 s!"theorem walk{n}_tableIndex (d : {t})"
-        ["(ts : List Target) :"] ++ [
-      s!"    walk specs{n} tableIndex (encode{n} d).size",
-      s!"      ((targets{n} d).toList ++ ts) = some ts :=",
-      s!"  walk{n} d ts"]
+      ++ statement s!"walk{n}_tableIndex" s!"(d : {t})"
+        [s!"    walk specs{n} tableIndex (encode{n} d).size",
+          s!"      ((targets{n} d).toList ++ ts) = some ts :=",
+          s!"  walk{n} d ts"]
+  ] ++ if !isArrayed then [] else [
+    ["/-- Walking an array of them takes exactly their targets, in turn. -/"]
+      ++ statement s!"walkAll{n}" s!"(xs : Array {t})"
+        [s!"    walk specs{n} {i} (encodeAll{n} xs).size",
+          s!"      ((targetsAll{n} xs).toList ++ ts) = some ts := by",
+          s!"  rw [targetsAll{n}, List.toList_toArray]",
+          s!"  exact walk_elements specs{n}_index (by decide) xs.toList",
+          s!"    (fun d => (targets{n} d).toList) _",
+          s!"    (by rw [size_encodeAll{n}, Array.length_toList])",
+          s!"    (fun d _ => element{n} d) ts"]
   ]
 
 /-- Every table on each width, by its index in a relocation. -/
 def tablesDecls (spec : Lowered.Spec) : List Doc :=
   let structs := spec.structs.toList
   let tables := tabled structs
+  let elements := arrayed structs tables
   let widths := [Width.bits64, .bits32].flatMap fun w =>
     let n := suffix w
-    let names := tables.map fun s => s!"{s.names.lean}.table{n}"
+    let ptr := w.bytes
+    -- The two shared tables first: of arrays of numbers, and of objects.
+    let names := [s!"serialize 4 []", s!"serialize {ptr} [⟨0, .object⟩]"]
+      ++ tables.map fun s => s!"{s.names.lean}.table{n}"
     -- Every struct of `tables` has its entries, so none is left out here,
     -- which would put each after it at the wrong index.
-    let specs := tables.filterMap fun s =>
-      (structEntries structs w s).map fun (size, _) =>
+    let specs := ["wordsSpec", s!"objectsSpec {ptr}"] ++ tables.filterMap
+      fun s => (structEntries structs w s).map fun (size, _) =>
         s!"({size}, {s.names.lean}.relocs{n})"
     [Doc.lines ([s!"/-- Every struct's table on {widthOn w}, by its index. -/",
         s!"def tables{n} : Array ByteArray := #["] ++ indent 2 (fill 2 names)
@@ -665,11 +782,17 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
           "reads it. -/",
         s!"noncomputable def specs{n} : Array Spec := #["]
         ++ indent 2 (fill 2 specs) ++ ["]"]),
-      Doc.lines ["/-- The tables C reads are the tables the walk reads. -/",
+      Doc.lines ["set_option maxRecDepth 16384 in",
+        "/-- The tables C reads are the tables the walk reads. -/",
         s!"theorem tables{n}_eq :",
         s!"    tables{n}.toList = specs{n}.toList.map fun (size, relocs) =>",
         "      serialize size relocs :=",
-        "  rfl"]]
+        "  rfl"],
+      Doc.lines ["/-- The shared table of arrays of numbers is the first. -/",
+        s!"theorem specs{n}_words : specs{n}[0]? = some wordsSpec := rfl"],
+      Doc.lines ["/-- The shared table of arrays of objects is the second. -/",
+        s!"theorem specs{n}_objects : specs{n}[1]? = " ++
+          s!"some (objectsSpec {ptr}) := rfl"]]
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
     "def tables : Array ByteArray :=",
     "  if System.Platform.numBits = 64 then tables64 else tables32"]
@@ -677,7 +800,8 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
   let proofs := tables.zipIdx.map fun (s, i) =>
     let walks := [Width.bits64, .bits32].flatMap fun w =>
       match structEntries structs w s with
-      | some (size, entries) => walkDecls s w size entries i
+      | some (size, entries) =>
+        walkDecls s w size entries (i + 2) (elements.contains s.names)
       | none                 => []
     Doc.lines ([s!"namespace {s.names.lean}", "",
       "/-- Its index finds its tables. -/",

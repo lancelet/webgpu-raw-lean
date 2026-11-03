@@ -53,7 +53,8 @@ bindings prove, in Lean:
   specified in Lean (`walk`), which C implements (by review and test): for
   every such struct, both widths, it is proved that walking its table over its
   bytes takes exactly its targets, each of the kind its relocation needs, a
-  nested struct's by its own table: so C never meets a target of the wrong
-  kind, nor runs out of them.
+  nested struct's by its own table, an array's element by element: so C never
+  meets a target of the wrong kind, nor runs out of them. Every bound struct
+  has a table: arrays of enums, of objects and of structs included.
 
-Status: WIP: approximately 65% complete.
+Status: WIP: approximately 67% complete.

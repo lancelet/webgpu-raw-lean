@@ -215,6 +215,165 @@ def colorTargetBack (blend : Bool) : String :=
   colorTargetState (ColorTargetState.toBytes d) tables
     ColorTargetState.tableIndex.toUSize (ColorTargetState.toTargets d) blend
 
+/-! ## Arrays -/
+
+/--
+Fill an encoded instance descriptor by table `table` of `tables`; what C finds
+wrong with it, its features and limits there if `full`, or "".
+-/
+@[extern "lean_wgpu_test_instance_descriptor"]
+opaque instanceDescriptorBack (bytes : ByteArray)
+  (tables : @& Array ByteArray) (table : USize) (targets : @& Array Target)
+  (full : Bool) : String
+
+/-- An instance descriptor: two features and limits if `full`, else none. -/
+def instanceDescriptor (full : Bool) : InstanceDescriptor :=
+  if full then {
+    requiredFeatures := #[.shaderSourceSPIRV, .timedWaitAny]
+    requiredLimits   := some { timedWaitAnyMaxCount := 7 }
+  } else {}
+
+/--
+What C finds wrong with `instanceDescriptor full`, filled in by its generated
+table and targets: at run time.
+-/
+@[noinline, never_extract]
+def instanceDescriptorCheck (full : Bool) : String :=
+  let d := instanceDescriptor full
+  instanceDescriptorBack (InstanceDescriptor.toBytes d) tables
+    InstanceDescriptor.tableIndex.toUSize (InstanceDescriptor.toTargets d) full
+
+/--
+Fill an encoded bind group layout descriptor by table `table` of `tables`;
+what C finds wrong with it, or "".
+-/
+@[extern "lean_wgpu_test_bind_group_layout"]
+opaque bindGroupLayoutBack (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) : String
+
+/-- A bind group layout descriptor: a label, and two entries. -/
+def bindGroupLayout : BindGroupLayoutDescriptor := {
+  label   := "layout"
+  entries := #[
+    {
+      binding    := 0
+      visibility := .fragment
+    },
+    {
+      binding          := 5
+      visibility       := .vertex
+      bindingArraySize := 3
+    }
+  ]
+}
+
+/--
+What C finds wrong with `bindGroupLayout`, filled in by its generated table
+and targets: at run time.
+-/
+@[noinline, never_extract]
+def bindGroupLayoutCheck (_ : Unit) : String :=
+  bindGroupLayoutBack (BindGroupLayoutDescriptor.toBytes bindGroupLayout)
+    tables BindGroupLayoutDescriptor.tableIndex.toUSize
+    (BindGroupLayoutDescriptor.toTargets bindGroupLayout)
+
+/--
+Fill an encoded bind group layout descriptor with no entries by table `table`
+of `tables`; what C finds wrong with it, or "".
+-/
+@[extern "lean_wgpu_test_empty_bind_group_layout"]
+opaque emptyBindGroupLayoutBack (bytes : ByteArray)
+  (tables : @& Array ByteArray) (table : USize) (targets : @& Array Target) :
+  String
+
+/-- What C finds wrong with a bind group layout with no entries: at run time. -/
+@[noinline, never_extract]
+def emptyBindGroupLayoutCheck (_ : Unit) : String :=
+  let d : BindGroupLayoutDescriptor := {}
+  emptyBindGroupLayoutBack (BindGroupLayoutDescriptor.toBytes d) tables
+    BindGroupLayoutDescriptor.tableIndex.toUSize
+    (BindGroupLayoutDescriptor.toTargets d)
+
+/--
+Fill an encoded pipeline layout descriptor with no bind group layouts by table
+`table` of `tables`; what C finds wrong with it, or "".
+-/
+@[extern "lean_wgpu_test_pipeline_layout"]
+opaque pipelineLayoutBack (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) : String
+
+/--
+What C finds wrong with a pipeline layout descriptor with no bind group
+layouts, its empty array of objects by the generated table: at run time.
+-/
+@[noinline, never_extract]
+def pipelineLayoutCheck (_ : Unit) : String :=
+  let d : PipelineLayoutDescriptor := { immediateSize := 16 }
+  pipelineLayoutBack (PipelineLayoutDescriptor.toBytes d) tables
+    PipelineLayoutDescriptor.tableIndex.toUSize
+    (PipelineLayoutDescriptor.toTargets d)
+
+/--
+Fill an encoded vertex buffer layout by table `table` of `tables`; what C finds
+wrong with it, or "".
+-/
+@[extern "lean_wgpu_test_vertex_buffer_layout"]
+opaque vertexBufferBack (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) : String
+
+/-- A vertex buffer layout: two attributes, an array of structs. -/
+def vertexBuffer : VertexBufferLayout := {
+  stepMode    := .vertex
+  arrayStride := 24
+  attributes  := #[
+    {
+      format         := .float32x2
+      offset         := 0
+      shaderLocation := 0
+    },
+    {
+      format         := .float32x4
+      offset         := 8
+      shaderLocation := 1
+    }
+  ]
+}
+
+/--
+What C finds wrong with `vertexBuffer`, filled in by its generated table and
+targets: at run time.
+-/
+@[noinline, never_extract]
+def vertexBufferCheck (_ : Unit) : String :=
+  vertexBufferBack (VertexBufferLayout.toBytes vertexBuffer) tables
+    VertexBufferLayout.tableIndex.toUSize
+    (VertexBufferLayout.toTargets vertexBuffer)
+
+/-- A pointer's bytes on this target. -/
+def ptrBytes : Nat := if System.Platform.numBits = 64 then 8 else 4
+
+/--
+An array of objects (table 0, the shared one), and a struct of one pointer, to
+it (table 1).
+-/
+def objectTables : Array ByteArray := #[
+  serialize ptrBytes [⟨0, .object⟩],
+  serialize 8 [⟨0, .block 0⟩]
+]
+
+/-- Fill `bytes` by `objectTables`; what C finds wrong, or "". -/
+@[extern "lean_wgpu_test_fill_objects"]
+opaque fillObjects (bytes : ByteArray) (tables : @& Array ByteArray)
+  (targets : @& Array Target) (inst : @& Instance) : String
+
+/-- An array of two objects, each `inst`, filled in: what C finds wrong. -/
+@[noinline, never_extract]
+def objectsCheck (inst : Instance) : String :=
+  let insts := #[inst, inst]
+  fillObjects (fresh 8 "an array of objects") objectTables
+    (#[.block (objectsBlock ptrBytes insts)]
+      ++ objectsOf instanceObject insts) inst
+
 /-- Each check, on the instance `inst`: what it is, and whether it held. -/
 @[noinline]
 def checks (inst : Instance) : List (String × String) :=
@@ -252,7 +411,20 @@ def checks (inst : Instance) : List (String × String) :=
     ("a color target state, its blend state a block of its own",
       colorTargetBack true),
     ("a color target state with no blend state", colorTargetBack false),
-    ("a bind group entry, its optional objects none", bindGroupEntryCheck ())
+    ("a bind group entry, its optional objects none", bindGroupEntryCheck ()),
+    ("an instance descriptor, its features an array of enums, its limits a "
+      ++ "block", instanceDescriptorCheck true),
+    ("an instance descriptor with no features, nor limits",
+      instanceDescriptorCheck false),
+    ("a bind group layout descriptor, its entries an array of structs",
+      bindGroupLayoutCheck ()),
+    ("a bind group layout descriptor with no entries, a null pointer",
+      emptyBindGroupLayoutCheck ()),
+    ("a pipeline layout descriptor, its objects an empty array",
+      pipelineLayoutCheck ()),
+    ("a vertex buffer layout, its attributes an array of structs",
+      vertexBufferCheck ()),
+    ("an array of objects, a block of handles", objectsCheck inst)
   ]
 
 end WebGPURawTest.Internal.Reloc

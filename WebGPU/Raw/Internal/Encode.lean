@@ -310,6 +310,64 @@ theorem Block.val_pokeF64 {size : Nat} (b : Block size) (offset : Nat)
     (b.pokeF64 offset v h).1 = writeWhole b.1 offset 8 v.toBits.toNat :=
   rfl
 
+/-! ## Arrays
+
+An array's elements, encoded one after another: what a pointer to the
+elements of a C array points to. -/
+
+/--
+Each element of `xs` encoded by `f`, of `size` bytes, one after another: an
+array of structs.
+-/
+@[inline]
+def encodeAll {α : Type} (size : Nat) (f : α → ByteArray) (xs : Array α) :
+    ByteArray :=
+  xs.foldl (fun bytes x => bytes ++ f x)
+    (ByteArray.emptyWithCapacity (xs.size * size))
+
+/-- An array of structs is its elements' size. -/
+theorem size_encodeAll {α : Type} (size : Nat) (f : α → ByteArray)
+    (hf : ∀ x, (f x).size = size) (xs : Array α) :
+    (encodeAll size f xs).size = xs.size * size := by
+  rw [encodeAll, ← Array.foldl_toList, ← Array.length_toList]
+  -- Each element adds its size to what is there.
+  have : ∀ (l : List α) (b : ByteArray),
+      (l.foldl (fun bytes x => bytes ++ f x) b).size
+        = b.size + l.length * size := by
+    intro l
+    induction l with
+    | nil => simp
+    | cons x l ih =>
+      intro b
+      simp only [List.foldl_cons, ih, ByteArray.size_append, hf,
+        List.length_cons]
+      rw [Nat.succ_mul]
+      omega
+  rw [this]
+  simp only [ByteArray.size, ByteArray.emptyWithCapacity]
+  exact Nat.zero_add _
+
+/--
+Each element of `xs`, as the `UInt32` that `f` gives, 4 bytes, one after
+another, poked into a fresh block: an array of enums. `@[noinline]`, as an
+encoder is, so that no function holds two of its fresh blocks.
+-/
+@[noinline, never_extract]
+def encodeU32s {α : Type} (f : α → UInt32) (xs : Array α) : ByteArray :=
+  (go 0 (Block.fresh (xs.size * 4))).1
+where
+  /-- Each element from the `i`th on, poked. -/
+  go (i : Nat) (b : Block (xs.size * 4)) : Block (xs.size * 4) :=
+    if h : i < xs.size then
+      go (i + 1) (b.pokeU32 (4 * i) (f xs[i]) (by omega))
+    else b
+  termination_by xs.size - i
+
+/-- An array of enums is 4 bytes an element. -/
+theorem size_encodeU32s {α : Type} (f : α → UInt32) (xs : Array α) :
+    (encodeU32s f xs).size = xs.size * 4 :=
+  (encodeU32s.go f xs 0 (Block.fresh (xs.size * 4))).2
+
 /-! ## Values as C holds them -/
 
 /-- A `WGPUBool`: 1 for true. -/

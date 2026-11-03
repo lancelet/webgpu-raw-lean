@@ -47,7 +47,7 @@ void lean_wgpu_fill(
     LEAN_WGPU_CHECK(count <= (SIZE_MAX - 8) / 12
         && lean_sarray_size(bytes) == 8 + 12 * (size_t)count,
         "a table of the wrong size");
-    LEAN_WGPU_CHECK(stride >= sizeof(void *) && size % stride == 0,
+    LEAN_WGPU_CHECK(stride > 0 && size % stride == 0,
         "bytes not a whole number of elements");
     LEAN_WGPU_CHECK(((uintptr_t)data & 7) == 0, "bytes out of alignment");
     for (size_t at = 0; at < size; at += stride) {
@@ -55,7 +55,8 @@ void lean_wgpu_fill(
             uint8_t const * reloc = header + 8 + 12 * (size_t)i;
             uint32_t offset = lean_wgpu_u32(reloc);
             uint8_t kind = reloc[4];
-            LEAN_WGPU_CHECK(offset <= stride - sizeof(void *),
+            LEAN_WGPU_CHECK(stride >= sizeof(void *)
+                && offset <= stride - sizeof(void *),
                 "a pointer past its struct's end");
             void * pointer = NULL;
             if (kind == LEAN_WGPU_NULL) {

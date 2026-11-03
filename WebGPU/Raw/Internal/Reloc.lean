@@ -1,5 +1,7 @@
 module
 
+public import WebGPU.Raw.Internal.Encode
+
 /-!
 # Relocations
 
@@ -30,6 +32,7 @@ array.
 @[expose] public section
 
 namespace WebGPU.Raw.Reloc
+open WebGPU.Raw.Encode
 
 /-- The type of handles behind `Object`. -/
 opaque ObjectHandle : NonemptyType
@@ -142,7 +145,9 @@ It says nothing of where C writes each pointer (each struct's pointers are
 proved within it, `pointers64_within`), of alignment, or of a block being
 held by nothing else (both checked in the checked build); nor that C reads
 the table `serialize` lays out, or that a kind's code is its target's
-constructor's index (both by review and test).
+constructor's index (both by review and test); nor that an array's count, a
+field of its struct, is its block's length in elements (by construction: the
+generator writes both from the same array).
 -/
 
 /-- A table as the walk reads it: its struct's size, and its relocations. -/
@@ -176,6 +181,77 @@ def walk (specs : Array Spec) (table size : Nat) (targets : List Target) :
 termination_by table
 
 
+/--
+One element's walk: its relocations, in turn, from `ts`, a block by `walk`,
+its table before `table`.
+-/
+def element (specs : Array Spec) (table : Nat) (relocs : List Reloc)
+    (ts : List Target) : Option (List Target) :=
+  relocs.foldlM (init := ts) fun ts r =>
+    step (fun j size ts =>
+      if j < table then walk specs j size ts else none) r ts
+
+/-- The walk, element by element. -/
+theorem walk_def (specs : Array Spec) (table size : Nat) (ts : List Target) :
+    walk specs table size ts = match specs[table]? with
+      | none                  => none
+      | some (stride, relocs) =>
+        if stride = 0 ∨ size % stride ≠ 0 then none
+        else (List.replicate (size / stride) ()).foldlM (init := ts)
+          fun ts _ => element specs table relocs ts := by
+  rw [walk]
+  cases specs[table]? <;> rfl
+
+/-- Elements in turn, each taking exactly its own targets, take all theirs. -/
+theorem foldlM_replicate {g : List Target → Option (List Target)}
+    (parts : List (List Target)) (hg : ∀ p ∈ parts, ∀ ts, g (p ++ ts) = some ts)
+    (ts : List Target) :
+    (List.replicate parts.length ()).foldlM (init := parts.flatten ++ ts)
+      (fun ts _ => g ts) = some ts := by
+  induction parts with
+  | nil => rfl
+  | cons p ps ih =>
+    simp only [List.length_cons, List.replicate_succ, List.foldlM_cons,
+      List.flatten_cons, List.append_assoc]
+    rw [hg p (List.mem_cons_self ..)]
+    exact ih fun q hq => hg q (List.mem_cons_of_mem _ hq)
+
+/--
+A block of elements, each taking exactly its own targets by its table, takes
+exactly all theirs, in turn: a struct is a block of one, an array a block of
+its elements.
+-/
+theorem walk_elements {α : Type} {specs : Array Spec} {table stride : Nat}
+    {relocs : List Reloc} (h : specs[table]? = some (stride, relocs))
+    (hstride : stride ≠ 0) (xs : List α) (f : α → List Target) (size : Nat)
+    (hsize : size = xs.length * stride)
+    (he : ∀ x ∈ xs, ∀ ts, element specs table relocs (f x ++ ts) = some ts)
+    (ts : List Target) :
+    walk specs table size (xs.flatMap f ++ ts) = some ts := by
+  rw [walk_def, h]
+  have hdiv : size / stride = (xs.map f).length := by
+    rw [hsize, Nat.mul_div_cancel _ (Nat.pos_of_ne_zero hstride),
+      List.length_map]
+  have hmod : size % stride = 0 := by
+    rw [hsize, Nat.mul_mod_left]
+  simp only [hstride, hmod, ne_eq, not_true_eq_false, or_self, ite_false,
+    hdiv, List.flatMap_def]
+  exact foldlM_replicate _ (fun p hp ts => by
+    obtain ⟨x, hx, rfl⟩ := List.mem_map.1 hp
+    exact he x hx ts) ts
+
+/-- A struct is a block of one element. -/
+theorem walk_one {α : Type} {specs : Array Spec} {table stride : Nat}
+    {relocs : List Reloc} (h : specs[table]? = some (stride, relocs))
+    (hstride : stride ≠ 0) (x : α) (f : α → List Target) (size : Nat)
+    (hsize : size = stride)
+    (he : ∀ ts, element specs table relocs (f x ++ ts) = some ts)
+    (ts : List Target) :
+    walk specs table size (f x ++ ts) = some ts := by
+  have := walk_elements h hstride [x] f size (by simp [hsize])
+    (fun y hy ts => by rw [List.mem_singleton.1 hy]; exact he ts) ts
+  simpa using this
+
 /-- An empty block takes no targets: an optional struct that is none. -/
 theorem walk_empty {specs : Array Spec} {table stride : Nat}
     {relocs : List Reloc} (h : specs[table]? = some (stride, relocs))
@@ -183,6 +259,70 @@ theorem walk_empty {specs : Array Spec} {table stride : Nat}
     walk specs table 0 ts = some ts := by
   rw [walk, h]
   simp [hstride]
+
+
+/--
+An optional struct as what C fills a pointer to it in from: its block, by
+`block`, or for none, an empty block, a null pointer.
+-/
+def optBlock {α : Type} (block : α → Array Target) : Option α → Array Target
+  | none   => #[.block .empty]
+  | some x => block x
+
+/-! ## Arrays
+
+An array's elements are a block of their own, walked by a table: a struct's,
+for an array of structs; and for the rest, one of two shared tables, first of
+all the tables. An array of enums is a block of `UInt32`s with no pointers
+(`wordsSpec`). An array of objects is a block of handles, each a pointer
+filled in from an object (`objectsSpec`), the objects the targets after it. -/
+
+/-- The table of an array of `UInt32`s: elements of 4 bytes, no pointers. -/
+def wordsSpec : Spec := (4, [])
+
+/-- The table of an array of objects, pointers of `ptr` bytes: each a handle. -/
+def objectsSpec (ptr : Nat) : Spec := (ptr, [⟨0, .object⟩])
+
+/--
+The block of an array of objects, pointers of `ptr` bytes: zeros, for C to
+fill in. `@[noinline]`, so that no function holds two of its fresh blocks.
+-/
+@[noinline, never_extract]
+def objectsBlock {α : Type} (ptr : Nat) (xs : Array α) : ByteArray :=
+  Bytes.freshZeros (xs.size * ptr)
+
+/-- An array of objects' targets: each element as an object, by `g`. -/
+def objectsOf {α : Type} (g : α → Object) (xs : Array α) : Array Target :=
+  xs.map fun x => .object (g x)
+
+/-- An array of enums takes no targets. -/
+theorem walk_words {specs : Array Spec} {table : Nat}
+    (h : specs[table]? = some wordsSpec) {α : Type} (f : α → UInt32)
+    (xs : Array α) (ts : List Target) :
+    walk specs table (encodeU32s f xs).size ts = some ts := by
+  have := walk_elements h (by decide) xs.toList (fun _ => [])
+    (encodeU32s f xs).size
+    (by rw [size_encodeU32s, Array.length_toList])
+    (fun _ _ ts => by simp [element]) ts
+  have hnil : ∀ l : List α, l.flatMap (fun _ => ([] : List Target)) = [] := by
+    intro l; induction l <;> simp_all
+  simpa [hnil] using this
+
+/-- An array of objects takes exactly its objects. -/
+theorem walk_objects {specs : Array Spec} {table ptr : Nat}
+    (h : specs[table]? = some (objectsSpec ptr)) (hptr : ptr ≠ 0)
+    {α : Type} (g : α → Object) (xs : Array α) (ts : List Target) :
+    walk specs table (objectsBlock ptr xs).size
+      ((objectsOf g xs).toList ++ ts) = some ts := by
+  have := walk_elements h hptr xs.toList (fun x => [.object (g x)])
+    (objectsBlock ptr xs).size
+    (by rw [objectsBlock, Bytes.size_freshZeros, Array.length_toList])
+    (fun _ _ ts => by simp [element, step]) ts
+  have hmap : ∀ l : List α,
+      l.flatMap (fun x => [Target.object (g x)])
+        = l.map fun x => .object (g x) := by
+    intro l; induction l <;> simp_all
+  simpa [objectsOf, hmap] using this
 
 end WebGPU.Raw.Reloc
 

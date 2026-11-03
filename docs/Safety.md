@@ -112,9 +112,14 @@ unimplemented.)
   the kinds it says.** One C function (`lean_wgpu_fill`, `c/reloc.c`) walks a
   struct's table of relocations over its encoded bytes, writing each pointer
   from the next target: a string's bytes, an object's handle, or a block of
-  bytes it fills in first. It trusts the table, the targets and the bytes to
-  agree: offsets within the struct, targets of the kinds the table says, as
-  many as it needs, blocks of whole elements, held by nothing else and aligned.
+  bytes it fills in first, a struct pointed to or an array's elements (of
+  structs, each by its table; of enums, numbers with no pointers; of objects,
+  handles, each from an object target). It trusts the table, the targets and
+  the bytes to agree: offsets within the struct, targets of the kinds the
+  table says, as many as it needs, blocks of whole elements, held by nothing
+  else and aligned; and an array's count, a field of its struct, to be its
+  block's length in elements, as the generator writes both from the same
+  array.
   Whatever a pointer points into is a target, held by the call's targets, so
   borrowed for the call (see above: C keeps no input after it). A block C
   writes into must never be a constant Lean computes once (an empty one, which

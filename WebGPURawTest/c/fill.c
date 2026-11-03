@@ -168,3 +168,167 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_entry(
     lean_dec(bytes);
     return lean_mk_string(problem);
 }
+
+// Fill an encoded instance descriptor by table `table`, then check it as
+// WebGPU would read it: `WebGPURawTest.Internal.Reloc.instanceDescriptor`, its
+// features an array of enums and its limits a block, if `full`; else none of
+// either. The first field that is not what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_instance_descriptor(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets, uint8_t full) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUInstanceDescriptor descriptor;
+    memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
+    WGPUInstanceFeatureName const * features = descriptor.requiredFeatures;
+    WGPUInstanceLimits const * limits = descriptor.requiredLimits;
+    char const * problem = "";
+    if (descriptor.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (!full) {
+        if (descriptor.requiredFeatureCount != 0 || features != NULL) {
+            problem = "the features, not none";
+        } else if (limits != NULL) {
+            problem = "the limits, not null";
+        }
+    } else if (descriptor.requiredFeatureCount != 2 || features == NULL
+            || features[0] != WGPUInstanceFeatureName_ShaderSourceSPIRV
+            || features[1] != WGPUInstanceFeatureName_TimedWaitAny) {
+        problem = "the features";
+    } else if (limits == NULL || limits->nextInChain != NULL
+            || limits->timedWaitAnyMaxCount != 7) {
+        problem = "the limits";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill an encoded bind group layout descriptor by table `table`, then check it
+// as WebGPU would read it: `WebGPURawTest.Internal.Reloc.bindGroupLayout`, its
+// label and its two entries, an array of structs. The first field that is not
+// what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_layout(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUBindGroupLayoutDescriptor descriptor;
+    memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
+    WGPUBindGroupLayoutEntry const * entries = descriptor.entries;
+    char const * problem = "";
+    if (descriptor.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (descriptor.label.length != 6
+            || memcmp(descriptor.label.data, "layout", 6) != 0) {
+        problem = "the label";
+    } else if (descriptor.entryCount != 2 || entries == NULL) {
+        problem = "the entries";
+    } else if (entries[0].nextInChain != NULL || entries[0].binding != 0
+            || entries[0].visibility != WGPUShaderStage_Fragment) {
+        problem = "the first entry";
+    } else if (entries[1].nextInChain != NULL || entries[1].binding != 5
+            || entries[1].visibility != WGPUShaderStage_Vertex
+            || entries[1].bindingArraySize != 3) {
+        problem = "the second entry";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill `bytes` by table 1 of `WebGPURawTest.Internal.Reloc.objectTables`: a
+// pointer to a block of two handles, each `instance`'s. The first pointer that
+// is not what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_objects(
+        lean_obj_arg bytes, b_lean_obj_arg tables, b_lean_obj_arg targets,
+        b_lean_obj_arg instance) {
+    size_t cursor = 0;
+    uint8_t * data = lean_sarray_cptr(bytes);
+    lean_wgpu_fill(data, lean_sarray_size(bytes), tables, 1, targets, &cursor);
+    void * handle = lean_get_external_data(instance);
+    void * const * handles = lean_wgpu_test_pointer(data, 0);
+    char const * problem = "";
+    if (handles == NULL) {
+        problem = "the block of handles, null";
+    } else if (handles[0] != handle || handles[1] != handle) {
+        problem = "the handles";
+    } else if (cursor != lean_array_size(targets)) {
+        problem = "the targets, not all taken";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill an encoded bind group layout descriptor with no entries by table
+// `table`: its entries an empty array, a null pointer and a count of 0. The
+// first field that is not what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_empty_bind_group_layout(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUBindGroupLayoutDescriptor descriptor;
+    memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
+    char const * problem = "";
+    if (descriptor.entryCount != 0 || descriptor.entries != NULL) {
+        problem = "the entries, not none";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill an encoded pipeline layout descriptor with no bind group layouts by
+// table `table`: its layouts an empty array of objects, a null pointer and a
+// count of 0, through the generated table. The first field that is not what
+// it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_pipeline_layout(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUPipelineLayoutDescriptor descriptor;
+    memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
+    char const * problem = "";
+    if (descriptor.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (descriptor.bindGroupLayoutCount != 0
+            || descriptor.bindGroupLayouts != NULL) {
+        problem = "the bind group layouts, not none";
+    } else if (descriptor.immediateSize != 16) {
+        problem = "the immediate size";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill an encoded vertex buffer layout by table `table`, then check it as
+// WebGPU would read it: `WebGPURawTest.Internal.Reloc.vertexBuffer`, its two
+// attributes an array of structs. The first field that is not what it should
+// be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_vertex_buffer_layout(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
+        tables, table, targets);
+    WGPUVertexBufferLayout layout;
+    memcpy(&layout, lean_sarray_cptr(bytes), sizeof layout);
+    WGPUVertexAttribute const * attributes = layout.attributes;
+    char const * problem = "";
+    if (layout.nextInChain != NULL) {
+        problem = "the chain";
+    } else if (layout.stepMode != WGPUVertexStepMode_Vertex
+            || layout.arrayStride != 24) {
+        problem = "the step mode or stride";
+    } else if (layout.attributeCount != 2 || attributes == NULL) {
+        problem = "the attributes";
+    } else if (attributes[0].nextInChain != NULL
+            || attributes[0].format != WGPUVertexFormat_Float32x2
+            || attributes[0].offset != 0
+            || attributes[0].shaderLocation != 0
+            || attributes[1].format != WGPUVertexFormat_Float32x4
+            || attributes[1].offset != 8
+            || attributes[1].shaderLocation != 1) {
+        problem = "the attributes' fields";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
