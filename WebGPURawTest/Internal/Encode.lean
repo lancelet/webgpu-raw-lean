@@ -111,6 +111,11 @@ def checks : List (String × Bool) := [
       (cInstanceLimits (USize.ofNat 0 - 1))),
   ("a count past 32 bits fits only on 64-bit targets",
     InstanceLimits.sizesFit { timedWaitAnyMaxCount := 0x100000000 }
+      == (System.Platform.numBits == 64)),
+  -- A regression test: `sizesFit` missed a `size_t` behind a pointer.
+  ("and so does one behind a pointer",
+    InstanceDescriptor.sizesFit
+      { requiredLimits := some { timedWaitAnyMaxCount := 0x100000000 } }
       == (System.Platform.numBits == 64))
 ]
 

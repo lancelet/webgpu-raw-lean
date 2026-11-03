@@ -102,20 +102,45 @@ where
     | .unsupported _ => none
 
 /--
-The `size_t` members of a struct, its value at `path`, however deep: what must
-fit in 32 bits on wasm32, or be the largest `UInt64` (`SIZE_MAX`).
+The checks that each `size_t` of a value of kind `v`, at `q`, fits the target:
+in 32 bits on wasm32, or as the largest `UInt64` (`SIZE_MAX`). However deep: in
+a struct, behind a pointer, or in an array's elements, each checked where it
+is, the element or pointee named `x` and the depth of `all`s it is in, `n`.
+None if the fuel runs out: each struct, pointer and array spends one.
 -/
-def sizeMembers (structs : List Struct) (s : Struct) (path : String) :
-    Nat → List String
-  | 0 => []
-  | fuel + 1 => s.members.toList.flatMap fun m =>
-    let q := s!"{path}.{m.names.lean}"
-    match m.value with
-    | .usize => [q]
-    | .struct names => match structs.find? (·.names.c == names.c) with
-      | some nested => sizeMembers structs nested q fuel
-      | none => []
-    | _ => []
+def valueChecks (structs : List Struct) (n : Nat) :
+    Nat → Value → String → Option (List String)
+  | 0, _, _ => none
+  | fuel + 1, v, q => do
+    let x := s!"x{n}"
+    -- The checks of each element, or the pointee if there is one, as one.
+    let all (checks : List String) : List String :=
+      if checks.isEmpty then []
+      else [s!"({q}.all fun {x} => {" && ".intercalate checks})"]
+    -- The checks of a struct's members, at `p`, in `m` `all`s.
+    let members (names : Names) (m : Nat) (p : String) :
+        Option (List String) :=
+      match structs.find? (·.names.c == names.c) with
+      | some s => s.members.toList.flatMapM fun mem =>
+        valueChecks structs m fuel mem.value s!"{p}.{mem.names.lean}"
+      | none => some []
+    match v with
+    | .usize                     => pure [s!"sizeFits {q}"]
+    | .struct names
+    | .structPointer names false => members names n q
+    | .structPointer names true  => all <$> members names (n + 1) x
+    | .array element _           =>
+      all <$> valueChecks structs (n + 1) fuel element x
+    | _                          => pure []
+
+/--
+The checks of each `size_t` of a struct, its value at `path`; none if the fuel
+runs out.
+-/
+def sizeChecks (structs : List Struct) (s : Struct) (path : String)
+    (fuel : Nat) : Option (List String) :=
+  s.members.toList.flatMapM fun m =>
+    valueChecks structs 0 fuel m.value s!"{path}.{m.names.lean}"
 
 /-- An item of a struct, with its scalar's offset and kind. -/
 abbrev Entry := Nat × Scalar × Item
@@ -282,10 +307,17 @@ def widthDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry) :
 def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
   let (size64, entries64) ← structEntries structs .bits64 s
   let (size32, entries32) ← structEntries structs .bits32 s
-  let sizes := sizeMembers structs s "d" (structs.length + 1)
-  let fit := if sizes.isEmpty then "true" else
-    "System.Platform.numBits = 64 || (" ++ " && ".intercalate
-      (sizes.map fun q => s!"sizeFits {q}") ++ ")"
+  -- Enough fuel: each struct is in a chain at most once, and each spends one,
+  -- as does a pointer or array to it.
+  let sizes ← sizeChecks structs s "d" (2 * structs.length + 1)
+  -- The checks, each on a line of its own if they do not fit on one.
+  let fit := match sizes with
+    | []  => lineOrBroken 2 "true" []
+    | [c] => lineOrBroken 2 "System.Platform.numBits = 64 ||" [c]
+    | c :: cs =>
+      lineOrBroken 2 "System.Platform.numBits = 64 ||"
+        ((("(" ++ c) :: cs).zipIdx.map fun (c, i) =>
+          if i == cs.length then c ++ ")" else c ++ " &&")
   let t := s.names.lean
   let arg := if sizes.isEmpty then "_" else "d"
   let decls := widthDecls s .bits64 size64 entries64
@@ -298,7 +330,7 @@ def structEncoders (structs : List Struct) (s : Struct) : Option Doc := do
         "as for a `size_t` argument.",
         "-/",
         s!"def sizesFit ({arg} : {t}) : Bool :="]
-        ++ indent 2 (lineOrBroken 2 fit []),
+        ++ indent 2 fit,
       (if sizes.isEmpty then
         [s!"/-- `d` as C lays it out on this target, its pointers 0. -/"]
       else

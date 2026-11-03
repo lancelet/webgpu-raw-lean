@@ -93,7 +93,59 @@ def member (name : String) (value : Value) : Member :=
     member "inner" (.struct inner.names),
     member "x" .uint32
   ]
-  sizeMembers [inner, input] input "d" 3 == ["d.count", "d.inner.n"]
+  sizeChecks [inner, input] input "d" 3
+    == some ["sizeFits d.count", "sizeFits d.inner.n"]
+
+-- And behind a pointer, or in an array's elements: each checked where it is.
+-- (A regression test: `sizesFit` missed a `size_t` behind a pointer.)
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone [member "n" .usize]
+  let input := struct "WGPUOuter" "Outer" .standalone [
+    member "maybe" (.structPointer inner.names true),
+    member "always" (.structPointer inner.names false),
+    member "many" (.array (.struct inner.names) "manyCount"),
+    member "sizes" (.array .usize "sizeCount")
+  ]
+  sizeChecks [inner, input] input "d" 3 == some [
+    "(d.maybe.all fun x0 => sizeFits x0.n)",
+    "sizeFits d.always.n",
+    "(d.many.all fun x0 => sizeFits x0.n)",
+    "(d.sizes.all fun x0 => sizeFits x0)"
+  ]
+
+-- Nested: each element's pointee checked in its own `all`, named by depth.
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone [member "n" .usize]
+  let middle := struct "WGPUMiddle" "Middle" .standalone [
+    member "p" (.structPointer inner.names true)
+  ]
+  let input := struct "WGPUOuter" "Outer" .standalone [
+    member "many" (.array (.struct middle.names) "manyCount")
+  ]
+  sizeChecks [inner, middle, input] input "d" 4
+    == some ["(d.many.all fun x0 => (x0.p.all fun x1 => sizeFits x1.n))"]
+
+-- Too deep for its fuel: none, not no checks.
+#guard
+  let inner := struct "WGPUInner" "Inner" .standalone [member "n" .usize]
+  let input := struct "WGPUOuter" "Outer" .standalone [
+    member "many" (.array (.struct inner.names) "manyCount")
+  ]
+  sizeChecks [inner, input] input "d" 1 == none
+
+-- An encoder checks a `size_t` however deep its arrays nest. (A regression
+-- test: three arrays deep, the encoder ran out of fuel and checked nothing.)
+#guard
+  let s3 := struct "WGPUS3" "S3" .standalone [member "n" .usize]
+  let s2 := struct "WGPUS2" "S2" .standalone
+    [member "xs" (.array (.struct s3.names) "xsCount")]
+  let s1 := struct "WGPUS1" "S1" .standalone
+    [member "xs" (.array (.struct s2.names) "xsCount")]
+  let s0 := struct "WGPUS0" "S0" .standalone
+    [member "xs" (.array (.struct s1.names) "xsCount")]
+  let printed := (structEncoders [s3, s2, s1, s0] s0).map
+    (Emit.Doc.pretty Emit.width)
+  printed.any fun text => (text.splitOn "sizeFits x2.n").length > 1
 
 /-! ## Entries -/
 

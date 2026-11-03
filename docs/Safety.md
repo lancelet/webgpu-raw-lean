@@ -75,8 +75,9 @@ unimplemented.)
   passed to C as `SIZE_MAX` rather than refused, and `SIZE_MAX` from C becomes
   it; so `wholeMapSize` means the same on every platform. A `size_t` in a struct
   follows the same rule, but a struct's encoder cannot refuse one: it has its
-  `sizesFit` for the caller to check first, and on wasm32 cuts one that does
-  not fit to its low 32 bits.
+  `sizesFit`, which checks every `size_t` in the struct, behind its pointers
+  and in its arrays too, for the caller to check first; on wasm32 the encoder
+  cuts one that does not fit to its low 32 bits.
   *Checked by:* compile (a probe of every conversion), and test.
 - **An enum C returns can hold a code the bindings do not know**, from an
   implementation's extensions or a newer `webgpu.h`; it is kept, as
