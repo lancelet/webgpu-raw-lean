@@ -69,6 +69,8 @@ def disagreements (seed : UInt64) : List String := Id.run do
         let bytes := ByteArray.mk ((List.range size).map (·.toUInt8)).toArray
         let at_ := offset.toUSize
         let cases : List (String × ByteArray × ByteArray) := [
+          ("writeU8", writeU8 bytes at_ v.toUInt8,
+            writeWhole bytes offset 1 v.toUInt8.toNat),
           ("writeU16", writeU16 bytes at_ v.toUInt16,
             writeWhole bytes offset 2 v.toUInt16.toNat),
           ("writeU32", writeU32 bytes at_ v.toUInt32,

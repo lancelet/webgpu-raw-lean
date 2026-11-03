@@ -4,8 +4,8 @@
 # in the C it compiles a module to; this compiles those declarations together
 # with the C that defines them, so any disagreement is a "conflicting types"
 # error. It also checks that the two declare the same number of functions. It
-# checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c)
-# and the byte writers (WebGPU.Raw.Internal.Bytes, c/bytes.c).
+# checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c).
+# (The byte writers' C is pasted into Lean's own, so its compiler checks it.)
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -59,5 +59,3 @@ check() {
 
 check WebGPU.Raw.Functions c/generated/functions.c \
   'lean_wgpu[A-Z][A-Za-z0-9]*' shims
-check WebGPU.Raw.Internal.Bytes c/bytes.c \
-  'lean_wgpu_bytes_[a-z0-9_]*' "byte writers"

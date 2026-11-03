@@ -11,9 +11,12 @@ them back: what packing a struct of `webgpu.h` writes. Every target the
 bindings support is little-endian, which the C side checks as it compiles.
 
 Each typed writer (`writeU32`, `writeF64`, ...) is defined in Lean, one byte at
-a time, which is what the proofs reason about; it runs as a single store in C
-(`c/bytes.c`), which the tests check agrees with the Lean definition. A write
-that does not fit in the array leaves it as it is.
+a time, which is what the proofs reason about. It runs as a few lines of C that
+Lean pastes into the code it compiles (`@[extern c inline]`), so the C compiler
+inlines it: a bounds check, and one store. The C uses only `lean.h`, and is
+part of this file, so any change to it rebuilds what pasted it; the tests check
+it agrees with the Lean definition. A write that does not fit in the array
+leaves it as it is.
 
     theorem size_writeLE : writing keeps the array's size
     theorem readLE_writeLE : reading what was written gives it back
@@ -126,24 +129,82 @@ theorem readLE_writeLE_disjoint (bytes : ByteArray) (offset width n : Nat)
 
 Each writes its value whole, or leaves the array as it is if the value does not
 fit: as its C fast path does, with one bounds check and one store.
+
+Lean pastes each one's C into the code it compiles, putting the arguments in
+place of `#1`, `#2` and `#3`, and of any other `#`: so the C has no `#` of its
+own, and every parameter is a run-time value, in order.
 -/
 
 /-- `bytes` with `n`'s `width` bytes at `offset`, if they fit. -/
 def writeWhole (bytes : ByteArray) (offset width n : Nat) : ByteArray :=
   if offset + width ≤ bytes.size then writeLE bytes offset width n else bytes
 
+/-- `bytes` with `v` at `offset`: 1 byte. -/
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = #2; \
+  uint8_t lean_wgpu_v = #3; \
+  size_t lean_wgpu_n = lean_sarray_size(lean_wgpu_b); \
+  if (lean_wgpu_o <= lean_wgpu_n && 1 <= lean_wgpu_n - lean_wgpu_o) { \
+    if (!lean_is_exclusive(lean_wgpu_b)) \
+      lean_wgpu_b = lean_copy_byte_array(lean_wgpu_b); \
+    __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+      &lean_wgpu_v, 1); \
+  } \
+  lean_wgpu_b; })"]
+
+def writeU8 (bytes : ByteArray) (offset : USize) (v : UInt8) : ByteArray :=
+  writeWhole bytes offset.toNat 1 v.toNat
+
 /-- `bytes` with `v` at `offset`: 2 bytes. -/
-@[extern "lean_wgpu_bytes_write_u16"]
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = #2; \
+  uint16_t lean_wgpu_v = #3; \
+  size_t lean_wgpu_n = lean_sarray_size(lean_wgpu_b); \
+  if (lean_wgpu_o <= lean_wgpu_n && 2 <= lean_wgpu_n - lean_wgpu_o) { \
+    if (!lean_is_exclusive(lean_wgpu_b)) \
+      lean_wgpu_b = lean_copy_byte_array(lean_wgpu_b); \
+    __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+      &lean_wgpu_v, 2); \
+  } \
+  lean_wgpu_b; })"]
 def writeU16 (bytes : ByteArray) (offset : USize) (v : UInt16) : ByteArray :=
   writeWhole bytes offset.toNat 2 v.toNat
 
 /-- `bytes` with `v` at `offset`: 4 bytes. -/
-@[extern "lean_wgpu_bytes_write_u32"]
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = #2; \
+  uint32_t lean_wgpu_v = #3; \
+  size_t lean_wgpu_n = lean_sarray_size(lean_wgpu_b); \
+  if (lean_wgpu_o <= lean_wgpu_n && 4 <= lean_wgpu_n - lean_wgpu_o) { \
+    if (!lean_is_exclusive(lean_wgpu_b)) \
+      lean_wgpu_b = lean_copy_byte_array(lean_wgpu_b); \
+    __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+      &lean_wgpu_v, 4); \
+  } \
+  lean_wgpu_b; })"]
 def writeU32 (bytes : ByteArray) (offset : USize) (v : UInt32) : ByteArray :=
   writeWhole bytes offset.toNat 4 v.toNat
 
 /-- `bytes` with `v` at `offset`: 8 bytes. -/
-@[extern "lean_wgpu_bytes_write_u64"]
+@[extern c inline "({ \
+  _Static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, \
+    \"the bindings assume a little-endian target\"); \
+  lean_object * lean_wgpu_b = #1; size_t lean_wgpu_o = #2; \
+  uint64_t lean_wgpu_v = #3; \
+  size_t lean_wgpu_n = lean_sarray_size(lean_wgpu_b); \
+  if (lean_wgpu_o <= lean_wgpu_n && 8 <= lean_wgpu_n - lean_wgpu_o) { \
+    if (!lean_is_exclusive(lean_wgpu_b)) \
+      lean_wgpu_b = lean_copy_byte_array(lean_wgpu_b); \
+    __builtin_memcpy(lean_sarray_cptr(lean_wgpu_b) + lean_wgpu_o, \
+      &lean_wgpu_v, 8); \
+  } \
+  lean_wgpu_b; })"]
 def writeU64 (bytes : ByteArray) (offset : USize) (v : UInt64) : ByteArray :=
   writeWhole bytes offset.toNat 8 v.toNat
 
@@ -153,6 +214,7 @@ gives them, so any NaN is written as Lean's one NaN. It writes those bits as a
 `u32`, rather than storing the float in C, which would keep a NaN's sign and
 payload.
 -/
+@[inline]
 def writeF32 (bytes : ByteArray) (offset : USize) (v : Float32) : ByteArray :=
   writeU32 bytes offset v.toBits
 
@@ -160,6 +222,7 @@ def writeF32 (bytes : ByteArray) (offset : USize) (v : Float32) : ByteArray :=
 `bytes` with `v` at `offset`, as a C `double`: 8 bytes, its bits as `toBits`
 gives them, as `writeF32` does.
 -/
+@[inline]
 def writeF64 (bytes : ByteArray) (offset : USize) (v : Float) : ByteArray :=
   writeU64 bytes offset v.toBits
 
@@ -218,6 +281,11 @@ theorem readLE_writeWhole_disjoint (bytes : ByteArray) (offset width n : Nat)
   split
   · exact readLE_writeLE_disjoint _ _ _ _ _ _ h
   · rfl
+
+/-- Writing a `u8` keeps the array's size. -/
+theorem size_writeU8 (bytes : ByteArray) (offset : USize) (v : UInt8) :
+    (writeU8 bytes offset v).size = bytes.size :=
+  size_writeWhole ..
 
 /-- Writing a `u16` keeps the array's size. -/
 theorem size_writeU16 (bytes : ByteArray) (offset : USize) (v : UInt16) :

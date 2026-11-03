@@ -211,13 +211,12 @@ export app
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
 
-# The shims, the byte writers and the test helper, against emdawnwebgpu's
-# webgpu.h. The shims are told they are built against Dawn: those of functions
-# wgpu-native leaves unimplemented then call them, rather than raise an IO
-# error.
+# The shims and the test helpers, against emdawnwebgpu's webgpu.h. The shims
+# are told they are built against Dawn: those of functions wgpu-native leaves
+# unimplemented then call them, rather than raise an IO error.
 port=--use-port=emdawnwebgpu
 read_flags
-for f in c/*.c c/generated/*.c WebGPURawTest/c/*.c; do
+for f in c/generated/*.c WebGPURawTest/c/*.c; do
   emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN -I c/generated -c "$f" \
     -o "$app/shim_$(basename "$f" .c).o"
 done

@@ -342,7 +342,7 @@ def Value.slot? {α : Type} : Value α → Option α
 /-- `bytes` with the value written at `offset`; a pointer is not written. -/
 def Value.write {α : Type} (w : Width) (bytes : ByteArray) (offset : Nat) :
     Value α → ByteArray
-  | .u8 v   => writeWhole bytes offset 1 v.toNat
+  | .u8 v   => writeU8 bytes offset.toUSize v
   | .u16 v  => writeU16 bytes offset.toUSize v
   | .u32 v  => writeU32 bytes offset.toUSize v
   | .u64 v  => writeU64 bytes offset.toUSize v
@@ -414,10 +414,9 @@ theorem Value.write_eq {α : Type} (w : Width) (bytes : ByteArray)
       · have hlt : n.toNat < 2 ^ 32 := hfit.resolve_right hmax
         simp [hmax, UInt64.toNat_toUInt32, Nat.mod_eq_of_lt hlt]
   | ptr _ => rfl
-  | u8 _ => rfl
   | _ =>
-    simp [Value.write, Value.bits?, Value.scalar, Scalar.bytes, writeU16,
-      writeU32, writeU64, writeF32, writeF64, toNat_toUSize_of_lt h]
+    simp [Value.write, Value.bits?, Value.scalar, Scalar.bytes, writeU8,
+      writeU16, writeU32, writeU64, writeF32, writeF64, toNat_toUSize_of_lt h]
 
 /-- A value that fits has a number that fits its width. -/
 theorem Value.bits_lt {α : Type} (w : Width) (v : Value α) (n : Nat)
