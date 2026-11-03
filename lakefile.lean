@@ -118,11 +118,15 @@ lean_lib WebGPURaw where
   moreLinkLibs := #[wgpuNative]
 
 /--
-C helpers for the tests only (`WebGPURawTest/c/`): an instance to call
-functions on, until the bindings can create one.
+C helpers for the tests only, every `.c` file in `WebGPURawTest/c/`: an
+instance to call functions on, until the bindings can create one, and structs
+as C lays them out, to compare packing with.
 -/
 target testHelpers pkg : FilePath := do
-  let src := pkg.dir / "WebGPURawTest" / "c" / "instance.c"
+  let dir := pkg.dir / "WebGPURawTest" / "c"
+  -- Sorted, since directory order varies, and the traces depend on the order.
+  let srcs := ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
+    |>.filter (·.extension == some "c")
   let includes := #[
     "-I", (← getLeanIncludeDir).toString,
     "-I", (wgpuDir pkg.dir / "include").toString,
@@ -132,12 +136,15 @@ target testHelpers pkg : FilePath := do
     pkg.dir / "c" / "generated" / "objects.h",
     wgpuDir pkg.dir / "include" / "webgpu" / "webgpu.h"
   ].mapM fun h => inputTextFile h
-  -- The source, with the headers' traces mixed into its own.
-  let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
-    (Job.mixArray headers.toArray "headers")
-  let obj ← buildO (pkg.buildDir / "c" / "test" / "instance.o") srcJob
-    includes (#["-O2"] ++ picArgs) (← cCompiler) getLeanTrace
-  buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpurawtest") #[obj]
+  let cc ← cCompiler
+  let objs ← srcs.mapM fun src => do
+    -- The source, with the headers' traces mixed into its own.
+    let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
+      (Job.mixArray headers.toArray "headers")
+    let stem := src.fileStem.getD "test"
+    buildO (pkg.buildDir / "c" / "test" / s!"{stem}.o") srcJob
+      includes (#["-O2"] ++ picArgs) cc getLeanTrace
+  buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpurawtest") objs
 
 /-- Tests. `#guard` checks run while this library builds. -/
 lean_lib WebGPURawTest where

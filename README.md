@@ -32,5 +32,12 @@ bindings prove, in Lean:
   integer writer runs as one store in C; that the C agrees with the Lean
   definition is tested, natively and on the web, not proved. A float is written
   as its bits, so any NaN is written as Lean's one NaN.
+- **Packing structs.** For a well-formed layout (scalars in order, aligned,
+  none overlapping, all within the struct), packing a struct gives bytes of
+  its size in which every scalar reads back as its value, and each pointer is
+  a slot, its bytes 0 for C to fill in: aligned, and apart from every other
+  scalar and slot (`WebGPU/Raw/Internal/Pack.lean`). A `size_t` that does not
+  fit the target is refused, as for a function's argument. A packed buffer
+  descriptor is tested to be byte for byte one C fills in.
 
-Status: WIP: approximately 58% complete.
+Status: WIP: approximately 59% complete.

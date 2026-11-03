@@ -73,8 +73,9 @@ unimplemented.)
 - **A `size_t` crosses as a `UInt64`** and the shim checks it fits: `size_t` is
   32 bits on the web. The largest `UInt64` stands for `SIZE_MAX`, both ways:
   passed to C as `SIZE_MAX` rather than refused, and `SIZE_MAX` from C becomes
-  it; so `wholeMapSize` means the same on every platform. *Checked by:* compile
-  (a probe of every conversion), and test.
+  it; so `wholeMapSize` means the same on every platform. A `size_t` in a struct
+  follows the same rule: packing refuses one that does not fit. *Checked by:*
+  compile (a probe of every conversion), and test.
 - **An enum C returns can hold a code the bindings do not know**, from an
   implementation's extensions or a newer `webgpu.h`; it is kept, as
   `Except UInt32 E`. *Checked by:* test.

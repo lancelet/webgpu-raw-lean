@@ -47,5 +47,16 @@ def main : IO Unit := do
   let wrong := WebGPURawTest.Internal.Bytes.disagreements 1
   unless wrong.isEmpty do
     throw (IO.userError s!"FAIL: byte writers: {wrong.take 5}")
+  -- Packing gives the bytes C would hold, for both widths' layouts, and the
+  -- bytes C does hold for this target's, which is 64-bit.
+  unless WebGPU.Raw.Pack.Width.current == .bits64 do
+    throw (IO.userError "FAIL: this target's width is not 64 bits")
+  for w in [WebGPU.Raw.Pack.Width.bits64, .bits32] do
+    for (what, ok) in WebGPURawTest.Internal.Pack.checks w do
+      unless ok do
+        throw (IO.userError s!"FAIL: packing, {repr w}: {what}")
+  for (what, ok) in WebGPURawTest.Internal.Pack.cChecks do
+    unless ok do
+      throw (IO.userError s!"FAIL: packing: {what}")
   -- The instance's reference is released when `wgpu` is freed, at the end.
   IO.println "The WebGPU bindings called through their shims."

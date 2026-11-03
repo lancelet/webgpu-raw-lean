@@ -1,5 +1,6 @@
 import WebGPU.Raw
 import WebGPURawTest.Internal.Bytes
+import WebGPURawTest.Internal.Pack
 
 /-!
 # The web self-test
@@ -68,8 +69,14 @@ def checks : List (String × Bool) :=
     ("SIZE_MAX is the largest UInt64",
       runtime wholeMapSize == 0xFFFF_FFFF_FFFF_FFFF),
     ("the byte writers agree with their Lean definitions",
-      (WebGPURawTest.Internal.Bytes.disagreements (runtime 1)).isEmpty)
-  ]
+      (WebGPURawTest.Internal.Bytes.disagreements (runtime 1)).isEmpty),
+    ("this target's width is 32 bits",
+      WebGPU.Raw.Pack.Width.current == .bits32)
+  ] ++ (WebGPURawTest.Internal.Pack.checks (runtime .bits32)).map
+      (fun (what, ok) => (what ++ " (wasm32)", ok))
+    ++ (WebGPURawTest.Internal.Pack.checks (runtime .bits64)).map
+      (fun (what, ok) => (what ++ " (64-bit)", ok))
+    ++ WebGPURawTest.Internal.Pack.cChecks
 
 end WebGPURawWebTest
 

@@ -20,7 +20,7 @@ that does not fit in the array leaves it as it is.
     theorem readByte_writeLE_outside : a write leaves every other byte as it is
 -/
 
-public section
+@[expose] public section
 
 namespace WebGPU.Raw.Bytes
 

@@ -199,13 +199,14 @@ compile_module() {
 export -f compile_module
 export app
 # The modules in the sources, not every C file in .lake/build/ir, which may
-# hold C of modules since removed; and the native tests' module the self-test
-# shares, the byte writers' differential test.
+# hold C of modules since removed; and the native tests' modules the self-test
+# shares: the byte writers' differential test, and the packing checks.
 # shellcheck disable=SC2016 # the $1 is the inner bash's
 {
   find WebGPU WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
   echo WebGPURawTest/Internal/Bytes.lean
+  echo WebGPURawTest/Internal/Pack.lean
 } \
   | sed 's/\.lean$//' \
   | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
@@ -216,7 +217,7 @@ export app
 # error.
 port=--use-port=emdawnwebgpu
 read_flags
-for f in c/*.c c/generated/*.c WebGPURawTest/c/instance.c; do
+for f in c/*.c c/generated/*.c WebGPURawTest/c/*.c; do
   emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN -I c/generated -c "$f" \
     -o "$app/shim_$(basename "$f" .c).o"
 done
