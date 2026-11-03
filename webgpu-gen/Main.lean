@@ -84,7 +84,14 @@ def loadSpec (root : System.FilePath) : IO Lowered.Spec := do
   let sections ← articles.toList.flatMapM fun entry => do
     return Lowered.articleSections (← IO.FS.readFile entry.path)
   match Resolved.resolve parsed with
-  | .ok resolved => return Lowered.lower resolved sections (← stubs root)
+  | .ok resolved =>
+    let lowered := Lowered.lower resolved sections (← stubs root)
+    -- The printers find structs by their C names, and the proofs of what they
+    -- print assume each C name names one struct.
+    unless decide lowered.structNamesDistinct do
+      throw (IO.userError
+        s!"structs that share a C name: {lowered.sharedStructNames}")
+    return lowered
   | .error problems =>
     for p in problems do IO.eprintln p
     throw (IO.userError s!"{problems.length} problems in the spec")

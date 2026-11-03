@@ -88,22 +88,29 @@ The main proofs we have (not a complete list) are:
   - each `nested` default, printed `{}`, names a struct whose every member has
     a default, at every depth
 
-  That `{}` then elaborates is *not yet* proved: each printed default must
-  elaborate too (a `.zero` needs its `T.zero`), and the struct found, by its
-  C name, must be the one the Lean file names.
+  With C names distinct, as the generator checks (below), the struct
+  `complete` finds is the one the Lean file names. For `{}` to elaborate,
+  each printed default must elaborate too: each `.zero` names a declared
+  `T.zero` (below); that each entry and constant named exists is *not yet*
+  proved.
 - **Finding Zero Values.** A default of every byte zero is printed `.zero`,
   naming a `T.zero` to declare, both as a struct member's default and among
   the field values of a `T.zero`. `zeroValues` lists every such value the
   structs' defaults are or hold, however deep, and nothing else; so each
   `.zero` printed, in either place, names a listed one
-  (`Emit/ZeroValues.lean`). That each listed struct is bound, so that its
-  `T.zero` is printed, is *not yet* proved.
+  (`Emit/ZeroValues.lean`).
 - **Lining Up Zero Values.** A zero value's `T.zero` pairs its struct's
   members with its field values by position. In the lowered spec, each zero
   value is of the struct its member holds, its field values name that
   struct's members, in order, and each fits its member's type, at every depth
-  (`Lowered/ZeroFields.lean`). That the printer finds the same struct, by its
-  C name, needs C names to be unique, which is *not yet* proved.
+  (`Lowered/ZeroFields.lean`).
+- **Declaring Zero Values.** The printers find structs by their C names, so
+  the generator checks that no two structs share one. Given that, in the
+  lowered spec: each `.zero` printed, in either place, names a bound struct
+  whose `T.zero` is declared, before the struct or `T.zero` that uses it;
+  each `T.zero` declared is its struct's, lined up with its members; and
+  each `{}` is of a bound struct, the one `complete` finds
+  (`Emit/ZeroDecls.lean`).
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`

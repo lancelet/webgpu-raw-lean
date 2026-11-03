@@ -458,4 +458,19 @@ structure Spec where
   functions : Array Function
   deriving Repr, BEq
 
+/--
+The structs' C names are distinct: what finding a struct by its C name needs,
+as the printers do. The generator checks it of the spec it prints.
+-/
+def Spec.structNamesDistinct (spec : Spec) : Prop :=
+  (spec.structs.toList.map (·.names.c)).Nodup
+
+instance (spec : Spec) : Decidable spec.structNamesDistinct :=
+  List.nodupDecidable _
+
+/-- The C names two or more structs share, for a message when they do. -/
+def Spec.sharedStructNames (spec : Spec) : List String :=
+  let names := spec.structs.toList.map (·.names.c)
+  (names.filter (names.count · > 1)).eraseDups
+
 end WebGPUGen.Lowered

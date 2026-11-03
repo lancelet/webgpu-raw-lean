@@ -21,9 +21,10 @@ found by its C name. `complete` decides that with `fuel` as a bound on the
 nesting (any fuel from `size + 1` up, by `complete_le`): true means every
 member has a default, at every depth.
 
-Not proved here: that each printed default elaborates (a `.zero` needs its
-`T.zero`), that C names are unique, so that the struct found is the one the
-Lean file names, and that every member of a bound struct is printed.
+With C names distinct, as the generator checks, the struct found is the one the
+Lean file names, and each `.zero` names a declared `T.zero` (`Emit/ZeroDecls`).
+Not proved: that each entry and constant a default names exists, and that
+every member of a bound struct is printed.
 -/
 
 namespace WebGPUGen.Lowered

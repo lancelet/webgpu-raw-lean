@@ -23,9 +23,9 @@ is aligned too (`aligned_of_within`), so each `T.zero` the printer declares is;
 and aligned field values name their struct's members, in order
 (`aligned_names`), so the declaration pairing them by position misses none.
 
-Not proved here: that the struct the printer finds for a zero value, by its C
-name among the bound structs, is bound at all, and is the one `shapeOf` finds
-among all of them; the second needs C names to be unique.
+That the struct the printer finds for a zero value, by its C name among the
+bound structs, is bound, and is the one `shapeOf` finds among all of them, is
+proved in `Emit/ZeroDecls`, given C names that are distinct.
 -/
 
 namespace WebGPUGen.Lowered
@@ -113,11 +113,12 @@ theorem aligned_names {shape : Names → Option (List (Names × Value))}
   · simp at h
   · next members hshape => exact ⟨members, hshape, alignedFields_names h⟩
 
-/-- Each field value of aligned field values lines up with some member. -/
+/-- Each of the aligned field values lines up with one of the members. -/
 theorem alignedField_of_mem {shape : Names → Option (List (Names × Value))} :
     ∀ {members : List (Names × Value)} {values : List (Names × Default)},
       alignedFields shape members values = true →
-        ∀ {field d}, (field, d) ∈ values → ∃ v, alignedField shape v d = true
+        ∀ {field d}, (field, d) ∈ values →
+          ∃ p ∈ members, alignedField shape p.2 d = true
   | [], [], _, _, _, h => by simp at h
   | [], _ :: _, h, _, _, _ | _ :: _, [], h, _, _, _ => by
     simp [alignedFields] at h
@@ -126,8 +127,9 @@ theorem alignedField_of_mem {shape : Names → Option (List (Names × Value))} :
     obtain ⟨⟨-, hfield⟩, h⟩ := h
     rcases List.mem_cons.1 hmem with heq | hmem
     · cases heq
-      exact ⟨v, hfield⟩
-    · exact alignedField_of_mem h hmem
+      exact ⟨(name, v), List.mem_cons_self .., hfield⟩
+    · obtain ⟨p, hp, h⟩ := alignedField_of_mem h hmem
+      exact ⟨p, List.mem_cons_of_mem _ hp, h⟩
 
 /-- A zero value within one that lines up with some member lines up too. -/
 theorem aligned_within {shape : Names → Option (List (Names × Value))}
@@ -145,7 +147,8 @@ theorem aligned_within {shape : Names → Option (List (Names × Value))}
     unfold aligned at ha
     split at ha
     · simp at ha
-    · exact ih (alignedField_of_mem ha hmem)
+    · obtain ⟨p, -, hp⟩ := alignedField_of_mem ha hmem
+      exact ih ⟨p.2, hp⟩
 
 /--
 Every zero value an aligned one is or holds is aligned: so is each `T.zero`

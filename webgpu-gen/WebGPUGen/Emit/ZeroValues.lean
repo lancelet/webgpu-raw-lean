@@ -22,8 +22,8 @@ field values of a `T.zero` it declares. Both are listed:
 struct; that lowering gives both the same field values is not proved, but
 `zeroFields` computes them from the struct alone.
 
-Not proved here: that the struct of each zero value is bound, so that its
-`T.zero` is printed, and that its field values line up with its members.
+That the struct of each zero value is bound, so that its `T.zero` is printed,
+and that its field values line up with its members, is proved in `ZeroDecls`.
 -/
 
 namespace WebGPUGen.Emit.Lean

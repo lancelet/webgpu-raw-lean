@@ -387,6 +387,9 @@ def main : IO Unit := do
   -- Every enum entry and flag has the value upstream's header gives it.
   let values := headerValues header
   let lowered := WebGPUGen.Lowered.lower resolved (stubs := ← stubs)
+  -- The structs' C names are distinct, as the generator checks.
+  unless decide lowered.structNamesDistinct do
+    failWith s!"structs that share a C name: {lowered.sharedStructNames}"
   let computed := computedValues lowered
   let wrong := computed.filter fun (name, v) => values.get? name != some v
   unless wrong.isEmpty do

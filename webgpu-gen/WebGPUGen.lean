@@ -36,4 +36,5 @@ import WebGPUGen.Stubs
 import WebGPUGen.Emit.Lean
 import WebGPUGen.Emit.Agreement
 import WebGPUGen.Emit.ZeroValues
+import WebGPUGen.Emit.ZeroDecls
 import WebGPUGen.Source
