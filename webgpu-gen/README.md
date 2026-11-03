@@ -97,8 +97,13 @@ The main proofs we have (not a complete list) are:
   structs' defaults are or hold, however deep, and nothing else; so each
   `.zero` printed, in either place, names a listed one
   (`Emit/ZeroValues.lean`). That each listed struct is bound, so that its
-  `T.zero` is printed, and that its field values line up with its members, is
-  *not yet* proved.
+  `T.zero` is printed, is *not yet* proved.
+- **Lining Up Zero Values.** A zero value's `T.zero` pairs its struct's
+  members with its field values by position. In the lowered spec, each zero
+  value is of the struct its member holds, its field values name that
+  struct's members, in order, and each fits its member's type, at every depth
+  (`Lowered/ZeroFields.lean`). That the printer finds the same struct, by its
+  C name, needs C names to be unique, which is *not yet* proved.
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`
