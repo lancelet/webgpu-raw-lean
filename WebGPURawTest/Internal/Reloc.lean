@@ -43,7 +43,7 @@ and takes, of what it accepts, exactly the targets, a block's by its table. -/
 Tables for the walk: a struct of 8 bytes, a string (table 0); and one of 16,
 a null pointer and a block of table 0 (table 1).
 -/
-def specs : Array Spec := #[
+def walkSpecs : Array Spec := #[
   (8,  [⟨0, .string⟩]),
   (16, [⟨0, .null⟩, ⟨8, .block 0⟩])
 ]
@@ -56,32 +56,32 @@ theorem size_zerosOf (n : Nat) : (zerosOf n).size = n := by
   simp [zerosOf, ByteArray.size]
 
 -- A string takes a string.
-example : walk specs 0 8 [.string "a"] = some [] := by
-  simp [walk, specs, step]
+example : walk walkSpecs 0 8 [.string "a"] = some [] := by
+  simp [walk, walkSpecs, step]
 
 -- But not nothing, nor a target of another kind.
-example : walk specs 0 8 [] = none := by
-  simp [walk, specs, step]
-example : walk specs 0 8 [.optString none] = none := by
-  simp [walk, specs, step]
+example : walk walkSpecs 0 8 [] = none := by
+  simp [walk, walkSpecs, step]
+example : walk walkSpecs 0 8 [.optString none] = none := by
+  simp [walk, walkSpecs, step]
 
 -- Bytes that are not whole elements are refused.
-example : walk specs 0 12 [.string "a", .string "b"] = none := by
-  simp [walk, specs]
+example : walk walkSpecs 0 12 [.string "a", .string "b"] = none := by
+  simp [walk, walkSpecs]
 
 -- Each element takes its own: two elements, two strings, after the block.
 example :
-    walk specs 1 16 [.block (zerosOf 16), .string "a", .string "b"]
+    walk walkSpecs 1 16 [.block (zerosOf 16), .string "a", .string "b"]
       = some [] := by
   rw [walk]
-  simp [specs, step, size_zerosOf]
+  simp [walkSpecs, step, size_zerosOf]
   rw [walk]
   simp [step]
 
 -- An empty block takes nothing.
-example : walk specs 1 16 [.block (zerosOf 0)] = some [] := by
+example : walk walkSpecs 1 16 [.block (zerosOf 0)] = some [] := by
   rw [walk]
-  simp [specs, step, size_zerosOf]
+  simp [walkSpecs, step, size_zerosOf]
   rw [walk]
   simp
 
@@ -268,14 +268,25 @@ def bindGroupLayout : BindGroupLayoutDescriptor := {
 }
 
 /--
+A struct C fills in, by its class (`CStruct`), as a shim takes it: if each
+of its `size_t`s fits, its bytes, the tables, its table's index and its
+targets, given to `back`.
+-/
+@[inline]
+def viaClass {T : Type} [CStruct specs T] (d : T)
+    (back : ByteArray → Array ByteArray → USize → Array Target → String) :
+    String :=
+  if !CStruct.sizesFit specs d then "a size_t that does not fit" else
+  back (CStruct.toBytes specs d) tables
+    (CStruct.tableIndex specs T).toUSize (CStruct.toTargets specs d)
+
+/--
 What C finds wrong with `bindGroupLayout`, filled in by its generated table
 and targets: at run time.
 -/
 @[noinline, never_extract]
 def bindGroupLayoutCheck (_ : Unit) : String :=
-  bindGroupLayoutBack (BindGroupLayoutDescriptor.toBytes bindGroupLayout)
-    tables BindGroupLayoutDescriptor.tableIndex.toUSize
-    (BindGroupLayoutDescriptor.toTargets bindGroupLayout)
+  viaClass bindGroupLayout bindGroupLayoutBack
 
 /--
 Fill an encoded bind group layout descriptor with no entries by table `table`

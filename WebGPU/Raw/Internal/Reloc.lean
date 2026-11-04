@@ -324,6 +324,35 @@ theorem walk_objects {specs : Array Spec} {table ptr : Nat}
     intro l; induction l <;> simp_all
   simpa [objectsOf, hmap] using this
 
+/-! ## Structs C fills in
+
+A struct of `webgpu.h`, as the bindings pass it to C: its bytes, with its
+pointers 0; its targets, what C fills each pointer in from; its table's index;
+and whether each of its `size_t`s fits the target. With the proof that
+walking its table over its bytes takes exactly its targets: so what C fills in
+is what the table says, of every value. -/
+
+/--
+A struct C fills in by the tables `specs`, as the walk reads them: the
+generated bindings give an instance of every bound struct, by the tables of
+the target the program runs on.
+-/
+class CStruct (specs : Array Spec) (T : Type) where
+  /-- Its bytes, as C lays it out, its pointers 0. -/
+  toBytes      : T → ByteArray
+  /-- What C fills in its pointers from, in order. -/
+  toTargets    : T → Array Target
+  /-- Its table's index. -/
+  tableIndex   : Nat
+  /-- Whether each of its `size_t`s fits the target. -/
+  sizesFit     : T → Bool
+  /-- Its bytes are one struct: the size its table is for. -/
+  size_toBytes : ∀ d, ∃ relocs,
+    specs[tableIndex]? = some ((toBytes d).size, relocs)
+  /-- Walking its table over its bytes takes exactly its targets. -/
+  fills        : ∀ d ts, walk specs tableIndex (toBytes d).size
+    ((toTargets d).toList ++ ts) = some ts
+
 end WebGPU.Raw.Reloc
 
 end

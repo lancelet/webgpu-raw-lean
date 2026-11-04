@@ -55,6 +55,9 @@ bindings prove, in Lean:
   bytes takes exactly its targets, each of the kind its relocation needs, a
   nested struct's by its own table, an array's element by element: so C never
   meets a target of the wrong kind, nor runs out of them. Every bound struct
-  has a table: arrays of enums, of objects and of structs included.
+  has a table: arrays of enums, of objects and of structs included. And each
+  is a `CStruct`, its bytes, targets, table and those proofs together, for the
+  target the program runs on: its bytes proved one struct, the size its table
+  is for, and the tables C reads proved to be those the walk reads.
 
-Status: WIP: approximately 67% complete.
+Status: WIP: approximately 68% complete.

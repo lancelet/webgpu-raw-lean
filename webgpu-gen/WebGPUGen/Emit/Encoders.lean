@@ -31,7 +31,8 @@ target width, a struct has:
 - and, with every table known, at the end: that walking its table over its
   bytes (`WebGPU.Raw.Reloc.walk`, as C does) takes exactly its targets
   (`walk64`), each of its kind, a pointer to a struct by that struct's own,
-  an array by its elements' (`walkAll64`).
+  an array by its elements' (`walkAll64`); and, for the target the program
+  runs on, the same (`walk_current`), and its instance of `CStruct`.
 
 Every struct's table is in `tables64`, at its `tableIndex`; each object type
 converts to the `Object` a pointer to one is filled in from.
@@ -759,6 +760,39 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
           s!"    (fun d _ => element{n} d) ts"]
   ]
 
+/--
+A struct's proofs for the target the program runs on, by cases on its width,
+and its instance of `CStruct`: each declaration as its lines.
+-/
+def currentDecls (s : Struct) : List (List String) :=
+  let t := s.names.lean
+  -- By cases on the width, each case by its width's lemma.
+  let cases (lemmas : List String) (each : String → String) :=
+    let simps := ", ".intercalate (lemmas ++ ["h", "↓reduceIte"])
+    ["  by_cases h : System.Platform.numBits = 64"]
+      ++ (["64", "32"].flatMap fun n =>
+        [s!"  · simp only [{simps}]", s!"    {each n}"])
+  [
+    ["/-- Its bytes are one struct, on this target. -/",
+      s!"theorem size_current (d : {t}) :",
+      "    ∃ relocs,",
+      "      specs[tableIndex]? = some ((toBytes d).size, relocs) := by"]
+      ++ cases ["specs", "toBytes"] fun n =>
+        s!"exact ⟨_, by rw [size_encode{n}]; exact specs{n}_index⟩",
+    ["/-- Walking its table over its bytes takes its targets, on this " ++
+        "target. -/"]
+      ++ lineOrBroken 0 s!"theorem walk_current (d : {t})"
+        ["(ts : List Target) :"]
+      ++ ["    walk specs tableIndex (toBytes d).size",
+        "      ((toTargets d).toList ++ ts) = some ts := by"]
+      ++ cases ["specs", "toBytes", "toTargets"] fun n =>
+        s!"exact walk{n}_tableIndex d ts",
+    ["/-- It is a struct C fills in, on this target. -/",
+      s!"instance : CStruct specs {t} :=",
+      "  ⟨toBytes, toTargets, tableIndex, sizesFit, size_current,",
+      "    walk_current⟩"]
+  ]
+
 /-- Every table on each width, by its index in a relocation. -/
 def tablesDecls (spec : Lowered.Spec) : List Doc :=
   let structs := spec.structs.toList
@@ -796,6 +830,18 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
     "def tables : Array ByteArray :=",
     "  if System.Platform.numBits = 64 then tables64 else tables32"]
+  let currentSpecs := Doc.lines [
+    "/-- Every table on this target, as the walk reads it. -/",
+    "noncomputable def specs : Array Spec :=",
+    "  if System.Platform.numBits = 64 then specs64 else specs32"]
+  let currentEq := Doc.lines [
+    "/-- The tables C reads on this target are the tables the walk reads. -/",
+    "theorem tables_eq :",
+    "    tables.toList = specs.toList.map fun (size, relocs) =>",
+    "      serialize size relocs := by",
+    "  by_cases h : System.Platform.numBits = 64",
+    "  · simp only [tables, specs, h, ↓reduceIte]; exact tables64_eq",
+    "  · simp only [tables, specs, h, ↓reduceIte]; exact tables32_eq"]
   -- Each struct's index finds its tables, and its walk takes its targets.
   let proofs := tables.zipIdx.map fun (s, i) =>
     let walks := [Width.bits64, .bits32].flatMap fun w =>
@@ -810,8 +856,10 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
       "      tables32[tableIndex]? = some table32 :=",
       "  ⟨rfl, rfl⟩", ""]
       ++ (walks.map (· ++ [""])).flatten
+      ++ ((currentDecls s).map (· ++ [""])).flatten
       ++ [s!"end {s.names.lean}"])
-  [Doc.lines ["/-! ## Tables -/"]] ++ widths ++ [current] ++ proofs
+  [Doc.lines ["/-! ## Tables -/"]] ++ widths
+    ++ [current, currentSpecs, currentEq] ++ proofs
 
 /-- The encoders' module, `WebGPU/Raw/Encoders.lean`; none if one is missing. -/
 def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
