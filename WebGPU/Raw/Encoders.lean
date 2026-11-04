@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: e15dbdb (clean)
-  Generated:        2026-11-04 21:04:11 UTC
+  Generator commit: 05af40a (clean)
+  Generated:        2026-11-04 22:21:12 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -232,20 +232,38 @@ def targets64 (d : BindGroupEntry) : Array Target :=
 def block64 (d : BindGroupEntry) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 56 ≤ total) (d : BindGroupEntry) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) d.binding (by omega)
+  let b := b.pokeU64 (off + 24) d.offset (by omega)
+  let b := b.pokeU64 (off + 32) d.size (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array BindGroupEntry) : ByteArray :=
-  encodeAll 56 encode64 xs
+  (go 0 (Block.fresh (xs.size * 56))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 56)) :
+      Block (xs.size * 56) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 56) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array BindGroupEntry) :
     (encodeAll64 xs).size = xs.size * 56 :=
-  size_encodeAll 56 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 56))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array BindGroupEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -343,20 +361,38 @@ def targets32 (d : BindGroupEntry) : Array Target :=
 def block32 (d : BindGroupEntry) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 40 ≤ total) (d : BindGroupEntry) :
+    Block total :=
+  let b := b.pokeU32 (off + 4) d.binding (by omega)
+  let b := b.pokeU64 (off + 16) d.offset (by omega)
+  let b := b.pokeU64 (off + 24) d.size (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array BindGroupEntry) : ByteArray :=
-  encodeAll 40 encode32 xs
+  (go 0 (Block.fresh (xs.size * 40))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 40)) :
+      Block (xs.size * 40) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 40) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array BindGroupEntry) :
     (encodeAll32 xs).size = xs.size * 40 :=
-  size_encodeAll 40 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 40))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array BindGroupEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -374,7 +410,7 @@ def sizesFit (_ : BindGroupEntry) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BindGroupEntry) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 2
@@ -382,7 +418,7 @@ def tableIndex : Nat := 2
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BindGroupEntry) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BindGroupEntry
 
@@ -565,7 +601,7 @@ def sizesFit (_ : BlendComponent) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BlendComponent) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 3
@@ -573,7 +609,7 @@ def tableIndex : Nat := 3
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BlendComponent) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BlendComponent
 
@@ -762,7 +798,7 @@ def sizesFit (_ : BufferBindingLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BufferBindingLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 4
@@ -770,7 +806,7 @@ def tableIndex : Nat := 4
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BufferBindingLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BufferBindingLayout
 
@@ -965,7 +1001,7 @@ def sizesFit (_ : BufferDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BufferDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 5
@@ -973,7 +1009,7 @@ def tableIndex : Nat := 5
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BufferDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BufferDescriptor
 
@@ -1160,7 +1196,7 @@ def sizesFit (_ : Color) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : Color) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 6
@@ -1168,7 +1204,7 @@ def tableIndex : Nat := 6
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : Color) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end Color
 
@@ -1349,7 +1385,7 @@ def sizesFit (_ : CommandBufferDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : CommandBufferDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 7
@@ -1357,7 +1393,7 @@ def tableIndex : Nat := 7
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : CommandBufferDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end CommandBufferDescriptor
 
@@ -1538,7 +1574,7 @@ def sizesFit (_ : CommandEncoderDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : CommandEncoderDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 8
@@ -1546,7 +1582,7 @@ def tableIndex : Nat := 8
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : CommandEncoderDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end CommandEncoderDescriptor
 
@@ -1741,7 +1777,7 @@ def sizesFit (_ : CompatibilityModeLimits) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : CompatibilityModeLimits) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 9
@@ -1749,7 +1785,7 @@ def tableIndex : Nat := 9
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : CompatibilityModeLimits) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end CompatibilityModeLimits
 
@@ -1841,20 +1877,37 @@ def targets64 (d : ConstantEntry) : Array Target :=
 def block64 (d : ConstantEntry) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 32 ≤ total) (d : ConstantEntry) :
+    Block total :=
+  let b := b.pokeU64 (off + 16) d.key.utf8ByteSize.toUInt64 (by omega)
+  let b := b.pokeF64 (off + 24) d.value (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array ConstantEntry) : ByteArray :=
-  encodeAll 32 encode64 xs
+  (go 0 (Block.fresh (xs.size * 32))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 32)) :
+      Block (xs.size * 32) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 32) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array ConstantEntry) :
     (encodeAll64 xs).size = xs.size * 32 :=
-  size_encodeAll 32 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 32))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array ConstantEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -1945,20 +1998,37 @@ def targets32 (d : ConstantEntry) : Array Target :=
 def block32 (d : ConstantEntry) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 24 ≤ total) (d : ConstantEntry) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) d.key.utf8ByteSize.toUInt32 (by omega)
+  let b := b.pokeF64 (off + 16) d.value (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array ConstantEntry) : ByteArray :=
-  encodeAll 24 encode32 xs
+  (go 0 (Block.fresh (xs.size * 24))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 24)) :
+      Block (xs.size * 24) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 24) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array ConstantEntry) :
     (encodeAll32 xs).size = xs.size * 24 :=
-  size_encodeAll 24 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 24))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array ConstantEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -1976,7 +2046,7 @@ def sizesFit (_ : ConstantEntry) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ConstantEntry) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 10
@@ -1984,7 +2054,7 @@ def tableIndex : Nat := 10
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ConstantEntry) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ConstantEntry
 
@@ -2167,7 +2237,7 @@ def sizesFit (_ : Extent3D) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : Extent3D) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 11
@@ -2175,7 +2245,7 @@ def tableIndex : Nat := 11
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : Extent3D) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end Extent3D
 
@@ -2356,7 +2426,7 @@ def sizesFit (_ : ExternalTextureBindingEntry) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ExternalTextureBindingEntry) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 12
@@ -2364,7 +2434,7 @@ def tableIndex : Nat := 12
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ExternalTextureBindingEntry) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ExternalTextureBindingEntry
 
@@ -2547,7 +2617,7 @@ def sizesFit (_ : ExternalTextureBindingLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ExternalTextureBindingLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 13
@@ -2555,7 +2625,7 @@ def tableIndex : Nat := 13
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ExternalTextureBindingLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ExternalTextureBindingLayout
 
@@ -2730,7 +2800,7 @@ def sizesFit (_ : Future) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : Future) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 14
@@ -2738,7 +2808,7 @@ def tableIndex : Nat := 14
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : Future) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end Future
 
@@ -2912,7 +2982,7 @@ as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
 as for a `size_t` argument.
 -/
 def sizesFit (d : InstanceLimits) : Bool :=
-  System.Platform.numBits = 64 || sizeFits d.timedWaitAnyMaxCount
+  Width.is64 () || sizeFits d.timedWaitAnyMaxCount
 
 /--
 `d` as C lays it out on this target, its pointers 0. The caller checks
@@ -2921,7 +2991,7 @@ low 32 bits.
 -/
 @[inline]
 def toBytes (d : InstanceLimits) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 15
@@ -2929,7 +2999,7 @@ def tableIndex : Nat := 15
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : InstanceLimits) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end InstanceLimits
 
@@ -3234,7 +3304,7 @@ def sizesFit (_ : Limits) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : Limits) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 16
@@ -3242,7 +3312,7 @@ def tableIndex : Nat := 16
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : Limits) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end Limits
 
@@ -3429,7 +3499,7 @@ def sizesFit (_ : MultisampleState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : MultisampleState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 17
@@ -3437,7 +3507,7 @@ def tableIndex : Nat := 17
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : MultisampleState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end MultisampleState
 
@@ -3620,7 +3690,7 @@ def sizesFit (_ : Origin3D) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : Origin3D) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 18
@@ -3628,7 +3698,7 @@ def tableIndex : Nat := 18
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : Origin3D) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end Origin3D
 
@@ -3813,7 +3883,7 @@ def sizesFit (_ : PassTimestampWrites) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : PassTimestampWrites) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 19
@@ -3821,7 +3891,7 @@ def tableIndex : Nat := 19
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : PassTimestampWrites) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end PassTimestampWrites
 
@@ -4013,7 +4083,7 @@ def sizesFit (_ : PipelineLayoutDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : PipelineLayoutDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 20
@@ -4021,7 +4091,7 @@ def tableIndex : Nat := 20
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : PipelineLayoutDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end PipelineLayoutDescriptor
 
@@ -4216,7 +4286,7 @@ def sizesFit (_ : PrimitiveState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : PrimitiveState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 21
@@ -4224,7 +4294,7 @@ def tableIndex : Nat := 21
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : PrimitiveState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end PrimitiveState
 
@@ -4414,7 +4484,7 @@ def sizesFit (_ : QuerySetDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : QuerySetDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 22
@@ -4422,7 +4492,7 @@ def tableIndex : Nat := 22
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : QuerySetDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end QuerySetDescriptor
 
@@ -4603,7 +4673,7 @@ def sizesFit (_ : QueueDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : QueueDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 23
@@ -4611,7 +4681,7 @@ def tableIndex : Nat := 23
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : QueueDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end QueueDescriptor
 
@@ -4792,7 +4862,7 @@ def sizesFit (_ : RenderBundleDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderBundleDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 24
@@ -4800,7 +4870,7 @@ def tableIndex : Nat := 24
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderBundleDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderBundleDescriptor
 
@@ -5002,7 +5072,7 @@ def sizesFit (_ : RenderBundleEncoderDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderBundleEncoderDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 25
@@ -5010,7 +5080,7 @@ def tableIndex : Nat := 25
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderBundleEncoderDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderBundleEncoderDescriptor
 
@@ -5219,7 +5289,7 @@ def sizesFit (_ : RenderPassDepthStencilAttachment) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderPassDepthStencilAttachment) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 26
@@ -5227,7 +5297,7 @@ def tableIndex : Nat := 26
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderPassDepthStencilAttachment) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderPassDepthStencilAttachment
 
@@ -5412,7 +5482,7 @@ def sizesFit (_ : RenderPassMaxDrawCount) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderPassMaxDrawCount) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 27
@@ -5420,7 +5490,7 @@ def tableIndex : Nat := 27
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderPassMaxDrawCount) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderPassMaxDrawCount
 
@@ -5613,7 +5683,7 @@ def sizesFit (_ : RequestAdapterOptions) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RequestAdapterOptions) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 28
@@ -5621,7 +5691,7 @@ def tableIndex : Nat := 28
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RequestAdapterOptions) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RequestAdapterOptions
 
@@ -5804,7 +5874,7 @@ def sizesFit (_ : RequestAdapterWebXROptions) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RequestAdapterWebXROptions) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 29
@@ -5812,7 +5882,7 @@ def tableIndex : Nat := 29
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RequestAdapterWebXROptions) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RequestAdapterWebXROptions
 
@@ -5991,7 +6061,7 @@ def sizesFit (_ : SamplerBindingLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SamplerBindingLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 30
@@ -5999,7 +6069,7 @@ def tableIndex : Nat := 30
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SamplerBindingLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SamplerBindingLayout
 
@@ -6222,7 +6292,7 @@ def sizesFit (_ : SamplerDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SamplerDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 31
@@ -6230,7 +6300,7 @@ def tableIndex : Nat := 31
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SamplerDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SamplerDescriptor
 
@@ -6411,7 +6481,7 @@ def sizesFit (_ : ShaderModuleDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ShaderModuleDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 32
@@ -6419,7 +6489,7 @@ def tableIndex : Nat := 32
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ShaderModuleDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ShaderModuleDescriptor
 
@@ -6605,7 +6675,7 @@ def sizesFit (_ : ShaderSourceWGSL) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ShaderSourceWGSL) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 33
@@ -6613,7 +6683,7 @@ def tableIndex : Nat := 33
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ShaderSourceWGSL) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ShaderSourceWGSL
 
@@ -6800,7 +6870,7 @@ def sizesFit (_ : StencilFaceState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : StencilFaceState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 34
@@ -6808,7 +6878,7 @@ def tableIndex : Nat := 34
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : StencilFaceState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end StencilFaceState
 
@@ -6995,7 +7065,7 @@ def sizesFit (_ : StorageTextureBindingLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : StorageTextureBindingLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 35
@@ -7003,7 +7073,7 @@ def tableIndex : Nat := 35
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : StorageTextureBindingLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end StorageTextureBindingLayout
 
@@ -7182,7 +7252,7 @@ def sizesFit (_ : SupportedFeatures) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SupportedFeatures) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 36
@@ -7190,7 +7260,7 @@ def tableIndex : Nat := 36
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SupportedFeatures) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SupportedFeatures
 
@@ -7369,7 +7439,7 @@ def sizesFit (_ : SupportedInstanceFeatures) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SupportedInstanceFeatures) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 37
@@ -7377,7 +7447,7 @@ def tableIndex : Nat := 37
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SupportedInstanceFeatures) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SupportedInstanceFeatures
 
@@ -7556,7 +7626,7 @@ def sizesFit (_ : SupportedWGSLLanguageFeatures) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SupportedWGSLLanguageFeatures) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 38
@@ -7564,7 +7634,7 @@ def tableIndex : Nat := 38
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SupportedWGSLLanguageFeatures) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SupportedWGSLLanguageFeatures
 
@@ -7768,7 +7838,7 @@ def sizesFit (_ : SurfaceCapabilities) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SurfaceCapabilities) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 39
@@ -7776,7 +7846,7 @@ def tableIndex : Nat := 39
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SurfaceCapabilities) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SurfaceCapabilities
 
@@ -7963,7 +8033,7 @@ def sizesFit (_ : SurfaceColorManagement) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SurfaceColorManagement) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 40
@@ -7971,7 +8041,7 @@ def tableIndex : Nat := 40
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SurfaceColorManagement) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SurfaceColorManagement
 
@@ -8184,7 +8254,7 @@ def sizesFit (_ : SurfaceConfiguration) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SurfaceConfiguration) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 41
@@ -8192,7 +8262,7 @@ def tableIndex : Nat := 41
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SurfaceConfiguration) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SurfaceConfiguration
 
@@ -8373,7 +8443,7 @@ def sizesFit (_ : SurfaceDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SurfaceDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 42
@@ -8381,7 +8451,7 @@ def tableIndex : Nat := 42
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SurfaceDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SurfaceDescriptor
 
@@ -8562,7 +8632,7 @@ def sizesFit (_ : SurfaceTexture) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : SurfaceTexture) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 43
@@ -8570,7 +8640,7 @@ def tableIndex : Nat := 43
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : SurfaceTexture) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end SurfaceTexture
 
@@ -8755,7 +8825,7 @@ def sizesFit (_ : TexelCopyBufferLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TexelCopyBufferLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 44
@@ -8763,7 +8833,7 @@ def tableIndex : Nat := 44
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TexelCopyBufferLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TexelCopyBufferLayout
 
@@ -8950,7 +9020,7 @@ def sizesFit (_ : TextureBindingLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureBindingLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 45
@@ -8958,7 +9028,7 @@ def tableIndex : Nat := 45
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureBindingLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureBindingLayout
 
@@ -9141,7 +9211,7 @@ def sizesFit (_ : TextureBindingViewDimension) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureBindingViewDimension) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 46
@@ -9149,7 +9219,7 @@ def tableIndex : Nat := 46
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureBindingViewDimension) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureBindingViewDimension
 
@@ -9336,7 +9406,7 @@ def sizesFit (_ : TextureComponentSwizzle) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureComponentSwizzle) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 47
@@ -9344,7 +9414,7 @@ def tableIndex : Nat := 47
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureComponentSwizzle) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureComponentSwizzle
 
@@ -9559,7 +9629,7 @@ def sizesFit (_ : TextureViewDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureViewDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 48
@@ -9567,7 +9637,7 @@ def tableIndex : Nat := 48
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureViewDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureViewDescriptor
 
@@ -9660,20 +9730,38 @@ def targets64 (_ : VertexAttribute) : Array Target :=
 def block64 (d : VertexAttribute) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 32 ≤ total) (d : VertexAttribute) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) (CEnum.toC d.format) (by omega)
+  let b := b.pokeU64 (off + 16) d.offset (by omega)
+  let b := b.pokeU32 (off + 24) d.shaderLocation (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array VertexAttribute) : ByteArray :=
-  encodeAll 32 encode64 xs
+  (go 0 (Block.fresh (xs.size * 32))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 32)) :
+      Block (xs.size * 32) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 32) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array VertexAttribute) :
     (encodeAll64 xs).size = xs.size * 32 :=
-  size_encodeAll 32 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 32))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array VertexAttribute) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -9765,20 +9853,38 @@ def targets32 (_ : VertexAttribute) : Array Target :=
 def block32 (d : VertexAttribute) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 24 ≤ total) (d : VertexAttribute) :
+    Block total :=
+  let b := b.pokeU32 (off + 4) (CEnum.toC d.format) (by omega)
+  let b := b.pokeU64 (off + 8) d.offset (by omega)
+  let b := b.pokeU32 (off + 16) d.shaderLocation (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array VertexAttribute) : ByteArray :=
-  encodeAll 24 encode32 xs
+  (go 0 (Block.fresh (xs.size * 24))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 24)) :
+      Block (xs.size * 24) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 24) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array VertexAttribute) :
     (encodeAll32 xs).size = xs.size * 24 :=
-  size_encodeAll 24 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 24))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array VertexAttribute) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -9796,7 +9902,7 @@ def sizesFit (_ : VertexAttribute) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : VertexAttribute) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 49
@@ -9804,7 +9910,7 @@ def tableIndex : Nat := 49
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : VertexAttribute) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end VertexAttribute
 
@@ -9993,7 +10099,7 @@ def sizesFit (_ : BindGroupDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BindGroupDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 50
@@ -10001,7 +10107,7 @@ def tableIndex : Nat := 50
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BindGroupDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BindGroupDescriptor
 
@@ -10116,20 +10222,50 @@ def targets64 (_ : BindGroupLayoutEntry) : Array Target :=
 def block64 (d : BindGroupLayoutEntry) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 120 ≤ total) (d : BindGroupLayoutEntry) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) d.binding (by omega)
+  let b := b.pokeU64 (off + 16) d.visibility.bits (by omega)
+  let b := b.pokeU32 (off + 24) d.bindingArraySize (by omega)
+  let b := b.pokeU32 (off + 40) (CEnum.toC d.buffer.type) (by omega)
+  let b := b.pokeU32 (off + 44) (wgpuBool d.buffer.hasDynamicOffset) (by omega)
+  let b := b.pokeU64 (off + 48) d.buffer.minBindingSize (by omega)
+  let b := b.pokeU32 (off + 64) (CEnum.toC d.sampler.type) (by omega)
+  let b := b.pokeU32 (off + 80) (CEnum.toC d.texture.sampleType) (by omega)
+  let b := b.pokeU32 (off + 84) (CEnum.toC d.texture.viewDimension) (by omega)
+  let b := b.pokeU32 (off + 88) (wgpuBool d.texture.multisampled) (by omega)
+  let b := b.pokeU32 (off + 104) (CEnum.toC d.storageTexture.access) (by omega)
+  let b := b.pokeU32 (off + 108) (CEnum.toC d.storageTexture.format) (by omega)
+  let b := b.pokeU32 (off + 112)
+      (CEnum.toC d.storageTexture.viewDimension)
+      (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array BindGroupLayoutEntry) : ByteArray :=
-  encodeAll 120 encode64 xs
+  (go 0 (Block.fresh (xs.size * 120))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 120)) :
+      Block (xs.size * 120) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 120) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array BindGroupLayoutEntry) :
     (encodeAll64 xs).size = xs.size * 120 :=
-  size_encodeAll 120 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 120))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array BindGroupLayoutEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -10243,20 +10379,50 @@ def targets32 (_ : BindGroupLayoutEntry) : Array Target :=
 def block32 (d : BindGroupLayoutEntry) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 88 ≤ total) (d : BindGroupLayoutEntry) :
+    Block total :=
+  let b := b.pokeU32 (off + 4) d.binding (by omega)
+  let b := b.pokeU64 (off + 8) d.visibility.bits (by omega)
+  let b := b.pokeU32 (off + 16) d.bindingArraySize (by omega)
+  let b := b.pokeU32 (off + 28) (CEnum.toC d.buffer.type) (by omega)
+  let b := b.pokeU32 (off + 32) (wgpuBool d.buffer.hasDynamicOffset) (by omega)
+  let b := b.pokeU64 (off + 40) d.buffer.minBindingSize (by omega)
+  let b := b.pokeU32 (off + 52) (CEnum.toC d.sampler.type) (by omega)
+  let b := b.pokeU32 (off + 60) (CEnum.toC d.texture.sampleType) (by omega)
+  let b := b.pokeU32 (off + 64) (CEnum.toC d.texture.viewDimension) (by omega)
+  let b := b.pokeU32 (off + 68) (wgpuBool d.texture.multisampled) (by omega)
+  let b := b.pokeU32 (off + 76) (CEnum.toC d.storageTexture.access) (by omega)
+  let b := b.pokeU32 (off + 80) (CEnum.toC d.storageTexture.format) (by omega)
+  let b := b.pokeU32 (off + 84)
+      (CEnum.toC d.storageTexture.viewDimension)
+      (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array BindGroupLayoutEntry) : ByteArray :=
-  encodeAll 88 encode32 xs
+  (go 0 (Block.fresh (xs.size * 88))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 88)) :
+      Block (xs.size * 88) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 88) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array BindGroupLayoutEntry) :
     (encodeAll32 xs).size = xs.size * 88 :=
-  size_encodeAll 88 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 88))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array BindGroupLayoutEntry) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -10274,7 +10440,7 @@ def sizesFit (_ : BindGroupLayoutEntry) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BindGroupLayoutEntry) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 51
@@ -10282,7 +10448,7 @@ def tableIndex : Nat := 51
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BindGroupLayoutEntry) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BindGroupLayoutEntry
 
@@ -10477,7 +10643,7 @@ def sizesFit (_ : BlendState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BlendState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 52
@@ -10485,7 +10651,7 @@ def tableIndex : Nat := 52
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BlendState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BlendState
 
@@ -10666,7 +10832,7 @@ def sizesFit (_ : ComputePassDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ComputePassDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 53
@@ -10674,7 +10840,7 @@ def tableIndex : Nat := 53
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ComputePassDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ComputePassDescriptor
 
@@ -10863,7 +11029,7 @@ def sizesFit (_ : ComputeState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ComputeState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 54
@@ -10871,7 +11037,7 @@ def tableIndex : Nat := 54
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ComputeState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ComputeState
 
@@ -11112,7 +11278,7 @@ def sizesFit (_ : DepthStencilState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : DepthStencilState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 55
@@ -11120,7 +11286,7 @@ def tableIndex : Nat := 55
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : DepthStencilState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end DepthStencilState
 
@@ -11301,7 +11467,7 @@ def sizesFit (_ : FutureWaitInfo) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : FutureWaitInfo) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 56
@@ -11309,7 +11475,7 @@ def tableIndex : Nat := 56
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : FutureWaitInfo) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end FutureWaitInfo
 
@@ -11487,7 +11653,7 @@ as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
 as for a `size_t` argument.
 -/
 def sizesFit (d : InstanceDescriptor) : Bool :=
-  System.Platform.numBits = 64 ||
+  Width.is64 () ||
       (d.requiredLimits.all fun x0 => sizeFits x0.timedWaitAnyMaxCount)
 
 /--
@@ -11497,7 +11663,7 @@ low 32 bits.
 -/
 @[inline]
 def toBytes (d : InstanceDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 57
@@ -11505,7 +11671,7 @@ def tableIndex : Nat := 57
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : InstanceDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end InstanceDescriptor
 
@@ -11610,20 +11776,42 @@ def targets64 (d : RenderPassColorAttachment) : Array Target :=
 def block64 (d : RenderPassColorAttachment) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 72 ≤ total) (d : RenderPassColorAttachment) :
+    Block total :=
+  let b := b.pokeU32 (off + 16) d.depthSlice (by omega)
+  let b := b.pokeU32 (off + 32) (CEnum.toC d.loadOp) (by omega)
+  let b := b.pokeU32 (off + 36) (CEnum.toC d.storeOp) (by omega)
+  let b := b.pokeF64 (off + 40) d.clearValue.r (by omega)
+  let b := b.pokeF64 (off + 48) d.clearValue.g (by omega)
+  let b := b.pokeF64 (off + 56) d.clearValue.b (by omega)
+  let b := b.pokeF64 (off + 64) d.clearValue.a (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array RenderPassColorAttachment) : ByteArray :=
-  encodeAll 72 encode64 xs
+  (go 0 (Block.fresh (xs.size * 72))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 72)) :
+      Block (xs.size * 72) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 72) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array RenderPassColorAttachment) :
     (encodeAll64 xs).size = xs.size * 72 :=
-  size_encodeAll 72 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 72))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array RenderPassColorAttachment) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -11727,20 +11915,42 @@ def targets32 (d : RenderPassColorAttachment) : Array Target :=
 def block32 (d : RenderPassColorAttachment) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 56 ≤ total) (d : RenderPassColorAttachment) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) d.depthSlice (by omega)
+  let b := b.pokeU32 (off + 16) (CEnum.toC d.loadOp) (by omega)
+  let b := b.pokeU32 (off + 20) (CEnum.toC d.storeOp) (by omega)
+  let b := b.pokeF64 (off + 24) d.clearValue.r (by omega)
+  let b := b.pokeF64 (off + 32) d.clearValue.g (by omega)
+  let b := b.pokeF64 (off + 40) d.clearValue.b (by omega)
+  let b := b.pokeF64 (off + 48) d.clearValue.a (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array RenderPassColorAttachment) : ByteArray :=
-  encodeAll 56 encode32 xs
+  (go 0 (Block.fresh (xs.size * 56))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 56)) :
+      Block (xs.size * 56) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 56) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array RenderPassColorAttachment) :
     (encodeAll32 xs).size = xs.size * 56 :=
-  size_encodeAll 56 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 56))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array RenderPassColorAttachment) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -11758,7 +11968,7 @@ def sizesFit (_ : RenderPassColorAttachment) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderPassColorAttachment) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 58
@@ -11766,7 +11976,7 @@ def tableIndex : Nat := 58
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderPassColorAttachment) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderPassColorAttachment
 
@@ -11955,7 +12165,7 @@ def sizesFit (_ : TexelCopyBufferInfo) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TexelCopyBufferInfo) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 59
@@ -11963,7 +12173,7 @@ def tableIndex : Nat := 59
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TexelCopyBufferInfo) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TexelCopyBufferInfo
 
@@ -12158,7 +12368,7 @@ def sizesFit (_ : TexelCopyTextureInfo) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TexelCopyTextureInfo) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 60
@@ -12166,7 +12376,7 @@ def tableIndex : Nat := 60
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TexelCopyTextureInfo) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TexelCopyTextureInfo
 
@@ -12365,7 +12575,7 @@ def sizesFit (_ : TextureComponentSwizzleDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureComponentSwizzleDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 61
@@ -12373,7 +12583,7 @@ def tableIndex : Nat := 61
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureComponentSwizzleDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureComponentSwizzleDescriptor
 
@@ -12592,7 +12802,7 @@ def sizesFit (_ : TextureDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : TextureDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 62
@@ -12600,7 +12810,7 @@ def tableIndex : Nat := 62
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : TextureDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end TextureDescriptor
 
@@ -12694,20 +12904,38 @@ def targets64 (d : VertexBufferLayout) : Array Target :=
 def block64 (d : VertexBufferLayout) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 40 ≤ total) (d : VertexBufferLayout) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) (CEnum.toC d.stepMode) (by omega)
+  let b := b.pokeU64 (off + 16) d.arrayStride (by omega)
+  let b := b.pokeU64 (off + 24) d.attributes.size.toUInt64 (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array VertexBufferLayout) : ByteArray :=
-  encodeAll 40 encode64 xs
+  (go 0 (Block.fresh (xs.size * 40))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 40)) :
+      Block (xs.size * 40) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 40) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array VertexBufferLayout) :
     (encodeAll64 xs).size = xs.size * 40 :=
-  size_encodeAll 40 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 40))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array VertexBufferLayout) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -12800,20 +13028,38 @@ def targets32 (d : VertexBufferLayout) : Array Target :=
 def block32 (d : VertexBufferLayout) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 24 ≤ total) (d : VertexBufferLayout) :
+    Block total :=
+  let b := b.pokeU32 (off + 4) (CEnum.toC d.stepMode) (by omega)
+  let b := b.pokeU64 (off + 8) d.arrayStride (by omega)
+  let b := b.pokeU32 (off + 16) d.attributes.size.toUInt32 (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array VertexBufferLayout) : ByteArray :=
-  encodeAll 24 encode32 xs
+  (go 0 (Block.fresh (xs.size * 24))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 24)) :
+      Block (xs.size * 24) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 24) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array VertexBufferLayout) :
     (encodeAll32 xs).size = xs.size * 24 :=
-  size_encodeAll 24 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 24))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array VertexBufferLayout) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -12831,7 +13077,7 @@ def sizesFit (_ : VertexBufferLayout) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : VertexBufferLayout) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 63
@@ -12839,7 +13085,7 @@ def tableIndex : Nat := 63
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : VertexBufferLayout) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end VertexBufferLayout
 
@@ -13024,7 +13270,7 @@ def sizesFit (_ : BindGroupLayoutDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : BindGroupLayoutDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 64
@@ -13032,7 +13278,7 @@ def tableIndex : Nat := 64
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : BindGroupLayoutDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end BindGroupLayoutDescriptor
 
@@ -13124,20 +13370,37 @@ def targets64 (d : ColorTargetState) : Array Target :=
 def block64 (d : ColorTargetState) : Array Target :=
   #[.block (encode64 d)] ++ targets64 d
 
-/-- An array of them, encoded in turn, on 64-bit targets. -/
+/-- `d` poked into `b` at `off`, as `encode64` lays it out. -/
+@[inline]
+def encodeInto64 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 32 ≤ total) (d : ColorTargetState) :
+    Block total :=
+  let b := b.pokeU32 (off + 8) (CEnum.toC d.format) (by omega)
+  let b := b.pokeU64 (off + 24) d.writeMask.bits (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on 64-bit targets. -/
 @[noinline, never_extract]
 def encodeAll64 (xs : Array ColorTargetState) : ByteArray :=
-  encodeAll 32 encode64 xs
+  (go 0 (Block.fresh (xs.size * 32))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 32)) :
+      Block (xs.size * 32) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto64 b (i * 32) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll64 (xs : Array ColorTargetState) :
     (encodeAll64 xs).size = xs.size * 32 :=
-  size_encodeAll 32 encode64 size_encode64 xs
+  (encodeAll64.go xs 0 (Block.fresh (xs.size * 32))).2
 
 /-- What C fills in an array of them's pointers from on 64-bit targets. -/
 @[never_extract]
 def targetsAll64 (xs : Array ColorTargetState) : Array Target :=
-  (xs.toList.flatMap fun d => (targets64 d).toList).toArray
+  targetsOfAll targets64 xs
 
 /-- An array of them as a block on 64-bit targets, and its targets. -/
 @[never_extract]
@@ -13228,20 +13491,37 @@ def targets32 (d : ColorTargetState) : Array Target :=
 def block32 (d : ColorTargetState) : Array Target :=
   #[.block (encode32 d)] ++ targets32 d
 
-/-- An array of them, encoded in turn, on wasm32. -/
+/-- `d` poked into `b` at `off`, as `encode32` lays it out. -/
+@[inline]
+def encodeInto32 {total : Nat} (b : Block total) (off : Nat)
+    (h : off + 24 ≤ total) (d : ColorTargetState) :
+    Block total :=
+  let b := b.pokeU32 (off + 4) (CEnum.toC d.format) (by omega)
+  let b := b.pokeU64 (off + 16) d.writeMask.bits (by omega)
+  b
+
+/-- An array of them, encoded in turn into one block, on wasm32. -/
 @[noinline, never_extract]
 def encodeAll32 (xs : Array ColorTargetState) : ByteArray :=
-  encodeAll 24 encode32 xs
+  (go 0 (Block.fresh (xs.size * 24))).1
+where
+  /-- Each element from the `i`th on, encoded into `b`. -/
+  go (i : Nat) (b : Block (xs.size * 24)) :
+      Block (xs.size * 24) :=
+    if h : i < xs.size then
+      go (i + 1) (encodeInto32 b (i * 24) (by omega) xs[i])
+    else b
+  termination_by xs.size - i
 
 /-- An array of them is their size. -/
 theorem size_encodeAll32 (xs : Array ColorTargetState) :
     (encodeAll32 xs).size = xs.size * 24 :=
-  size_encodeAll 24 encode32 size_encode32 xs
+  (encodeAll32.go xs 0 (Block.fresh (xs.size * 24))).2
 
 /-- What C fills in an array of them's pointers from on wasm32. -/
 @[never_extract]
 def targetsAll32 (xs : Array ColorTargetState) : Array Target :=
-  (xs.toList.flatMap fun d => (targets32 d).toList).toArray
+  targetsOfAll targets32 xs
 
 /-- An array of them as a block on wasm32, and its targets. -/
 @[never_extract]
@@ -13259,7 +13539,7 @@ def sizesFit (_ : ColorTargetState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ColorTargetState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 65
@@ -13267,7 +13547,7 @@ def tableIndex : Nat := 65
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ColorTargetState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ColorTargetState
 
@@ -13474,7 +13754,7 @@ def sizesFit (_ : ComputePipelineDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : ComputePipelineDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 66
@@ -13482,7 +13762,7 @@ def tableIndex : Nat := 66
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : ComputePipelineDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end ComputePipelineDescriptor
 
@@ -13681,7 +13961,7 @@ def sizesFit (_ : RenderPassDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderPassDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 67
@@ -13689,7 +13969,7 @@ def tableIndex : Nat := 67
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderPassDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderPassDescriptor
 
@@ -13884,7 +14164,7 @@ def sizesFit (_ : VertexState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : VertexState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 68
@@ -13892,7 +14172,7 @@ def tableIndex : Nat := 68
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : VertexState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end VertexState
 
@@ -14087,7 +14367,7 @@ def sizesFit (_ : FragmentState) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : FragmentState) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 69
@@ -14095,7 +14375,7 @@ def tableIndex : Nat := 69
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : FragmentState) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end FragmentState
 
@@ -14357,7 +14637,7 @@ def sizesFit (_ : RenderPipelineDescriptor) : Bool :=
 /-- `d` as C lays it out on this target, its pointers 0. -/
 @[inline]
 def toBytes (d : RenderPipelineDescriptor) : ByteArray :=
-  if System.Platform.numBits = 64 then encode64 d else encode32 d
+  if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
 def tableIndex : Nat := 70
@@ -14365,7 +14645,7 @@ def tableIndex : Nat := 70
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
 def toTargets (d : RenderPipelineDescriptor) : Array Target :=
-  if System.Platform.numBits = 64 then targets64 d else targets32 d
+  if Width.is64 () then targets64 d else targets32 d
 
 end RenderPipelineDescriptor
 
@@ -14560,23 +14840,24 @@ theorem getElem?_specs32_objects : specs32[1]? = some (objectsSpec 4) := rfl
 /-- Every table on this target. -/
 @[inline]
 def currentTables : Array ByteArray :=
-  if System.Platform.numBits = 64 then tables64 else tables32
+  if Width.is64 () then tables64 else tables32
 
 /-- The tables on this target, and no others: what a shim takes. -/
 abbrev CurrentTablesOf := {ts : Array ByteArray // ts = currentTables}
 
 /-- Every table on this target, as the walk reads it. -/
 noncomputable def currentSpecs : Array Spec :=
-  if System.Platform.numBits = 64 then specs64 else specs32
+  if Width.is64 () then specs64 else specs32
 
 /-- The tables C reads on this target are the tables the walk reads. -/
 theorem currentTables_eq :
     currentTables.toList = currentSpecs.toList.map fun (size, relocs) =>
       serialize size relocs := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentTables, currentSpecs, h, ↓reduceIte]
     exact tables64_eq
-  · simp only [currentTables, currentSpecs, h, ↓reduceIte]
+  · simp only [currentTables, currentSpecs, h, Bool.false_eq_true,
+      ↓reduceIte]
     exact tables32_eq
 
 /-! ### `BindGroupEntry`: its walk -/
@@ -14617,7 +14898,7 @@ theorem walk_encode64_tableIndex (d : BindGroupEntry) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array BindGroupEntry) (ts : List Target) :
     walk specs64 2 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -14651,7 +14932,7 @@ theorem walk_encode32_tableIndex (d : BindGroupEntry) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array BindGroupEntry) (ts : List Target) :
     walk specs32 2 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -14661,20 +14942,21 @@ theorem walk_encodeAll32 (xs : Array BindGroupEntry) (ts : List Target) :
 theorem size_toBytes (d : BindGroupEntry) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BindGroupEntry) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -14749,20 +15031,21 @@ theorem walk_encode32_tableIndex (d : BlendComponent) (ts : List Target) :
 theorem size_toBytes (d : BlendComponent) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BlendComponent) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -14837,20 +15120,21 @@ theorem walk_encode32_tableIndex (d : BufferBindingLayout) (ts : List Target) :
 theorem size_toBytes (d : BufferBindingLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BufferBindingLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -14925,20 +15209,21 @@ theorem walk_encode32_tableIndex (d : BufferDescriptor) (ts : List Target) :
 theorem size_toBytes (d : BufferDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BufferDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15013,20 +15298,21 @@ theorem walk_encode32_tableIndex (d : Color) (ts : List Target) :
 theorem size_toBytes (d : Color) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : Color) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15103,20 +15389,21 @@ theorem walk_encode32_tableIndex (d : CommandBufferDescriptor)
 theorem size_toBytes (d : CommandBufferDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : CommandBufferDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15193,20 +15480,21 @@ theorem walk_encode32_tableIndex (d : CommandEncoderDescriptor)
 theorem size_toBytes (d : CommandEncoderDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : CommandEncoderDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15283,20 +15571,21 @@ theorem walk_encode32_tableIndex (d : CompatibilityModeLimits)
 theorem size_toBytes (d : CompatibilityModeLimits) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : CompatibilityModeLimits) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15347,7 +15636,7 @@ theorem walk_encode64_tableIndex (d : ConstantEntry) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array ConstantEntry) (ts : List Target) :
     walk specs64 10 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -15381,7 +15670,7 @@ theorem walk_encode32_tableIndex (d : ConstantEntry) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array ConstantEntry) (ts : List Target) :
     walk specs32 10 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -15391,20 +15680,21 @@ theorem walk_encodeAll32 (xs : Array ConstantEntry) (ts : List Target) :
 theorem size_toBytes (d : ConstantEntry) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ConstantEntry) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15479,20 +15769,21 @@ theorem walk_encode32_tableIndex (d : Extent3D) (ts : List Target) :
 theorem size_toBytes (d : Extent3D) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : Extent3D) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15569,20 +15860,21 @@ theorem walk_encode32_tableIndex (d : ExternalTextureBindingEntry)
 theorem size_toBytes (d : ExternalTextureBindingEntry) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ExternalTextureBindingEntry) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15661,20 +15953,21 @@ theorem walk_encode32_tableIndex (d : ExternalTextureBindingLayout)
 theorem size_toBytes (d : ExternalTextureBindingLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ExternalTextureBindingLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15749,20 +16042,21 @@ theorem walk_encode32_tableIndex (d : Future) (ts : List Target) :
 theorem size_toBytes (d : Future) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : Future) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15837,20 +16131,21 @@ theorem walk_encode32_tableIndex (d : InstanceLimits) (ts : List Target) :
 theorem size_toBytes (d : InstanceLimits) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : InstanceLimits) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -15925,20 +16220,21 @@ theorem walk_encode32_tableIndex (d : Limits) (ts : List Target) :
 theorem size_toBytes (d : Limits) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : Limits) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16013,20 +16309,21 @@ theorem walk_encode32_tableIndex (d : MultisampleState) (ts : List Target) :
 theorem size_toBytes (d : MultisampleState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : MultisampleState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16101,20 +16398,21 @@ theorem walk_encode32_tableIndex (d : Origin3D) (ts : List Target) :
 theorem size_toBytes (d : Origin3D) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : Origin3D) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16189,20 +16487,21 @@ theorem walk_encode32_tableIndex (d : PassTimestampWrites) (ts : List Target) :
 theorem size_toBytes (d : PassTimestampWrites) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : PassTimestampWrites) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16283,20 +16582,21 @@ theorem walk_encode32_tableIndex (d : PipelineLayoutDescriptor)
 theorem size_toBytes (d : PipelineLayoutDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : PipelineLayoutDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16371,20 +16671,21 @@ theorem walk_encode32_tableIndex (d : PrimitiveState) (ts : List Target) :
 theorem size_toBytes (d : PrimitiveState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : PrimitiveState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16459,20 +16760,21 @@ theorem walk_encode32_tableIndex (d : QuerySetDescriptor) (ts : List Target) :
 theorem size_toBytes (d : QuerySetDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : QuerySetDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16547,20 +16849,21 @@ theorem walk_encode32_tableIndex (d : QueueDescriptor) (ts : List Target) :
 theorem size_toBytes (d : QueueDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : QueueDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16637,20 +16940,21 @@ theorem walk_encode32_tableIndex (d : RenderBundleDescriptor)
 theorem size_toBytes (d : RenderBundleDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderBundleDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16729,20 +17033,21 @@ theorem walk_encode32_tableIndex (d : RenderBundleEncoderDescriptor)
 theorem size_toBytes (d : RenderBundleEncoderDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderBundleEncoderDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16823,20 +17128,21 @@ theorem walk_encode32_tableIndex (d : RenderPassDepthStencilAttachment)
 theorem size_toBytes (d : RenderPassDepthStencilAttachment) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderPassDepthStencilAttachment) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -16913,20 +17219,21 @@ theorem walk_encode32_tableIndex (d : RenderPassMaxDrawCount)
 theorem size_toBytes (d : RenderPassMaxDrawCount) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderPassMaxDrawCount) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17003,20 +17310,21 @@ theorem walk_encode32_tableIndex (d : RequestAdapterOptions)
 theorem size_toBytes (d : RequestAdapterOptions) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RequestAdapterOptions) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17093,20 +17401,21 @@ theorem walk_encode32_tableIndex (d : RequestAdapterWebXROptions)
 theorem size_toBytes (d : RequestAdapterWebXROptions) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RequestAdapterWebXROptions) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17181,20 +17490,21 @@ theorem walk_encode32_tableIndex (d : SamplerBindingLayout) (ts : List Target) :
 theorem size_toBytes (d : SamplerBindingLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SamplerBindingLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17269,20 +17579,21 @@ theorem walk_encode32_tableIndex (d : SamplerDescriptor) (ts : List Target) :
 theorem size_toBytes (d : SamplerDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SamplerDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17359,20 +17670,21 @@ theorem walk_encode32_tableIndex (d : ShaderModuleDescriptor)
 theorem size_toBytes (d : ShaderModuleDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ShaderModuleDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17447,20 +17759,21 @@ theorem walk_encode32_tableIndex (d : ShaderSourceWGSL) (ts : List Target) :
 theorem size_toBytes (d : ShaderSourceWGSL) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ShaderSourceWGSL) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17535,20 +17848,21 @@ theorem walk_encode32_tableIndex (d : StencilFaceState) (ts : List Target) :
 theorem size_toBytes (d : StencilFaceState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : StencilFaceState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17625,20 +17939,21 @@ theorem walk_encode32_tableIndex (d : StorageTextureBindingLayout)
 theorem size_toBytes (d : StorageTextureBindingLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : StorageTextureBindingLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17713,20 +18028,21 @@ theorem walk_encode32_tableIndex (d : SupportedFeatures) (ts : List Target) :
 theorem size_toBytes (d : SupportedFeatures) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SupportedFeatures) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17803,20 +18119,21 @@ theorem walk_encode32_tableIndex (d : SupportedInstanceFeatures)
 theorem size_toBytes (d : SupportedInstanceFeatures) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SupportedInstanceFeatures) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17895,20 +18212,21 @@ theorem walk_encode32_tableIndex (d : SupportedWGSLLanguageFeatures)
 theorem size_toBytes (d : SupportedWGSLLanguageFeatures) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SupportedWGSLLanguageFeatures) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -17983,20 +18301,21 @@ theorem walk_encode32_tableIndex (d : SurfaceCapabilities) (ts : List Target) :
 theorem size_toBytes (d : SurfaceCapabilities) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SurfaceCapabilities) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18073,20 +18392,21 @@ theorem walk_encode32_tableIndex (d : SurfaceColorManagement)
 theorem size_toBytes (d : SurfaceColorManagement) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SurfaceColorManagement) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18161,20 +18481,21 @@ theorem walk_encode32_tableIndex (d : SurfaceConfiguration) (ts : List Target) :
 theorem size_toBytes (d : SurfaceConfiguration) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SurfaceConfiguration) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18249,20 +18570,21 @@ theorem walk_encode32_tableIndex (d : SurfaceDescriptor) (ts : List Target) :
 theorem size_toBytes (d : SurfaceDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SurfaceDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18337,20 +18659,21 @@ theorem walk_encode32_tableIndex (d : SurfaceTexture) (ts : List Target) :
 theorem size_toBytes (d : SurfaceTexture) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : SurfaceTexture) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18427,20 +18750,21 @@ theorem walk_encode32_tableIndex (d : TexelCopyBufferLayout)
 theorem size_toBytes (d : TexelCopyBufferLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TexelCopyBufferLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18515,20 +18839,21 @@ theorem walk_encode32_tableIndex (d : TextureBindingLayout) (ts : List Target) :
 theorem size_toBytes (d : TextureBindingLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TextureBindingLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18605,20 +18930,21 @@ theorem walk_encode32_tableIndex (d : TextureBindingViewDimension)
 theorem size_toBytes (d : TextureBindingViewDimension) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TextureBindingViewDimension) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18695,20 +19021,21 @@ theorem walk_encode32_tableIndex (d : TextureComponentSwizzle)
 theorem size_toBytes (d : TextureComponentSwizzle) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TextureComponentSwizzle) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18785,20 +19112,21 @@ theorem walk_encode32_tableIndex (d : TextureViewDescriptor)
 theorem size_toBytes (d : TextureViewDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TextureViewDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18849,7 +19177,7 @@ theorem walk_encode64_tableIndex (d : VertexAttribute) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array VertexAttribute) (ts : List Target) :
     walk specs64 49 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -18883,7 +19211,7 @@ theorem walk_encode32_tableIndex (d : VertexAttribute) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array VertexAttribute) (ts : List Target) :
     walk specs32 49 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -18893,20 +19221,21 @@ theorem walk_encodeAll32 (xs : Array VertexAttribute) (ts : List Target) :
 theorem size_toBytes (d : VertexAttribute) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : VertexAttribute) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -18985,20 +19314,21 @@ theorem walk_encode32_tableIndex (d : BindGroupDescriptor) (ts : List Target) :
 theorem size_toBytes (d : BindGroupDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BindGroupDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19049,7 +19379,7 @@ theorem walk_encode64_tableIndex (d : BindGroupLayoutEntry) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array BindGroupLayoutEntry) (ts : List Target) :
     walk specs64 51 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -19083,7 +19413,7 @@ theorem walk_encode32_tableIndex (d : BindGroupLayoutEntry) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array BindGroupLayoutEntry) (ts : List Target) :
     walk specs32 51 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -19093,20 +19423,21 @@ theorem walk_encodeAll32 (xs : Array BindGroupLayoutEntry) (ts : List Target) :
 theorem size_toBytes (d : BindGroupLayoutEntry) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BindGroupLayoutEntry) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19181,20 +19512,21 @@ theorem walk_encode32_tableIndex (d : BlendState) (ts : List Target) :
 theorem size_toBytes (d : BlendState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BlendState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19279,20 +19611,21 @@ theorem walk_encode32_tableIndex (d : ComputePassDescriptor)
 theorem size_toBytes (d : ComputePassDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ComputePassDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19371,20 +19704,21 @@ theorem walk_encode32_tableIndex (d : ComputeState) (ts : List Target) :
 theorem size_toBytes (d : ComputeState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ComputeState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19459,20 +19793,21 @@ theorem walk_encode32_tableIndex (d : DepthStencilState) (ts : List Target) :
 theorem size_toBytes (d : DepthStencilState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : DepthStencilState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19547,20 +19882,21 @@ theorem walk_encode32_tableIndex (d : FutureWaitInfo) (ts : List Target) :
 theorem size_toBytes (d : FutureWaitInfo) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : FutureWaitInfo) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19645,20 +19981,21 @@ theorem walk_encode32_tableIndex (d : InstanceDescriptor) (ts : List Target) :
 theorem size_toBytes (d : InstanceDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : InstanceDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19711,7 +20048,7 @@ theorem walk_encodeAll64 (xs : Array RenderPassColorAttachment)
     (ts : List Target) :
     walk specs64 58 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -19747,7 +20084,7 @@ theorem walk_encodeAll32 (xs : Array RenderPassColorAttachment)
     (ts : List Target) :
     walk specs32 58 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -19757,20 +20094,21 @@ theorem walk_encodeAll32 (xs : Array RenderPassColorAttachment)
 theorem size_toBytes (d : RenderPassColorAttachment) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderPassColorAttachment) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19845,20 +20183,21 @@ theorem walk_encode32_tableIndex (d : TexelCopyBufferInfo) (ts : List Target) :
 theorem size_toBytes (d : TexelCopyBufferInfo) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TexelCopyBufferInfo) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -19933,20 +20272,21 @@ theorem walk_encode32_tableIndex (d : TexelCopyTextureInfo) (ts : List Target) :
 theorem size_toBytes (d : TexelCopyTextureInfo) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TexelCopyTextureInfo) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20027,10 +20367,10 @@ theorem walk_encode32_tableIndex (d : TextureComponentSwizzleDescriptor)
 theorem size_toBytes (d : TextureComponentSwizzleDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
@@ -20038,10 +20378,11 @@ theorem walk_toBytes (d : TextureComponentSwizzleDescriptor)
     (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20116,20 +20457,21 @@ theorem walk_encode32_tableIndex (d : TextureDescriptor) (ts : List Target) :
 theorem size_toBytes (d : TextureDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : TextureDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20182,7 +20524,7 @@ theorem walk_encode64_tableIndex (d : VertexBufferLayout) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array VertexBufferLayout) (ts : List Target) :
     walk specs64 63 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -20218,7 +20560,7 @@ theorem walk_encode32_tableIndex (d : VertexBufferLayout) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array VertexBufferLayout) (ts : List Target) :
     walk specs32 63 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -20228,20 +20570,21 @@ theorem walk_encodeAll32 (xs : Array VertexBufferLayout) (ts : List Target) :
 theorem size_toBytes (d : VertexBufferLayout) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : VertexBufferLayout) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20322,20 +20665,21 @@ theorem walk_encode32_tableIndex (d : BindGroupLayoutDescriptor)
 theorem size_toBytes (d : BindGroupLayoutDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : BindGroupLayoutDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20390,7 +20734,7 @@ theorem walk_encode64_tableIndex (d : ColorTargetState) (ts : List Target) :
 theorem walk_encodeAll64 (xs : Array ColorTargetState) (ts : List Target) :
     walk specs64 65 (encodeAll64 xs).size
       ((targetsAll64 xs).toList ++ ts) = some ts := by
-  rw [targetsAll64, List.toList_toArray]
+  rw [targetsAll64, toList_targetsOfAll]
   exact walk_elements getElem?_specs64 (by decide) xs.toList
     (fun d => (targets64 d).toList) _
     (by rw [size_encodeAll64, Array.length_toList])
@@ -20428,7 +20772,7 @@ theorem walk_encode32_tableIndex (d : ColorTargetState) (ts : List Target) :
 theorem walk_encodeAll32 (xs : Array ColorTargetState) (ts : List Target) :
     walk specs32 65 (encodeAll32 xs).size
       ((targetsAll32 xs).toList ++ ts) = some ts := by
-  rw [targetsAll32, List.toList_toArray]
+  rw [targetsAll32, toList_targetsOfAll]
   exact walk_elements getElem?_specs32 (by decide) xs.toList
     (fun d => (targets32 d).toList) _
     (by rw [size_encodeAll32, Array.length_toList])
@@ -20438,20 +20782,21 @@ theorem walk_encodeAll32 (xs : Array ColorTargetState) (ts : List Target) :
 theorem size_toBytes (d : ColorTargetState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ColorTargetState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20532,20 +20877,21 @@ theorem walk_encode32_tableIndex (d : ComputePipelineDescriptor)
 theorem size_toBytes (d : ComputePipelineDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : ComputePipelineDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20640,20 +20986,21 @@ theorem walk_encode32_tableIndex (d : RenderPassDescriptor) (ts : List Target) :
 theorem size_toBytes (d : RenderPassDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderPassDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20734,20 +21081,21 @@ theorem walk_encode32_tableIndex (d : VertexState) (ts : List Target) :
 theorem size_toBytes (d : VertexState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : VertexState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20828,20 +21176,21 @@ theorem walk_encode32_tableIndex (d : FragmentState) (ts : List Target) :
 theorem size_toBytes (d : FragmentState) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : FragmentState) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
@@ -20936,20 +21285,21 @@ theorem walk_encode32_tableIndex (d : RenderPipelineDescriptor)
 theorem size_toBytes (d : RenderPipelineDescriptor) :
     ∃ relocs,
       currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, h, ↓reduceIte]
     exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
-  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
     exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
 
 /-- Walking its table over its bytes takes its targets, on this target. -/
 theorem walk_toBytes (d : RenderPipelineDescriptor) (ts : List Target) :
     walk currentSpecs tableIndex (toBytes d).size
       ((toTargets d).toList ++ ts) = some ts := by
-  by_cases h : System.Platform.numBits = 64
+  by_cases h : Width.is64 () = true
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode64_tableIndex d ts
-  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
 /-- It is a struct C fills in. -/
