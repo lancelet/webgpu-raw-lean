@@ -161,7 +161,7 @@ never a constant computed as the module loads.
 @[noinline, never_extract]
 def labelBack (label : String) : String :=
   let d := { Encode.descriptor with label }
-  bufferDescriptorLabel (descriptorBytes d label) tables
+  bufferDescriptorLabel (descriptorBytes d label) currentTables
     BufferDescriptor.tableIndex.toUSize (BufferDescriptor.toTargets d)
 
 /--
@@ -185,7 +185,7 @@ targets: at run time.
 -/
 @[noinline, never_extract]
 def bindGroupEntryCheck (_ : Unit) : String :=
-  bindGroupEntryBack (BindGroupEntry.toBytes bindGroupEntry) tables
+  bindGroupEntryBack (BindGroupEntry.toBytes bindGroupEntry) currentTables
     BindGroupEntry.tableIndex.toUSize (BindGroupEntry.toTargets bindGroupEntry)
 
 /-- A color target state, with a blend state if `blend`. -/
@@ -212,7 +212,7 @@ filled in by its generated table and targets: at run time.
 @[noinline, never_extract]
 def colorTargetBack (blend : Bool) : String :=
   let d := colorTarget blend
-  colorTargetState (ColorTargetState.toBytes d) tables
+  colorTargetState (ColorTargetState.toBytes d) currentTables
     ColorTargetState.tableIndex.toUSize (ColorTargetState.toTargets d) blend
 
 /-! ## Arrays -/
@@ -240,7 +240,7 @@ table and targets: at run time.
 @[noinline, never_extract]
 def instanceDescriptorCheck (full : Bool) : String :=
   let d := instanceDescriptor full
-  instanceDescriptorBack (InstanceDescriptor.toBytes d) tables
+  instanceDescriptorBack (InstanceDescriptor.toBytes d) currentTables
     InstanceDescriptor.tableIndex.toUSize (InstanceDescriptor.toTargets d) full
 
 /--
@@ -273,12 +273,13 @@ of its `size_t`s fits, its bytes, the tables, its table's index and its
 targets, given to `back`.
 -/
 @[inline]
-def viaClass {T : Type} [CStruct specs T] (d : T)
+def viaClass {T : Type} [CStruct currentSpecs T] (d : T)
     (back : ByteArray → Array ByteArray → USize → Array Target → String) :
     String :=
-  if !CStruct.sizesFit specs d then "a size_t that does not fit" else
-  back (CStruct.toBytes specs d) tables
-    (CStruct.tableIndex specs T).toUSize (CStruct.toTargets specs d)
+  if !CStruct.sizesFit currentSpecs d then "a size_t that does not fit" else
+  back (CStruct.toBytes currentSpecs d) currentTables
+    (CStruct.tableIndex currentSpecs T).toUSize
+    (CStruct.toTargets currentSpecs d)
 
 /--
 What C finds wrong with `bindGroupLayout`, filled in by its generated table
@@ -301,7 +302,7 @@ opaque emptyBindGroupLayoutBack (bytes : ByteArray)
 @[noinline, never_extract]
 def emptyBindGroupLayoutCheck (_ : Unit) : String :=
   let d : BindGroupLayoutDescriptor := {}
-  emptyBindGroupLayoutBack (BindGroupLayoutDescriptor.toBytes d) tables
+  emptyBindGroupLayoutBack (BindGroupLayoutDescriptor.toBytes d) currentTables
     BindGroupLayoutDescriptor.tableIndex.toUSize
     (BindGroupLayoutDescriptor.toTargets d)
 
@@ -320,7 +321,7 @@ layouts, its empty array of objects by the generated table: at run time.
 @[noinline, never_extract]
 def pipelineLayoutCheck (_ : Unit) : String :=
   let d : PipelineLayoutDescriptor := { immediateSize := 16 }
-  pipelineLayoutBack (PipelineLayoutDescriptor.toBytes d) tables
+  pipelineLayoutBack (PipelineLayoutDescriptor.toBytes d) currentTables
     PipelineLayoutDescriptor.tableIndex.toUSize
     (PipelineLayoutDescriptor.toTargets d)
 
@@ -356,7 +357,7 @@ targets: at run time.
 -/
 @[noinline, never_extract]
 def vertexBufferCheck (_ : Unit) : String :=
-  vertexBufferBack (VertexBufferLayout.toBytes vertexBuffer) tables
+  vertexBufferBack (VertexBufferLayout.toBytes vertexBuffer) currentTables
     VertexBufferLayout.tableIndex.toUSize
     (VertexBufferLayout.toTargets vertexBuffer)
 

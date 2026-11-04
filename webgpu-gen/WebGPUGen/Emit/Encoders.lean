@@ -30,9 +30,10 @@ target width, a struct has:
   shared tables;
 - and, with every table known, at the end: that walking its table over its
   bytes (`WebGPU.Raw.Reloc.walk`, as C does) takes exactly its targets
-  (`walk64`), each of its kind, a pointer to a struct by that struct's own,
-  an array by its elements' (`walkAll64`); and, for the target the program
-  runs on, the same (`walk_current`), and its instance of `CStruct`.
+  (`walk_encode64`), each of its kind, a pointer to a struct by that
+  struct's own, an array by its elements' (`walk_encodeAll64`); and, for the
+  target the program runs on, the same (`walk_toBytes`), and its instance of
+  `CStruct`.
 
 Every struct's table is in `tables64`, at its `tableIndex`; each object type
 converts to the `Object` a pointer to one is filled in from.
@@ -642,7 +643,8 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
         s!"def toBytes (d : {t}) : ByteArray :=",
         "  if System.Platform.numBits = 64 then encode64 d else encode32 d"]
     ] ++ tableDecls
-  pure (text s!"namespace {t}" ++ hardline ++ hardline
+  pure (text s!"/-! ### `{t}` -/" ++ hardline ++ hardline
+    ++ text s!"namespace {t}" ++ hardline ++ hardline
     ++ join (hardline ++ hardline) (decls.map Doc.lines) ++ hardline
     ++ hardline ++ text s!"end {t}")
 
@@ -704,17 +706,17 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let hyp (k : Nat) := s!"h{k}"
   -- The pointees' lemmas, and for each optional one, its case and its empty.
   let pointeeLemmas := (ps.map fun (names, _, _) =>
-      [s!"{names.lean}.block{n}", s!"{names.lean}.walk{n}"]).flatten
+      [s!"{names.lean}.block{n}", s!"{names.lean}.walk_encode{n}"]).flatten
   let empties := optional.map fun (names, _, _) =>
-      s!"walk_empty {names.lean}.specs{n}_index (by decide)"
+      s!"walk_empty {names.lean}.getElem?_specs{n} (by decide)"
   -- The arrays' lemmas: each kind's walk.
   let arrayLemmas := (entries.filterMap fun (_, _, it) => match it with
     | .pointer (.array (.words _) _)       =>
-      some [s!"walk_words specs{n}_words"]
+      some [s!"walk_words getElem?_specs{n}_words"]
     | .pointer (.array (.objects _) _)     =>
-      some [s!"walk_objects specs{n}_objects (by decide)"]
+      some [s!"walk_objects getElem?_specs{n}_objects (by decide)"]
     | .pointer (.array (.structs names) _) =>
-      some [s!"{names.lean}.array{n}", s!"{names.lean}.walkAll{n}"]
+      some [s!"{names.lean}.array{n}", s!"{names.lean}.walk_encodeAll{n}"]
     | _                                    => none).flatten
   let relocs := entries.filter fun (_, _, it) => it.isPointer
   let lemmas := ["element", s!"relocs{n}", s!"targets{n}"]
@@ -729,35 +731,36 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
     lineOrBroken 0 s!"theorem {name} {args}" ["(ts : List Target) :"] ++ lhs
   [
     ["/-- Its index finds its table as the walk reads it. -/",
-      s!"theorem specs{n}_index : specs{n}[{i}]? = some ({size}, relocs{n}) :=",
+      s!"theorem getElem?_specs{n} :",
+      s!"    specs{n}[{i}]? = some ({size}, relocs{n}) :=",
       "  rfl"],
     ["/-- An element's walk takes exactly its targets. -/"]
-      ++ statement s!"element{n}" s!"(d : {t})"
+      ++ statement s!"element_targets{n}" s!"(d : {t})"
         [s!"    element specs{n} {i} relocs{n}",
           s!"      ((targets{n} d).toList ++ ts) = some ts := by"]
       ++ indent 2 cases ++ simpLines (if cases.isEmpty then 2 else 4) lemmas,
     ["/-- Walking its table over its bytes takes exactly its targets. -/"]
-      ++ statement s!"walk{n}" s!"(d : {t})"
+      ++ statement s!"walk_encode{n}" s!"(d : {t})"
         [s!"    walk specs{n} {i} (encode{n} d).size",
           s!"      ((targets{n} d).toList ++ ts) = some ts :=",
-          s!"  walk_one specs{n}_index (by decide) d " ++
+          s!"  walk_one getElem?_specs{n} (by decide) d " ++
             s!"(fun d => (targets{n} d).toList) _",
-          s!"    (size_encode{n} d) (element{n} d) ts"],
+          s!"    (size_encode{n} d) (element_targets{n} d) ts"],
     ["/-- The same, at its index. -/"]
-      ++ statement s!"walk{n}_tableIndex" s!"(d : {t})"
+      ++ statement s!"walk_encode{n}_tableIndex" s!"(d : {t})"
         [s!"    walk specs{n} tableIndex (encode{n} d).size",
           s!"      ((targets{n} d).toList ++ ts) = some ts :=",
-          s!"  walk{n} d ts"]
+          s!"  walk_encode{n} d ts"]
   ] ++ if !isArrayed then [] else [
     ["/-- Walking an array of them takes exactly their targets, in turn. -/"]
-      ++ statement s!"walkAll{n}" s!"(xs : Array {t})"
+      ++ statement s!"walk_encodeAll{n}" s!"(xs : Array {t})"
         [s!"    walk specs{n} {i} (encodeAll{n} xs).size",
           s!"      ((targetsAll{n} xs).toList ++ ts) = some ts := by",
           s!"  rw [targetsAll{n}, List.toList_toArray]",
-          s!"  exact walk_elements specs{n}_index (by decide) xs.toList",
+          s!"  exact walk_elements getElem?_specs{n} (by decide) xs.toList",
           s!"    (fun d => (targets{n} d).toList) _",
           s!"    (by rw [size_encodeAll{n}, Array.length_toList])",
-          s!"    (fun d _ => element{n} d) ts"]
+          s!"    (fun d _ => element_targets{n} d) ts"]
   ]
 
 /--
@@ -774,23 +777,23 @@ def currentDecls (s : Struct) : List (List String) :=
         [s!"  · simp only [{simps}]", s!"    {each n}"])
   [
     ["/-- Its bytes are one struct, on this target. -/",
-      s!"theorem size_current (d : {t}) :",
+      s!"theorem size_toBytes (d : {t}) :",
       "    ∃ relocs,",
-      "      specs[tableIndex]? = some ((toBytes d).size, relocs) := by"]
-      ++ cases ["specs", "toBytes"] fun n =>
-        s!"exact ⟨_, by rw [size_encode{n}]; exact specs{n}_index⟩",
+      "      currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by"]
+      ++ cases ["currentSpecs", "toBytes"] fun n =>
+        s!"exact ⟨_, by rw [size_encode{n}]; exact getElem?_specs{n}⟩",
     ["/-- Walking its table over its bytes takes its targets, on this " ++
         "target. -/"]
-      ++ lineOrBroken 0 s!"theorem walk_current (d : {t})"
+      ++ lineOrBroken 0 s!"theorem walk_toBytes (d : {t})"
         ["(ts : List Target) :"]
-      ++ ["    walk specs tableIndex (toBytes d).size",
+      ++ ["    walk currentSpecs tableIndex (toBytes d).size",
         "      ((toTargets d).toList ++ ts) = some ts := by"]
-      ++ cases ["specs", "toBytes", "toTargets"] fun n =>
-        s!"exact walk{n}_tableIndex d ts",
+      ++ cases ["currentSpecs", "toBytes", "toTargets"] fun n =>
+        s!"exact walk_encode{n}_tableIndex d ts",
     ["/-- It is a struct C fills in, on this target. -/",
-      s!"instance : CStruct specs {t} :=",
-      "  ⟨toBytes, toTargets, tableIndex, sizesFit, size_current,",
-      "    walk_current⟩"]
+      s!"instance : CStruct currentSpecs {t} :=",
+      "  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,",
+      "    walk_toBytes⟩"]
   ]
 
 /-- Every table on each width, by its index in a relocation. -/
@@ -823,25 +826,28 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
         "      serialize size relocs :=",
         "  rfl"],
       Doc.lines ["/-- The shared table of arrays of numbers is the first. -/",
-        s!"theorem specs{n}_words : specs{n}[0]? = some wordsSpec := rfl"],
+        s!"theorem getElem?_specs{n}_words : specs{n}[0]? = some wordsSpec :=",
+        "  rfl"],
       Doc.lines ["/-- The shared table of arrays of objects is the second. -/",
-        s!"theorem specs{n}_objects : specs{n}[1]? = " ++
+        s!"theorem getElem?_specs{n}_objects : specs{n}[1]? = " ++
           s!"some (objectsSpec {ptr}) := rfl"]]
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
-    "def tables : Array ByteArray :=",
+    "def currentTables : Array ByteArray :=",
     "  if System.Platform.numBits = 64 then tables64 else tables32"]
   let currentSpecs := Doc.lines [
     "/-- Every table on this target, as the walk reads it. -/",
-    "noncomputable def specs : Array Spec :=",
+    "noncomputable def currentSpecs : Array Spec :=",
     "  if System.Platform.numBits = 64 then specs64 else specs32"]
   let currentEq := Doc.lines [
     "/-- The tables C reads on this target are the tables the walk reads. -/",
-    "theorem tables_eq :",
-    "    tables.toList = specs.toList.map fun (size, relocs) =>",
+    "theorem currentTables_eq :",
+    "    currentTables.toList = currentSpecs.toList.map fun (size, relocs) =>",
     "      serialize size relocs := by",
     "  by_cases h : System.Platform.numBits = 64",
-    "  · simp only [tables, specs, h, ↓reduceIte]; exact tables64_eq",
-    "  · simp only [tables, specs, h, ↓reduceIte]; exact tables32_eq"]
+    "  · simp only [currentTables, currentSpecs, h, ↓reduceIte]",
+    "    exact tables64_eq",
+    "  · simp only [currentTables, currentSpecs, h, ↓reduceIte]",
+    "    exact tables32_eq"]
   -- Each struct's index finds its tables, and its walk takes its targets.
   let proofs := tables.zipIdx.map fun (s, i) =>
     let walks := [Width.bits64, .bits32].flatMap fun w =>
@@ -849,9 +855,10 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
       | some (size, entries) =>
         walkDecls s w size entries (i + 2) (elements.contains s.names)
       | none                 => []
-    Doc.lines ([s!"namespace {s.names.lean}", "",
+    Doc.lines ([s!"/-! ### `{s.names.lean}`: its walk -/", "",
+      s!"namespace {s.names.lean}", "",
       "/-- Its index finds its tables. -/",
-      "theorem tables_index :",
+      "theorem getElem?_tables_tableIndex :",
       "    tables64[tableIndex]? = some table64 ∧",
       "      tables32[tableIndex]? = some table32 :=",
       "  ⟨rfl, rfl⟩", ""]
@@ -880,10 +887,10 @@ def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do
       "its fields well-formed, and its pointers 0. The C compiler checks the",
       "layouts against `webgpu.h` (`c/generated/layouts.c`).",
       "",
-      "Where C fills in a struct's pointers is its table (`tables`, at its",
+      "Where C fills in a struct's pointers is its table (`currentTables`, at",
       "`tableIndex`), proved to be its pointers; what it fills each in from,",
       "its targets (`toTargets`), proved to be what walking its table takes",
-      "(`walk64`, `walk32`)."
+      "(`walk_encode64`, `walk_encode32`)."
     ]
     (text "open Encode Bytes Reloc" :: objectDecls spec ++ decls
       ++ tablesDecls spec)

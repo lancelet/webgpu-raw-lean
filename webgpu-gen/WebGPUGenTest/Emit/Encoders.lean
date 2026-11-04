@@ -353,38 +353,40 @@ def member (name : String) (value : Value) : Member :=
     | none                 => []
   lines == [
     ["/-- Its index finds its table as the walk reads it. -/",
-      "theorem specs64_index : specs64[3]? = some (32, relocs64) :=",
+      "theorem getElem?_specs64 :",
+      "    specs64[3]? = some (32, relocs64) :=",
       "  rfl"],
     ["/-- An element's walk takes exactly its targets. -/",
-      "theorem element64 (d : Outer) (ts : List Target) :",
+      "theorem element_targets64 (d : Outer) (ts : List Target) :",
       "    element specs64 3 relocs64",
       "      ((targets64 d).toList ++ ts) = some ts := by",
       "  cases h0 : d.inner <;>",
       "    simp [",
       "      element, relocs64, targets64, step, optBlock, h0, Inner.block64,",
-      "      Inner.walk64, walk_empty Inner.specs64_index (by decide),",
-      "      walk_words specs64_words]"],
+      ("      Inner.walk_encode64, " ++
+        "walk_empty Inner.getElem?_specs64 (by decide),"),
+      "      walk_words getElem?_specs64_words]"],
     ["/-- Walking its table over its bytes takes exactly its targets. -/",
-      "theorem walk64 (d : Outer) (ts : List Target) :",
+      "theorem walk_encode64 (d : Outer) (ts : List Target) :",
       "    walk specs64 3 (encode64 d).size",
       "      ((targets64 d).toList ++ ts) = some ts :=",
-      ("  walk_one specs64_index (by decide) d " ++
+      ("  walk_one getElem?_specs64 (by decide) d " ++
         "(fun d => (targets64 d).toList) _"),
-      "    (size_encode64 d) (element64 d) ts"],
+      "    (size_encode64 d) (element_targets64 d) ts"],
     ["/-- The same, at its index. -/",
-      "theorem walk64_tableIndex (d : Outer) (ts : List Target) :",
+      "theorem walk_encode64_tableIndex (d : Outer) (ts : List Target) :",
       "    walk specs64 tableIndex (encode64 d).size",
       "      ((targets64 d).toList ++ ts) = some ts :=",
-      "  walk64 d ts"],
+      "  walk_encode64 d ts"],
     ["/-- Walking an array of them takes exactly their targets, in turn. -/",
-      "theorem walkAll64 (xs : Array Outer) (ts : List Target) :",
+      "theorem walk_encodeAll64 (xs : Array Outer) (ts : List Target) :",
       "    walk specs64 3 (encodeAll64 xs).size",
       "      ((targetsAll64 xs).toList ++ ts) = some ts := by",
       "  rw [targetsAll64, List.toList_toArray]",
-      "  exact walk_elements specs64_index (by decide) xs.toList",
+      "  exact walk_elements getElem?_specs64 (by decide) xs.toList",
       "    (fun d => (targets64 d).toList) _",
       "    (by rw [size_encodeAll64, Array.length_toList])",
-      "    (fun d _ => element64 d) ts"]
+      "    (fun d _ => element_targets64 d) ts"]
   ]
 
 -- Several optional structs, one in a struct held by value: a case for each,
@@ -410,7 +412,7 @@ def member (name : String) (value : Value) : Member :=
     "    simp [",
     ("      element, relocs64, targets64, step, optBlock, h0, h1, h2, " ++
       "Inner.block64,"),
-    "      Inner.walk64, walk_empty Inner.specs64_index (by decide)]"
+    "      Inner.walk_encode64, walk_empty Inner.getElem?_specs64 (by decide)]"
   ]
 
 /-! ## Printing -/
@@ -419,6 +421,8 @@ def member (name : String) (value : Value) : Member :=
 #guard
   let input := struct "WGPUOne" "One" .standalone [member "n" .uint32]
   let expected := dedent "
+    /-! ### `One` -/
+
     namespace One
 
     /-- The scalar fields on 64-bit targets: the specification. -/
