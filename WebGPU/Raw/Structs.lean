@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 05af40a (clean)
-  Generated:        2026-11-04 22:21:12 UTC
+  Generator commit: bf5c6e3 (clean)
+  Generated:        2026-11-04 23:49:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -24,35 +24,13 @@ public import WebGPU.Raw.Objects
 The structs of `webgpu.h` the bindings can pass so far, as Lean structures,
 with the defaults C's initialisers give: so `{ size := 64 }` is a buffer
 descriptor with every other field at its default. A field with no default
-must be given. Chained structs (`nextInChain`) come later.
+must be given. An extensible struct's `chain` holds its extensions, linked
+in order as C's `nextInChain`.
 -/
 
 @[expose] public section
 
 namespace WebGPU.Raw
-
-structure BindGroupEntry where
-  /-- Binding index in the bind group. -/
-  binding     : UInt32             := 0
-  /-- Set this if the binding is a buffer object. Otherwise must be null. -/
-  buffer      : Option Buffer      := none
-  /--
-  If the binding is a buffer, this is the byte offset of the binding range.
-  Otherwise ignored.
-  -/
-  offset      : UInt64             := 0
-  /--
-  If the binding is a buffer, this is the byte size of the binding range
-  (`WGPU_WHOLE_SIZE` means the binding ends at the end of the buffer). Otherwise
-  ignored.
-  -/
-  size        : UInt64             := wholeSize
-  /-- Set this if the binding is a sampler object. Otherwise must be null. -/
-  sampler     : Option Sampler     := none
-  /--
-  Set this if the binding is a texture view object. Otherwise must be null.
-  -/
-  textureView : Option TextureView := none
 
 structure BlendComponent where
   /--
@@ -186,40 +164,6 @@ structure InstanceLimits where
   -/
   timedWaitAnyMaxCount : UInt64 := 0
 
-structure Limits where
-  maxTextureDimension1D                     : UInt32 := limitU32Undefined
-  maxTextureDimension2D                     : UInt32 := limitU32Undefined
-  maxTextureDimension3D                     : UInt32 := limitU32Undefined
-  maxTextureArrayLayers                     : UInt32 := limitU32Undefined
-  maxBindGroups                             : UInt32 := limitU32Undefined
-  maxBindGroupsPlusVertexBuffers            : UInt32 := limitU32Undefined
-  maxBindingsPerBindGroup                   : UInt32 := limitU32Undefined
-  maxDynamicUniformBuffersPerPipelineLayout : UInt32 := limitU32Undefined
-  maxDynamicStorageBuffersPerPipelineLayout : UInt32 := limitU32Undefined
-  maxSampledTexturesPerShaderStage          : UInt32 := limitU32Undefined
-  maxSamplersPerShaderStage                 : UInt32 := limitU32Undefined
-  maxStorageBuffersPerShaderStage           : UInt32 := limitU32Undefined
-  maxStorageTexturesPerShaderStage          : UInt32 := limitU32Undefined
-  maxUniformBuffersPerShaderStage           : UInt32 := limitU32Undefined
-  maxUniformBufferBindingSize               : UInt64 := limitU64Undefined
-  maxStorageBufferBindingSize               : UInt64 := limitU64Undefined
-  minUniformBufferOffsetAlignment           : UInt32 := limitU32Undefined
-  minStorageBufferOffsetAlignment           : UInt32 := limitU32Undefined
-  maxVertexBuffers                          : UInt32 := limitU32Undefined
-  maxBufferSize                             : UInt64 := limitU64Undefined
-  maxVertexAttributes                       : UInt32 := limitU32Undefined
-  maxVertexBufferArrayStride                : UInt32 := limitU32Undefined
-  maxInterStageShaderVariables              : UInt32 := limitU32Undefined
-  maxColorAttachments                       : UInt32 := limitU32Undefined
-  maxColorAttachmentBytesPerSample          : UInt32 := limitU32Undefined
-  maxComputeWorkgroupStorageSize            : UInt32 := limitU32Undefined
-  maxComputeInvocationsPerWorkgroup         : UInt32 := limitU32Undefined
-  maxComputeWorkgroupSizeX                  : UInt32 := limitU32Undefined
-  maxComputeWorkgroupSizeY                  : UInt32 := limitU32Undefined
-  maxComputeWorkgroupSizeZ                  : UInt32 := limitU32Undefined
-  maxComputeWorkgroupsPerDimension          : UInt32 := limitU32Undefined
-  maxImmediateSize                          : UInt32 := limitU32Undefined
-
 structure MultisampleState where
   count                  : UInt32 := 1
   mask                   : UInt32 := 0xFFFFFFFF
@@ -312,35 +256,6 @@ structure RenderPassDepthStencilAttachment where
 structure RenderPassMaxDrawCount where
   maxDrawCount : UInt64 := 50000000
 
-structure RequestAdapterOptions where
-  /--
-  "Feature level" for the adapter request. If an adapter is returned, it must
-  support the features and limits in the requested feature level.
-
-  If set to `FeatureLevel.undefined`, [defaults]([SentinelValues]) to
-  `FeatureLevel.core`. Additionally, implementations may ignore
-  `FeatureLevel.compatibility` and provide `FeatureLevel.core` instead.
-
-  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
-  -/
-  featureLevel         : FeatureLevel    := .undefined
-  powerPreference      : PowerPreference := .undefined
-  /--
-  If true, requires the adapter to be a "fallback" adapter as defined by the JS
-  spec. If this is not possible, the request returns null.
-  -/
-  forceFallbackAdapter : Bool            := false
-  /--
-  If set, requires the adapter to have a particular backend type. If this is not
-  possible, the request returns null.
-  -/
-  backendType          : BackendType     := .undefined
-  /--
-  If set, requires the adapter to be able to output to a particular surface. If
-  this is not possible, the request returns null.
-  -/
-  compatibleSurface    : Option Surface  := none
-
 /--
 Extension providing requestAdapter options for implementations with WebXR
 interop (i.e. Wasm).
@@ -420,9 +335,6 @@ structure SamplerDescriptor where
   lodMaxClamp   : Float32          := 32.0
   compare       : CompareFunction  := .undefined
   maxAnisotropy : UInt16           := 1
-
-structure ShaderModuleDescriptor where
-  label : String := ""
 
 structure ShaderSourceWGSL where
   code : String := ""
@@ -671,32 +583,43 @@ structure TextureComponentSwizzle where
   -/
   a : ComponentSwizzle := .undefined
 
-structure TextureViewDescriptor where
-  label           : String               := ""
-  format          : TextureFormat        := .undefined
-  dimension       : TextureViewDimension := .undefined
-  baseMipLevel    : UInt32               := 0
-  mipLevelCount   : UInt32               := mipLevelCountUndefined
-  baseArrayLayer  : UInt32               := 0
-  arrayLayerCount : UInt32               := arrayLayerCountUndefined
-  /--
-  If set to `TextureAspect.undefined`, [defaults]([SentinelValues]) to
-  `TextureAspect.all`.
-
-  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
-  -/
-  aspect          : TextureAspect        := .undefined
-  usage           : TextureUsage         := .none
-
 structure VertexAttribute where
   format         : VertexFormat
   offset         : UInt64       := 0
   shaderLocation : UInt32       := 0
 
-structure BindGroupDescriptor where
-  label   : String               := ""
-  layout  : BindGroupLayout
-  entries : Array BindGroupEntry := #[]
+/-- What can be chained to a `BindGroupEntry`: one of its extensions. -/
+inductive BindGroupEntry.Chained where
+  | externalTextureBindingEntry (s : ExternalTextureBindingEntry)
+
+structure BindGroupEntry where
+  /-- Binding index in the bind group. -/
+  binding     : UInt32             := 0
+  /-- Set this if the binding is a buffer object. Otherwise must be null. -/
+  buffer      : Option Buffer      := none
+  /--
+  If the binding is a buffer, this is the byte offset of the binding range.
+  Otherwise ignored.
+  -/
+  offset      : UInt64             := 0
+  /--
+  If the binding is a buffer, this is the byte size of the binding range
+  (`WGPU_WHOLE_SIZE` means the binding ends at the end of the buffer). Otherwise
+  ignored.
+  -/
+  size        : UInt64             := wholeSize
+  /-- Set this if the binding is a sampler object. Otherwise must be null. -/
+  sampler     : Option Sampler     := none
+  /--
+  Set this if the binding is a texture view object. Otherwise must be null.
+  -/
+  textureView : Option TextureView := none
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array BindGroupEntry.Chained := #[]
+
+/-- What can be chained to a `BindGroupLayoutEntry`: one of its extensions. -/
+inductive BindGroupLayoutEntry.Chained where
+  | externalTextureBindingLayout (s : ExternalTextureBindingLayout)
 
 structure BindGroupLayoutEntry where
   binding          : UInt32                      := 0
@@ -707,6 +630,8 @@ structure BindGroupLayoutEntry where
   sampler          : SamplerBindingLayout        := .zero
   texture          : TextureBindingLayout        := .zero
   storageTexture   : StorageTextureBindingLayout := .zero
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array BindGroupLayoutEntry.Chained := #[]
 
 structure BlendState where
   color : BlendComponent := {}
@@ -754,6 +679,46 @@ structure InstanceDescriptor where
   requiredFeatures : Array InstanceFeatureName := #[]
   requiredLimits   : Option InstanceLimits     := none
 
+/-- What can be chained to a `Limits`: one of its extensions. -/
+inductive Limits.Chained where
+  | compatibilityModeLimits (s : CompatibilityModeLimits)
+
+structure Limits where
+  maxTextureDimension1D                     : UInt32 := limitU32Undefined
+  maxTextureDimension2D                     : UInt32 := limitU32Undefined
+  maxTextureDimension3D                     : UInt32 := limitU32Undefined
+  maxTextureArrayLayers                     : UInt32 := limitU32Undefined
+  maxBindGroups                             : UInt32 := limitU32Undefined
+  maxBindGroupsPlusVertexBuffers            : UInt32 := limitU32Undefined
+  maxBindingsPerBindGroup                   : UInt32 := limitU32Undefined
+  maxDynamicUniformBuffersPerPipelineLayout : UInt32 := limitU32Undefined
+  maxDynamicStorageBuffersPerPipelineLayout : UInt32 := limitU32Undefined
+  maxSampledTexturesPerShaderStage          : UInt32 := limitU32Undefined
+  maxSamplersPerShaderStage                 : UInt32 := limitU32Undefined
+  maxStorageBuffersPerShaderStage           : UInt32 := limitU32Undefined
+  maxStorageTexturesPerShaderStage          : UInt32 := limitU32Undefined
+  maxUniformBuffersPerShaderStage           : UInt32 := limitU32Undefined
+  maxUniformBufferBindingSize               : UInt64 := limitU64Undefined
+  maxStorageBufferBindingSize               : UInt64 := limitU64Undefined
+  minUniformBufferOffsetAlignment           : UInt32 := limitU32Undefined
+  minStorageBufferOffsetAlignment           : UInt32 := limitU32Undefined
+  maxVertexBuffers                          : UInt32 := limitU32Undefined
+  maxBufferSize                             : UInt64 := limitU64Undefined
+  maxVertexAttributes                       : UInt32 := limitU32Undefined
+  maxVertexBufferArrayStride                : UInt32 := limitU32Undefined
+  maxInterStageShaderVariables              : UInt32 := limitU32Undefined
+  maxColorAttachments                       : UInt32 := limitU32Undefined
+  maxColorAttachmentBytesPerSample          : UInt32 := limitU32Undefined
+  maxComputeWorkgroupStorageSize            : UInt32 := limitU32Undefined
+  maxComputeInvocationsPerWorkgroup         : UInt32 := limitU32Undefined
+  maxComputeWorkgroupSizeX                  : UInt32 := limitU32Undefined
+  maxComputeWorkgroupSizeY                  : UInt32 := limitU32Undefined
+  maxComputeWorkgroupSizeZ                  : UInt32 := limitU32Undefined
+  maxComputeWorkgroupsPerDimension          : UInt32 := limitU32Undefined
+  maxImmediateSize                          : UInt32 := limitU32Undefined
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array Limits.Chained := #[]
+
 structure RenderPassColorAttachment where
   /--
   If `NULL`, indicates a hole in the parent
@@ -765,6 +730,50 @@ structure RenderPassColorAttachment where
   loadOp        : LoadOp             := .undefined
   storeOp       : StoreOp            := .undefined
   clearValue    : Color              := {}
+
+/-- What can be chained to a `RequestAdapterOptions`: one of its extensions. -/
+inductive RequestAdapterOptions.Chained where
+  | requestAdapterWebXROptions (s : RequestAdapterWebXROptions)
+
+structure RequestAdapterOptions where
+  /--
+  "Feature level" for the adapter request. If an adapter is returned, it must
+  support the features and limits in the requested feature level.
+
+  If set to `FeatureLevel.undefined`, [defaults]([SentinelValues]) to
+  `FeatureLevel.core`. Additionally, implementations may ignore
+  `FeatureLevel.compatibility` and provide `FeatureLevel.core` instead.
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
+  -/
+  featureLevel         : FeatureLevel    := .undefined
+  powerPreference      : PowerPreference := .undefined
+  /--
+  If true, requires the adapter to be a "fallback" adapter as defined by the JS
+  spec. If this is not possible, the request returns null.
+  -/
+  forceFallbackAdapter : Bool            := false
+  /--
+  If set, requires the adapter to have a particular backend type. If this is not
+  possible, the request returns null.
+  -/
+  backendType          : BackendType     := .undefined
+  /--
+  If set, requires the adapter to be able to output to a particular surface. If
+  this is not possible, the request returns null.
+  -/
+  compatibleSurface    : Option Surface  := none
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array RequestAdapterOptions.Chained := #[]
+
+/-- What can be chained to a `ShaderModuleDescriptor`: one of its extensions. -/
+inductive ShaderModuleDescriptor.Chained where
+  | shaderSourceWGSL (s : ShaderSourceWGSL)
+
+structure ShaderModuleDescriptor where
+  label : String := ""
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array ShaderModuleDescriptor.Chained := #[]
 
 structure TexelCopyBufferInfo where
   layout : TexelCopyBufferLayout := {}
@@ -785,6 +794,10 @@ structure TexelCopyTextureInfo where
 structure TextureComponentSwizzleDescriptor where
   swizzle : TextureComponentSwizzle := {}
 
+/-- What can be chained to a `TextureDescriptor`: one of its extensions. -/
+inductive TextureDescriptor.Chained where
+  | textureBindingViewDimension (s : TextureBindingViewDimension)
+
 structure TextureDescriptor where
   label         : String              := ""
   usage         : TextureUsage        := .none
@@ -800,6 +813,8 @@ structure TextureDescriptor where
   mipLevelCount : UInt32              := 1
   sampleCount   : UInt32              := 1
   viewFormats   : Array TextureFormat := #[]
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array TextureDescriptor.Chained := #[]
 
 /--
 If `attributes` is empty *and* `stepMode` is `VertexStepMode.undefined`,
@@ -822,6 +837,11 @@ structure VertexBufferLayout where
   arrayStride : UInt64                := 0
   attributes  : Array VertexAttribute := #[]
 
+structure BindGroupDescriptor where
+  label   : String               := ""
+  layout  : BindGroupLayout
+  entries : Array BindGroupEntry := #[]
+
 structure BindGroupLayoutDescriptor where
   label   : String                     := ""
   entries : Array BindGroupLayoutEntry := #[]
@@ -841,12 +861,41 @@ structure ComputePipelineDescriptor where
   layout  : Option PipelineLayout := none
   compute : ComputeState
 
+/-- What can be chained to a `RenderPassDescriptor`: one of its extensions. -/
+inductive RenderPassDescriptor.Chained where
+  | renderPassMaxDrawCount (s : RenderPassMaxDrawCount)
+
 structure RenderPassDescriptor where
   label                  : String                                  := ""
   colorAttachments       : Array RenderPassColorAttachment         := #[]
   depthStencilAttachment : Option RenderPassDepthStencilAttachment := none
   occlusionQuerySet      : Option QuerySet                         := none
   timestampWrites        : Option PassTimestampWrites              := none
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array RenderPassDescriptor.Chained := #[]
+
+/-- What can be chained to a `TextureViewDescriptor`: one of its extensions. -/
+inductive TextureViewDescriptor.Chained where
+  | textureComponentSwizzleDescriptor (s : TextureComponentSwizzleDescriptor)
+
+structure TextureViewDescriptor where
+  label           : String               := ""
+  format          : TextureFormat        := .undefined
+  dimension       : TextureViewDimension := .undefined
+  baseMipLevel    : UInt32               := 0
+  mipLevelCount   : UInt32               := mipLevelCountUndefined
+  baseArrayLayer  : UInt32               := 0
+  arrayLayerCount : UInt32               := arrayLayerCountUndefined
+  /--
+  If set to `TextureAspect.undefined`, [defaults]([SentinelValues]) to
+  `TextureAspect.all`.
+
+  [SentinelValues]: https://webgpu-native.github.io/webgpu-headers/SentinelValues.html
+  -/
+  aspect          : TextureAspect        := .undefined
+  usage           : TextureUsage         := .none
+  /-- Extensions chained to it (`nextInChain`), in order. -/
+  chain : Array TextureViewDescriptor.Chained := #[]
 
 structure VertexState where
   module     : ShaderModule

@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 05af40a (clean)
-  Generated:        2026-11-04 22:21:12 UTC
+  Generator commit: bf5c6e3 (clean)
+  Generated:        2026-11-04 23:49:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -963,6 +963,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateSampler(
         return lean_wgpu_io_error("Device.createSampler returned NULL");
     }
     return lean_io_result_mk_ok(lean_wgpu_sampler_box(result));
+}
+
+// Lean's `Device.createShaderModule`: calls `wgpuDeviceCreateShaderModule`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateShaderModule(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUShaderModule result = wgpuDeviceCreateShaderModule(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createShaderModule returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_shader_module_box(result));
 }
 
 // Lean's `Device.createTexture`: calls `wgpuDeviceCreateTexture`.

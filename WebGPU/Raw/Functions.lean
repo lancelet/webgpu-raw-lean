@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 05af40a (clean)
-  Generated:        2026-11-04 22:21:12 UTC
+  Generator commit: bf5c6e3 (clean)
+  Generated:        2026-11-04 23:49:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -944,6 +944,37 @@ def Device.createSampler
         ⟨_, rfl⟩
   else
     throw (IO.userError "Device.createSampler: a size_t too large")
+
+/-- The shim behind `Device.createShaderModule`. -/
+@[extern "lean_wgpuDeviceCreateShaderModule"]
+opaque Internal.Device.createShaderModule
+    (self              : @& Device)
+    (descriptor        : @& ShaderModuleDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf ShaderModuleDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO ShaderModule
+
+@[inline]
+def Device.createShaderModule
+    (self       : Device)
+    (descriptor : ShaderModuleDescriptor) :
+    IO ShaderModule :=
+  if descriptor.chain.isEmpty then
+    throw (IO.userError
+      "Device.createShaderModule: nothing chained to descriptor")
+  else
+    if CStruct.sizesFit descriptor then
+      Internal.Device.createShaderModule
+          self
+          descriptor
+          ⟨_, rfl⟩
+          ⟨_, rfl⟩
+          ⟨_, rfl⟩
+          ⟨_, rfl⟩
+    else
+      throw (IO.userError "Device.createShaderModule: a size_t too large")
 
 /-- The shim behind `Device.createTexture`. -/
 @[extern "lean_wgpuDeviceCreateTexture"]

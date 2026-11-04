@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 05af40a (clean)
-  Generated:        2026-11-04 22:21:12 UTC
+  Generator commit: bf5c6e3 (clean)
+  Generated:        2026-11-04 23:49:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -115,16 +115,6 @@ FIELD(WGPUChainedStruct, next,  0, 0);
 FIELD(WGPUChainedStruct, sType, 8, 4);
 STRUCT(WGPUChainedStruct, 16, 8, 8, 4);
 
-// WGPUBindGroupEntry
-FIELD(WGPUBindGroupEntry, nextInChain, 0,  0);
-FIELD(WGPUBindGroupEntry, binding,     8,  4);
-FIELD(WGPUBindGroupEntry, buffer,      16, 8);
-FIELD(WGPUBindGroupEntry, offset,      24, 16);
-FIELD(WGPUBindGroupEntry, size,        32, 24);
-FIELD(WGPUBindGroupEntry, sampler,     40, 32);
-FIELD(WGPUBindGroupEntry, textureView, 48, 36);
-STRUCT(WGPUBindGroupEntry, 56, 40, 8, 8);
-
 // WGPUBlendComponent
 FIELD(WGPUBlendComponent, operation, 0, 0);
 FIELD(WGPUBlendComponent, srcFactor, 4, 4);
@@ -200,42 +190,6 @@ STRUCT(WGPUFuture, 8, 8, 8, 8);
 FIELD(WGPUInstanceLimits, nextInChain,          0, 0);
 FIELD(WGPUInstanceLimits, timedWaitAnyMaxCount, 8, 4);
 STRUCT(WGPUInstanceLimits, 16, 8, 8, 4);
-
-// WGPULimits
-FIELD(WGPULimits, nextInChain,                               0,   0);
-FIELD(WGPULimits, maxTextureDimension1D,                     8,   4);
-FIELD(WGPULimits, maxTextureDimension2D,                     12,  8);
-FIELD(WGPULimits, maxTextureDimension3D,                     16,  12);
-FIELD(WGPULimits, maxTextureArrayLayers,                     20,  16);
-FIELD(WGPULimits, maxBindGroups,                             24,  20);
-FIELD(WGPULimits, maxBindGroupsPlusVertexBuffers,            28,  24);
-FIELD(WGPULimits, maxBindingsPerBindGroup,                   32,  28);
-FIELD(WGPULimits, maxDynamicUniformBuffersPerPipelineLayout, 36,  32);
-FIELD(WGPULimits, maxDynamicStorageBuffersPerPipelineLayout, 40,  36);
-FIELD(WGPULimits, maxSampledTexturesPerShaderStage,          44,  40);
-FIELD(WGPULimits, maxSamplersPerShaderStage,                 48,  44);
-FIELD(WGPULimits, maxStorageBuffersPerShaderStage,           52,  48);
-FIELD(WGPULimits, maxStorageTexturesPerShaderStage,          56,  52);
-FIELD(WGPULimits, maxUniformBuffersPerShaderStage,           60,  56);
-FIELD(WGPULimits, maxUniformBufferBindingSize,               64,  64);
-FIELD(WGPULimits, maxStorageBufferBindingSize,               72,  72);
-FIELD(WGPULimits, minUniformBufferOffsetAlignment,           80,  80);
-FIELD(WGPULimits, minStorageBufferOffsetAlignment,           84,  84);
-FIELD(WGPULimits, maxVertexBuffers,                          88,  88);
-FIELD(WGPULimits, maxBufferSize,                             96,  96);
-FIELD(WGPULimits, maxVertexAttributes,                       104, 104);
-FIELD(WGPULimits, maxVertexBufferArrayStride,                108, 108);
-FIELD(WGPULimits, maxInterStageShaderVariables,              112, 112);
-FIELD(WGPULimits, maxColorAttachments,                       116, 116);
-FIELD(WGPULimits, maxColorAttachmentBytesPerSample,          120, 120);
-FIELD(WGPULimits, maxComputeWorkgroupStorageSize,            124, 124);
-FIELD(WGPULimits, maxComputeInvocationsPerWorkgroup,         128, 128);
-FIELD(WGPULimits, maxComputeWorkgroupSizeX,                  132, 132);
-FIELD(WGPULimits, maxComputeWorkgroupSizeY,                  136, 136);
-FIELD(WGPULimits, maxComputeWorkgroupSizeZ,                  140, 140);
-FIELD(WGPULimits, maxComputeWorkgroupsPerDimension,          144, 144);
-FIELD(WGPULimits, maxImmediateSize,                          148, 148);
-STRUCT(WGPULimits, 152, 152, 8, 8);
 
 // WGPUMultisampleState
 FIELD(WGPUMultisampleState, nextInChain,            0,  0);
@@ -320,15 +274,6 @@ FIELD(WGPURenderPassMaxDrawCount, chain,        0,  0);
 FIELD(WGPURenderPassMaxDrawCount, maxDrawCount, 16, 8);
 STRUCT(WGPURenderPassMaxDrawCount, 24, 16, 8, 8);
 
-// WGPURequestAdapterOptions
-FIELD(WGPURequestAdapterOptions, nextInChain,          0,  0);
-FIELD(WGPURequestAdapterOptions, featureLevel,         8,  4);
-FIELD(WGPURequestAdapterOptions, powerPreference,      12, 8);
-FIELD(WGPURequestAdapterOptions, forceFallbackAdapter, 16, 12);
-FIELD(WGPURequestAdapterOptions, backendType,          20, 16);
-FIELD(WGPURequestAdapterOptions, compatibleSurface,    24, 20);
-STRUCT(WGPURequestAdapterOptions, 32, 24, 8, 4);
-
 // WGPURequestAdapterWebXROptions
 FIELD(WGPURequestAdapterWebXROptions, chain,        0,  0);
 FIELD(WGPURequestAdapterWebXROptions, xrCompatible, 16, 8);
@@ -353,11 +298,6 @@ FIELD(WGPUSamplerDescriptor, lodMaxClamp,   52, 40);
 FIELD(WGPUSamplerDescriptor, compare,       56, 44);
 FIELD(WGPUSamplerDescriptor, maxAnisotropy, 60, 48);
 STRUCT(WGPUSamplerDescriptor, 64, 52, 8, 4);
-
-// WGPUShaderModuleDescriptor
-FIELD(WGPUShaderModuleDescriptor, nextInChain, 0, 0);
-FIELD(WGPUShaderModuleDescriptor, label,       8, 4);
-STRUCT(WGPUShaderModuleDescriptor, 24, 12, 8, 4);
 
 // WGPUShaderSourceWGSL
 FIELD(WGPUShaderSourceWGSL, chain, 0,  0);
@@ -459,19 +399,6 @@ FIELD(WGPUTextureComponentSwizzle, b, 8,  8);
 FIELD(WGPUTextureComponentSwizzle, a, 12, 12);
 STRUCT(WGPUTextureComponentSwizzle, 16, 16, 4, 4);
 
-// WGPUTextureViewDescriptor
-FIELD(WGPUTextureViewDescriptor, nextInChain,     0,  0);
-FIELD(WGPUTextureViewDescriptor, label,           8,  4);
-FIELD(WGPUTextureViewDescriptor, format,          24, 12);
-FIELD(WGPUTextureViewDescriptor, dimension,       28, 16);
-FIELD(WGPUTextureViewDescriptor, baseMipLevel,    32, 20);
-FIELD(WGPUTextureViewDescriptor, mipLevelCount,   36, 24);
-FIELD(WGPUTextureViewDescriptor, baseArrayLayer,  40, 28);
-FIELD(WGPUTextureViewDescriptor, arrayLayerCount, 44, 32);
-FIELD(WGPUTextureViewDescriptor, aspect,          48, 36);
-FIELD(WGPUTextureViewDescriptor, usage,           56, 40);
-STRUCT(WGPUTextureViewDescriptor, 64, 48, 8, 8);
-
 // WGPUVertexAttribute
 FIELD(WGPUVertexAttribute, nextInChain,    0,  0);
 FIELD(WGPUVertexAttribute, format,         8,  4);
@@ -479,13 +406,15 @@ FIELD(WGPUVertexAttribute, offset,         16, 8);
 FIELD(WGPUVertexAttribute, shaderLocation, 24, 16);
 STRUCT(WGPUVertexAttribute, 32, 24, 8, 8);
 
-// WGPUBindGroupDescriptor
-FIELD(WGPUBindGroupDescriptor, nextInChain, 0,  0);
-FIELD(WGPUBindGroupDescriptor, label,       8,  4);
-FIELD(WGPUBindGroupDescriptor, layout,      24, 12);
-FIELD(WGPUBindGroupDescriptor, entryCount,  32, 16);
-FIELD(WGPUBindGroupDescriptor, entries,     40, 20);
-STRUCT(WGPUBindGroupDescriptor, 48, 24, 8, 4);
+// WGPUBindGroupEntry
+FIELD(WGPUBindGroupEntry, nextInChain, 0,  0);
+FIELD(WGPUBindGroupEntry, binding,     8,  4);
+FIELD(WGPUBindGroupEntry, buffer,      16, 8);
+FIELD(WGPUBindGroupEntry, offset,      24, 16);
+FIELD(WGPUBindGroupEntry, size,        32, 24);
+FIELD(WGPUBindGroupEntry, sampler,     40, 32);
+FIELD(WGPUBindGroupEntry, textureView, 48, 36);
+STRUCT(WGPUBindGroupEntry, 56, 40, 8, 8);
 
 // WGPUBindGroupLayoutEntry
 FIELD(WGPUBindGroupLayoutEntry, nextInChain,      0,  0);
@@ -543,6 +472,42 @@ FIELD(WGPUInstanceDescriptor, requiredFeatures,     16, 8);
 FIELD(WGPUInstanceDescriptor, requiredLimits,       24, 12);
 STRUCT(WGPUInstanceDescriptor, 32, 16, 8, 4);
 
+// WGPULimits
+FIELD(WGPULimits, nextInChain,                               0,   0);
+FIELD(WGPULimits, maxTextureDimension1D,                     8,   4);
+FIELD(WGPULimits, maxTextureDimension2D,                     12,  8);
+FIELD(WGPULimits, maxTextureDimension3D,                     16,  12);
+FIELD(WGPULimits, maxTextureArrayLayers,                     20,  16);
+FIELD(WGPULimits, maxBindGroups,                             24,  20);
+FIELD(WGPULimits, maxBindGroupsPlusVertexBuffers,            28,  24);
+FIELD(WGPULimits, maxBindingsPerBindGroup,                   32,  28);
+FIELD(WGPULimits, maxDynamicUniformBuffersPerPipelineLayout, 36,  32);
+FIELD(WGPULimits, maxDynamicStorageBuffersPerPipelineLayout, 40,  36);
+FIELD(WGPULimits, maxSampledTexturesPerShaderStage,          44,  40);
+FIELD(WGPULimits, maxSamplersPerShaderStage,                 48,  44);
+FIELD(WGPULimits, maxStorageBuffersPerShaderStage,           52,  48);
+FIELD(WGPULimits, maxStorageTexturesPerShaderStage,          56,  52);
+FIELD(WGPULimits, maxUniformBuffersPerShaderStage,           60,  56);
+FIELD(WGPULimits, maxUniformBufferBindingSize,               64,  64);
+FIELD(WGPULimits, maxStorageBufferBindingSize,               72,  72);
+FIELD(WGPULimits, minUniformBufferOffsetAlignment,           80,  80);
+FIELD(WGPULimits, minStorageBufferOffsetAlignment,           84,  84);
+FIELD(WGPULimits, maxVertexBuffers,                          88,  88);
+FIELD(WGPULimits, maxBufferSize,                             96,  96);
+FIELD(WGPULimits, maxVertexAttributes,                       104, 104);
+FIELD(WGPULimits, maxVertexBufferArrayStride,                108, 108);
+FIELD(WGPULimits, maxInterStageShaderVariables,              112, 112);
+FIELD(WGPULimits, maxColorAttachments,                       116, 116);
+FIELD(WGPULimits, maxColorAttachmentBytesPerSample,          120, 120);
+FIELD(WGPULimits, maxComputeWorkgroupStorageSize,            124, 124);
+FIELD(WGPULimits, maxComputeInvocationsPerWorkgroup,         128, 128);
+FIELD(WGPULimits, maxComputeWorkgroupSizeX,                  132, 132);
+FIELD(WGPULimits, maxComputeWorkgroupSizeY,                  136, 136);
+FIELD(WGPULimits, maxComputeWorkgroupSizeZ,                  140, 140);
+FIELD(WGPULimits, maxComputeWorkgroupsPerDimension,          144, 144);
+FIELD(WGPULimits, maxImmediateSize,                          148, 148);
+STRUCT(WGPULimits, 152, 152, 8, 8);
+
 // WGPURenderPassColorAttachment
 FIELD(WGPURenderPassColorAttachment, nextInChain,   0,  0);
 FIELD(WGPURenderPassColorAttachment, view,          8,  4);
@@ -552,6 +517,20 @@ FIELD(WGPURenderPassColorAttachment, loadOp,        32, 16);
 FIELD(WGPURenderPassColorAttachment, storeOp,       36, 20);
 FIELD(WGPURenderPassColorAttachment, clearValue,    40, 24);
 STRUCT(WGPURenderPassColorAttachment, 72, 56, 8, 8);
+
+// WGPURequestAdapterOptions
+FIELD(WGPURequestAdapterOptions, nextInChain,          0,  0);
+FIELD(WGPURequestAdapterOptions, featureLevel,         8,  4);
+FIELD(WGPURequestAdapterOptions, powerPreference,      12, 8);
+FIELD(WGPURequestAdapterOptions, forceFallbackAdapter, 16, 12);
+FIELD(WGPURequestAdapterOptions, backendType,          20, 16);
+FIELD(WGPURequestAdapterOptions, compatibleSurface,    24, 20);
+STRUCT(WGPURequestAdapterOptions, 32, 24, 8, 4);
+
+// WGPUShaderModuleDescriptor
+FIELD(WGPUShaderModuleDescriptor, nextInChain, 0, 0);
+FIELD(WGPUShaderModuleDescriptor, label,       8, 4);
+STRUCT(WGPUShaderModuleDescriptor, 24, 12, 8, 4);
 
 // WGPUTexelCopyBufferInfo
 FIELD(WGPUTexelCopyBufferInfo, layout, 0,  0);
@@ -591,6 +570,14 @@ FIELD(WGPUVertexBufferLayout, attributeCount, 24, 16);
 FIELD(WGPUVertexBufferLayout, attributes,     32, 20);
 STRUCT(WGPUVertexBufferLayout, 40, 24, 8, 8);
 
+// WGPUBindGroupDescriptor
+FIELD(WGPUBindGroupDescriptor, nextInChain, 0,  0);
+FIELD(WGPUBindGroupDescriptor, label,       8,  4);
+FIELD(WGPUBindGroupDescriptor, layout,      24, 12);
+FIELD(WGPUBindGroupDescriptor, entryCount,  32, 16);
+FIELD(WGPUBindGroupDescriptor, entries,     40, 20);
+STRUCT(WGPUBindGroupDescriptor, 48, 24, 8, 4);
+
 // WGPUBindGroupLayoutDescriptor
 FIELD(WGPUBindGroupLayoutDescriptor, nextInChain, 0,  0);
 FIELD(WGPUBindGroupLayoutDescriptor, label,       8,  4);
@@ -621,6 +608,19 @@ FIELD(WGPURenderPassDescriptor, depthStencilAttachment, 40, 20);
 FIELD(WGPURenderPassDescriptor, occlusionQuerySet,      48, 24);
 FIELD(WGPURenderPassDescriptor, timestampWrites,        56, 28);
 STRUCT(WGPURenderPassDescriptor, 64, 32, 8, 4);
+
+// WGPUTextureViewDescriptor
+FIELD(WGPUTextureViewDescriptor, nextInChain,     0,  0);
+FIELD(WGPUTextureViewDescriptor, label,           8,  4);
+FIELD(WGPUTextureViewDescriptor, format,          24, 12);
+FIELD(WGPUTextureViewDescriptor, dimension,       28, 16);
+FIELD(WGPUTextureViewDescriptor, baseMipLevel,    32, 20);
+FIELD(WGPUTextureViewDescriptor, mipLevelCount,   36, 24);
+FIELD(WGPUTextureViewDescriptor, baseArrayLayer,  40, 28);
+FIELD(WGPUTextureViewDescriptor, arrayLayerCount, 44, 32);
+FIELD(WGPUTextureViewDescriptor, aspect,          48, 36);
+FIELD(WGPUTextureViewDescriptor, usage,           56, 40);
+STRUCT(WGPUTextureViewDescriptor, 64, 48, 8, 8);
 
 // WGPUVertexState
 FIELD(WGPUVertexState, nextInChain,   0,  0);
