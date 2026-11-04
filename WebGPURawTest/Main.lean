@@ -6,18 +6,15 @@ import WebGPURawTest
 
 Building this program builds every test (`#guard` checks run as their modules
 build), and the bindings with their C shims, linked against wgpu-native.
-Running it calls bound functions through their shims, on an instance a test
-helper creates (`WebGPURawTest/c/instance.c`): this needs no GPU.
+Running it calls bound functions through their shims, on an instance the
+bindings create (`createInstance`, with no descriptor and with one): this needs
+no GPU.
 
 `scripts/check-abi.sh` checks the shims' C types against Lean's own
 declarations of them; this checks that calls through them run.
 -/
 
 open WebGPU.Raw
-
-/-- A new instance, from the test helper. -/
-@[extern "lean_wgpu_test_create_instance"]
-opaque createInstance : IO Instance
 
 /--
 Check that calling `action`, the Lean function `name`, raises the IO error for
@@ -33,7 +30,27 @@ def expectNotImplemented {α : Type} (name : String) (action : IO α) :
       throw (IO.userError s!"FAIL: {name} raised {e}, not {expected}")
 
 def main : IO Unit := do
-  let wgpu ← createInstance
+  let wgpu ← createInstance none
+  -- And with a descriptor: a struct C fills in, its limits a struct of its
+  -- own, by their tables. (wgpu-native aborts on a timed `waitAny` feature or
+  -- limit it does not support, so these ask for none.)
+  for (what, descriptor) in [
+    ("an empty descriptor", ({} : InstanceDescriptor)),
+    ("a descriptor with limits", {
+      requiredLimits := some { timedWaitAnyMaxCount := 0 }
+    })
+  ] do
+    match ← (createInstance (some descriptor)).toBaseIO with
+    | .ok other => other.processEvents
+    | .error e =>
+      throw (IO.userError s!"FAIL: createInstance with {what}: {e}")
+  -- And a descriptor written here, a constant: its bytes must still be fresh,
+  -- not computed once and shared, as C writes into them. (A regression test:
+  -- the checked build found them shared.)
+  let other ← createInstance (some {
+    requiredLimits := some { timedWaitAnyMaxCount := 0 }
+  })
+  other.processEvents
   -- A method with no result: the object is passed borrowed, and `()` returned.
   wgpu.processEvents
   -- A function wgpu-native leaves unimplemented is an IO error, not an abort,

@@ -5,7 +5,9 @@ public import WebGPU.Raw.Internal.Encode
 /-!
 # Relocations
 
-A helper for the generated bindings, not part of the API.
+A helper for the generated bindings, not part of the API. It reaches their
+users, through the generated encoders and functions (`WebGPU.Raw.Encoders`,
+`WebGPU.Raw.Functions`), whose types and theorems mention it.
 
 An encoded struct (`WebGPU.Raw.Encode`) leaves its pointers 0, for C to fill
 in. Where each goes, and what it points to, is a struct's relocations: each an
@@ -326,32 +328,87 @@ theorem walk_objects {specs : Array Spec} {table ptr : Nat}
 
 /-! ## Structs C fills in
 
-A struct of `webgpu.h`, as the bindings pass it to C: its bytes, with its
-pointers 0; its targets, what C fills each pointer in from; its table's index;
-and whether each of its `size_t`s fits the target. With the proof that
-walking its table over its bytes takes exactly its targets: so what C fills in
-is what the table says, of every value. -/
+A struct of `webgpu.h`, as the bindings pass it to C (`CStruct`): its bytes,
+with its pointers 0; its targets, what C fills each pointer in from; its
+table's index; and whether each of its `size_t`s fits the target. And, apart,
+the proofs that make that safe (`CStruct.Fills`): that its bytes are one
+struct, the size its table is for, and that walking its table over them takes
+exactly its targets. The proofs are a `Prop`, so they cost nothing at run time,
+and can be of tables that exist only for them. -/
+
+/-- A struct C fills in: the generated bindings give every bound struct one. -/
+class CStruct (T : Type) where
+  /-- Its bytes, as C lays it out, its pointers 0. -/
+  toBytes    : T → ByteArray
+  /-- What C fills in its pointers from, in order. -/
+  toTargets  : T → Array Target
+  /-- Its table's index. -/
+  tableIndex : Nat
+  /-- Whether each of its `size_t`s fits the target. -/
+  sizesFit   : T → Bool
 
 /--
-A struct C fills in by the tables `specs`, as the walk reads them: the
-generated bindings give an instance of every bound struct, by the tables of
-the target the program runs on.
+That C fills in a struct as its table in `specs`, the tables as the walk reads
+them, says: the generated bindings prove it of every bound struct, by the
+tables of the target the program runs on.
 -/
-class CStruct (specs : Array Spec) (T : Type) where
-  /-- Its bytes, as C lays it out, its pointers 0. -/
-  toBytes      : T → ByteArray
-  /-- What C fills in its pointers from, in order. -/
-  toTargets    : T → Array Target
-  /-- Its table's index. -/
-  tableIndex   : Nat
-  /-- Whether each of its `size_t`s fits the target. -/
-  sizesFit     : T → Bool
+class CStruct.Fills (specs : Array Spec) (T : Type) [CStruct T] : Prop where
   /-- Its bytes are one struct: the size its table is for. -/
-  size_toBytes : ∀ d, ∃ relocs,
-    specs[tableIndex]? = some ((toBytes d).size, relocs)
+  size_toBytes : ∀ d : T, ∃ relocs,
+    specs[CStruct.tableIndex T]? = some ((CStruct.toBytes d).size, relocs)
   /-- Walking its table over its bytes takes exactly its targets. -/
-  fills        : ∀ d ts, walk specs tableIndex (toBytes d).size
-    ((toTargets d).toList ++ ts) = some ts
+  fills        : ∀ (d : T) ts,
+    walk specs (CStruct.tableIndex T) (CStruct.toBytes d).size
+      ((CStruct.toTargets d).toList ++ ts) = some ts
+
+/--
+An optional struct's bytes: none's are empty, a null pointer. Never computed
+once, as a constant: C writes into the bytes.
+-/
+@[never_extract]
+def CStruct.optBytes {T : Type} [CStruct T] : Option T → ByteArray
+  | none   => .empty
+  | some d => toBytes d
+
+/--
+An optional struct's targets: none has none. Never computed once, as a
+constant: C writes into its blocks.
+-/
+@[never_extract]
+def CStruct.optTargets {T : Type} [CStruct T] : Option T → Array Target
+  | none   => #[]
+  | some d => toTargets d
+
+/-- Whether each `size_t` of an optional struct fits: none has none. -/
+def CStruct.optSizesFit {T : Type} [CStruct T] : Option T → Bool
+  | none   => true
+  | some d => sizesFit d
+
+/-! ### What a shim takes
+
+A function that takes a struct passes C its bytes, its targets and its table's
+index: each typed as exactly the struct's own, so that nothing else can be
+passed. A subtype of one field is that field at run time: these cost nothing. -/
+
+/-- `d`'s bytes, and no others. -/
+abbrev BytesOf {T : Type} [CStruct T] (d : T) :=
+  {b : ByteArray // b = CStruct.toBytes d}
+
+/-- `d`'s targets, and no others. -/
+abbrev TargetsOf {T : Type} [CStruct T] (d : T) :=
+  {t : Array Target // t = CStruct.toTargets d}
+
+/-- An optional struct's bytes, and no others. -/
+abbrev OptBytesOf {T : Type} [CStruct T] (d : Option T) :=
+  {b : ByteArray // b = CStruct.optBytes d}
+
+/-- An optional struct's targets, and no others. -/
+abbrev OptTargetsOf {T : Type} [CStruct T] (d : Option T) :=
+  {t : Array Target // t = CStruct.optTargets d}
+
+/-- `T`'s table's index, and no other. -/
+abbrev IndexOf (T : Type) [CStruct T] :=
+  {i : Nat // i = CStruct.tableIndex T}
 
 end WebGPU.Raw.Reloc
 

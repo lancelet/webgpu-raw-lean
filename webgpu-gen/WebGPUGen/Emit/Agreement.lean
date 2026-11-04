@@ -16,10 +16,11 @@ a shim, Lean has both declarations.
 
 So no shim is left without its Lean declarations, and no function calls an
 `@[extern]` that is not declared. That the two types of each value agree by
-Lean's ABI is checked by compiling them together (the repository's
-`scripts/check-abi.sh`). An object is found by its C name on the C side, and
-named by its Lean name on the Lean side; lowering gives both from the same spec
-entry.
+Lean's ABI, and that each side has as many parameters (a struct crosses as
+four, and the tables), is checked by compiling them together (the
+repository's `scripts/check-abi.sh`), not proved. An object is found by its C
+name on the C side, and named by its Lean name on the Lean side; lowering
+gives both from the same spec entry.
 -/
 
 namespace WebGPUGen.Emit
@@ -61,23 +62,36 @@ theorem isSome_mapM {α β} {f : α → Option β} :
     rw [List.mapM_cons, List.forall_mem_cons, ← isSome_mapM (l := xs)]
     cases f x <;> cases xs.mapM f <;> simp
 
+/-- An argument a shim takes has parameters in the raw declaration. -/
+theorem rawBinders_of_argCrossing {objects : List Lowered.Object}
+    {x y : String} {v : Value} (h : (C.argCrossing objects x v).isSome) :
+    (Lean.rawBinders y v).isSome := by
+  cases v <;> simp_all [C.argCrossing, Lean.rawBinders, C.argExpr,
+    Value.abiCType, Value.rawLeanType, Value.leanType, Option.isSome_bind,
+    apply_ite Option.isSome]
+
+/-- An argument a shim takes has a Lean type. -/
+theorem leanType_of_argCrossing {objects : List Lowered.Object}
+    {x : String} {v : Value} (h : (C.argCrossing objects x v).isSome) :
+    v.leanType.isSome := by
+  cases v <;> simp_all [C.argCrossing, C.argExpr, Value.abiCType,
+    Value.leanType, Option.isSome_bind, apply_ite Option.isSome]
+
 /--
-What a shim for `f` needs of its values: a C type for each argument, and a
+What a shim for `f` needs of its values: a crossing for each argument, and a
 boxing for its result.
 -/
 theorem values_of_functionShim {objects : List Lowered.Object}
-    {f : Lowered.Function} {shim : C.Function}
-    (h : C.functionShim objects f = some shim) :
-    (∀ a ∈ f.args.toList, a.value.abiCType.isSome)
+    {structs : List Names} {f : Lowered.Function} {shim : C.Function}
+    (h : C.functionShim objects structs f = some shim) :
+    (∀ a ∈ f.args.toList, (C.argCrossing objects a.names.c a.value).isSome)
       ∧ ∀ v, f.result = some v → (C.resultExpr objects v).isSome := by
   simp [C.functionShim, Option.bind_eq_some_iff] at h
   -- One part for each guard and bind of `functionShim`, in order.
-  obtain ⟨_, _, _, _, args, hargs, hresult⟩ := h
+  obtain ⟨_, _, _, _, _, args, hargs, hresult⟩ := h
   constructor
   · intro a ha
-    have := isSome_mapM.1 (by rw [hargs]; rfl) a ha
-    revert this
-    cases a.value.abiCType <;> simp
+    exact isSome_mapM.1 (by rw [hargs]; rfl) a ha
   · intro v hv
     rw [hv] at hresult
     cases he : C.resultExpr objects v
@@ -89,17 +103,18 @@ theorem any_of_isSome {α} {o : Option α} {p : α → Bool} (ho : o.isSome)
     (hp : ∀ x, p x) : o.any p := by
   cases o <;> simp_all
 
-/-- The raw declaration exists if each value has a raw type. -/
+/--
+The raw declaration exists if each argument has parameters, and its result a
+raw type.
+-/
 theorem rawDecl_isSome {f : Lowered.Function}
-    (hargs : ∀ a ∈ f.args.toList, a.value.rawLeanType.isSome)
+    (hargs : ∀ a ∈ f.args.toList, (Lean.rawBinders a.names.lean a.value).isSome)
     (hresult : ∀ v, f.result = some v → v.rawLeanType.isSome) :
     (Lean.rawDecl f).isSome := by
   simp [Lean.rawDecl, Option.isSome_bind]
   apply any_of_isSome
   · rw [isSome_mapM]
-    intro a ha
-    obtain ⟨t, ht⟩ := Option.isSome_iff_exists.1 (hargs a ha)
-    simp [ht]
+    exact hargs
   · intro x
     split
     · rfl
@@ -127,14 +142,14 @@ theorem wrapperDecl_isSome {f : Lowered.Function}
 
 /-- Where C has a shim for a function, Lean has both of its declarations. -/
 theorem decls_of_functionShim {objects : List Lowered.Object}
-    {f : Lowered.Function} {shim : C.Function}
-    (h : C.functionShim objects f = some shim) :
+    {structs : List Names} {f : Lowered.Function} {shim : C.Function}
+    (h : C.functionShim objects structs f = some shim) :
     (Lean.rawDecl f).isSome ∧ (Lean.wrapperDecl f).isSome := by
   obtain ⟨hargs, hresult⟩ := values_of_functionShim h
   exact ⟨
-    rawDecl_isSome (fun a ha => rawLeanType_of_abiCType (hargs a ha))
+    rawDecl_isSome (fun a ha => rawBinders_of_argCrossing (hargs a ha))
       (fun v hv => rawLeanType_of_resultExpr (hresult v hv)),
-    wrapperDecl_isSome (fun a ha => leanType_of_abiCType (hargs a ha))
+    wrapperDecl_isSome (fun a ha => leanType_of_argCrossing (hargs a ha))
       (fun v hv => resultLeanType_of_resultExpr (hresult v hv))⟩
 
 end WebGPUGen.Emit

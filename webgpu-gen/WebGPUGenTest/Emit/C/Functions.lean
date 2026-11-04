@@ -54,7 +54,7 @@ def function (args : Array Arg) (result : Option Value) : Lowered.Function := {
 
 /-- The shim for `f`, printed, if it has one. -/
 def shimText (f : Lowered.Function) : Option String :=
-  (functionShim [buffer] f).map fun s => file [.function s]
+  (functionShim [buffer] [] f).map fun s => file [.function s]
 
 /-! ## Shims -/
 
@@ -235,5 +235,34 @@ def shimText (f : Lowered.Function) : Option String :=
   source.contains "lean_wgpu_string_view(b_lean_obj_arg s)"
     && !source.contains "lean_wgpu_option_string_view(b_lean_obj_arg"
     && !source.contains "lean_wgpu_too_large(char const"
+
+-- A struct behind a pointer crosses as itself, its bytes, its targets and its
+-- table's index, the shim taking the tables too; C fills it in, into a pointer
+-- to pass. Only a bound struct: one that is not has no table, so no shim.
+#guard
+  let descriptor : Names := ⟨"WGPUDescriptor", "Descriptor"⟩
+  let f := function #[arg "desc" (.structPointer descriptor true)] none
+  let bound := (functionShim [buffer] [descriptor] f).map fun s =>
+    file [.function s]
+  (functionShim [buffer] [] f).isNone && bound == some (dedent "
+    // Lean's `doIt`: calls `wgpuDoIt`.
+    LEAN_EXPORT lean_obj_res lean_wgpuDoIt(
+        b_lean_obj_arg desc,
+        b_lean_obj_arg desc_bytes,
+        b_lean_obj_arg desc_targets,
+        b_lean_obj_arg desc_table,
+        b_lean_obj_arg tables
+    ) {
+        (void)desc;
+        void const * desc_struct = lean_wgpu_fill_arg(
+            desc_bytes,
+            tables,
+            lean_usize_of_nat(desc_table),
+            desc_targets
+        );
+        wgpuDoIt(desc_struct);
+        return lean_io_result_mk_ok(lean_box(0));
+    }
+    ")
 
 end WebGPUGenTest.Emit.C.Functions

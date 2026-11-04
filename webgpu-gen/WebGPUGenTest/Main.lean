@@ -62,6 +62,14 @@ def stubs : IO (List (String × List String)) := do
 def headerPath : IO System.FilePath := do
   return (← specPath).withFileName "webgpu.h"
 
+/--
+The bindings' hand-written C header that the shims of functions taking a struct
+include (`c/reloc.h`), found from the vendored spec.
+-/
+def relocHeaderPath : IO System.FilePath := do
+  let headers := ((← specPath).parent.getD ".")
+  return (headers.parent.bind (·.parent)).getD "." / "c" / "reloc.h"
+
 open WebGPUGen.Lowered in
 /--
 The C names of members or arguments, with the count that goes with each array.
@@ -222,6 +230,7 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
   IO.FS.withTempDir fun dir => do
     IO.FS.createDirAll (dir / "webgpu")
     IO.FS.writeFile (dir / "webgpu" / "webgpu.h") (← IO.FS.readFile header)
+    IO.FS.writeFile (dir / "reloc.h") (← IO.FS.readFile (← relocHeaderPath))
     let files :=
       WebGPUGen.Emit.C.objectsFiles testProvenance spec
         ++ WebGPUGen.Emit.C.functionsFiles testProvenance spec
@@ -547,6 +556,14 @@ def main : IO Unit := do
   unless wrong.isEmpty do
     failWith s!"structs C keeps beyond a call, not excluded: {wrong}"
 
+  -- No function is bound whose struct describes nothing but by its chain,
+  -- which the bindings do not fill in yet: wgpu-native aborts without it.
+  let chained := ["wgpuDeviceCreateShaderModule", "wgpuInstanceCreateSurface"]
+  let boundNames := (WebGPUGen.Emit.C.boundFunctions lowered).map (·.1.names.c)
+  let bad := chained.filter boundNames.contains
+  unless bad.isEmpty do
+    failWith s!"functions bound that need a chained struct: {bad}"
+
   -- And every bound struct has its encoders.
   let unencodable := WebGPUGen.Emit.Encoders.unencodable lowered
   unless unencodable.isEmpty do
@@ -559,10 +576,16 @@ def main : IO Unit := do
     failWith s!"encoder lines over the width: {wide}"
 
   -- The generated C shims compile.
-  -- Every function lowering says can be bound has a shim: none is lost.
+  -- Every function lowering says can be bound has a shim: none is lost, but
+  -- one whose struct needs its chain, which is not bound yet.
   let shimmed := (WebGPUGen.Emit.C.boundFunctions lowered).map (·.1.names.c)
+  let needsChain (f : WebGPUGen.Lowered.Function) := f.args.any fun a =>
+    match a.value with
+    | .structPointer names _ => structs.any fun s =>
+      s.names == names && s.needsChain structs
+    | _ => false
   let lost := (WebGPUGen.Emit.C.allFunctions lowered).filter fun f =>
-    f.unsupported.isEmpty && !shimmed.contains f.names.c
+    f.unsupported.isEmpty && !shimmed.contains f.names.c && !needsChain f
   unless lost.isEmpty do
     failWith s!"bindable functions with no shim: {lost.map (·.names.c)}"
 

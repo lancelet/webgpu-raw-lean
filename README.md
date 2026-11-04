@@ -58,6 +58,9 @@ bindings prove, in Lean:
   has a table: arrays of enums, of objects and of structs included. And each
   is a `CStruct`, its bytes, targets, table and those proofs together, for the
   target the program runs on: its bytes proved one struct, the size its table
-  is for, and the tables C reads proved to be those the walk reads.
+  is for, and the tables C reads proved to be those the walk reads. A
+  function that takes a struct passes it to its shim as its bytes, targets
+  and table's index, each typed as exactly its own: so the walk the proofs
+  are of is the one C makes.
 
-Status: WIP: approximately 68% complete.
+Status: WIP: approximately 71% complete.

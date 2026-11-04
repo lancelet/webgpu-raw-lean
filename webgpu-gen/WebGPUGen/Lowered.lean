@@ -397,6 +397,18 @@ def Struct.unsupported (s : Struct) : List String :=
     ++ s.members.toList.filterMap (·.value.unsupported?)
 
 /--
+Whether a struct describes nothing but by its chain: extensible, with no
+member but its label, and extended by others, as a shader module descriptor is
+by its WGSL or SPIR-V source, and a surface descriptor by its surface source.
+Passed without its chain, which the bindings do not fill in yet, it is of no
+use, and an implementation may abort (wgpu-native does).
+-/
+def Struct.needsChain (structs : List Struct) (s : Struct) : Bool :=
+  s.kind == .extensible
+    && s.members.all (·.names.lean == "label")
+    && structs.any (·.extendedStructs.contains s.names)
+
+/--
 The struct a value names, if any: by value, by pointer, or as the elements of
 an array, however nested, as `leanType` names it.
 -/

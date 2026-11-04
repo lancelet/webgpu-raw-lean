@@ -53,7 +53,7 @@ check() {
   # -Wmissing-prototypes: every definition must have Lean's declaration of it.
   ${CC:-cc} -fsyntax-only -std=c11 -Wall -Wextra -Wmissing-prototypes \
     -Werror -I "$lean_include" -I "$wgpu_include" \
-    -I c/generated "$tmp/check.c"
+    -I c/generated -I c "$tmp/check.c"
   echo "OK: the $defined $what agree with how Lean calls them"
 }
 

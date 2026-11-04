@@ -143,9 +143,9 @@ lean_lib WebGPURaw where
   moreLinkLibs := #[wgpuNative]
 
 /--
-C helpers for the tests only, every `.c` file in `WebGPURawTest/c/`: an
-instance to call functions on, until the bindings can create one, and structs
-as C lays them out, to compare encoding with.
+C helpers for the tests only, every `.c` file in `WebGPURawTest/c/`: structs
+as C lays them out, to compare encoding with; pointers filled in and read back;
+and, for the web self-test, whether the page has WebGPU.
 -/
 target testHelpers pkg : FilePath := do
   let dir := pkg.dir / "WebGPURawTest" / "c"

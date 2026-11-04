@@ -28,9 +28,9 @@ and `Int16` with `lean_box`, `UInt32` and `Int32` with `lean_box_uint32`,
 `UInt64` with `lean_box_uint64`, `Float32` with `lean_box_float32`, and `Float`
 with `lean_box_float`. *Checked by:* review, against the C Lean 4.31 emits for
 such `@[extern]` declarations. (`scripts/check-abi.sh` cannot check boxing,
-since every result is a `lean_object *`; the runtime test calls a shim, but
-none with a result yet, as wgpu-native leaves those it could call
-unimplemented.)
+since every result is a `lean_object *`. The runtime test boxes an object
+result, `createInstance`'s, but no scalar one yet, as wgpu-native leaves those
+it could call unimplemented.)
 
 - **Integers are unboxed** at the boundary, `UInt64` included, on 32-bit
   platforms too. *Checked by:* `scripts/check-abi.sh`, which compiles each
@@ -42,6 +42,25 @@ unimplemented.)
   review.
 - **Object arguments are owned unless marked `@&`.** Every object a shim takes
   is marked `@&` in Lean, and the shim never releases it. *Checked by:* review.
+- **The raw `@[extern]` declarations under `Internal` are not API**: only
+  their generated functions call them. They are public, as the functions,
+  which inline into their callers, must name them; but code that called one
+  itself could pass bytes it still holds, which C would write into. *Checked
+  by:* review; the module's documentation says so.
+- **A struct argument crosses as its bytes, its targets and its table's
+  index**, with the Lean value itself and the tables: each typed as exactly
+  the value's own (`BytesOf d`, a subtype, which is its one field at run
+  time), so the raw `@[extern]` cannot be called with another's. The bytes
+  are borrowed, and C fills in their pointers in place, before the call
+  (`lean_wgpu_fill_arg`): they are fresh, as what makes them is
+  `@[never_extract]`, and held by the call alone; an optional struct that is
+  none is empty bytes, a null pointer. Before the call, the Lean function
+  checks the struct's `size_t`s fit (`sizesFit`). *Checked by:* proof (the
+  types; and that the table is the struct's, `CStruct.Fills`); test
+  (`createInstance`, with and without a descriptor, natively and on the web;
+  a constant descriptor too, a regression test); and CI runs the tests in the
+  checked build, where every argument's bytes are checked unshared and one
+  struct.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
@@ -98,9 +117,9 @@ unimplemented.)
   bound, nor any that holds one. *Checked by:* proof (a bound struct has no
   unsupported member, and every struct it refers to is bound), and test (a
   handle C keeps is unsupported; and each of those structs of the spec, by
-  name, is unsupported for its reason and not bound). That a bound function
-  takes no struct that is not bound is to be checked when the first is bound;
-  that C keeps nothing else is not checked.
+  name, is unsupported for its reason and not bound); and a function taking a
+  struct is bound only if the struct is (test). That C keeps nothing else is
+  not checked.
 - **C writes into an input only through a mutable pointer, and no mutable
   pointer argument is bound**: not `wait_any`'s futures, which it writes back
   to, nor the outputs of the `get_` functions. *Checked by:* test (a mutable
@@ -187,7 +206,10 @@ aborts the program (a Rust panic that cannot unwind into C). 25 of them are
 bound: every bound `setLabel` method (21), `hasInstanceFeature`,
 `Instance.hasWGSLLanguageFeature`, `Buffer.getMapState` and
 `Texture.getTextureBindingViewDimension`. Dawn, used on the web, implements
-them.
+them. wgpu-native also aborts on values it does not support: a timed
+`waitAny` feature or limit in an instance descriptor (`createInstance`). That
+is not memory-unsafe, but ends the program; the bindings do not check for it
+yet.
 
 - **Their shims call them only when built against an implementation known to
   implement them**, which the build says by defining a macro: the web build

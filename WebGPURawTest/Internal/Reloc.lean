@@ -273,13 +273,13 @@ of its `size_t`s fits, its bytes, the tables, its table's index and its
 targets, given to `back`.
 -/
 @[inline]
-def viaClass {T : Type} [CStruct currentSpecs T] (d : T)
+def viaClass {T : Type} [CStruct T] [CStruct.Fills currentSpecs T] (d : T)
     (back : ByteArray → Array ByteArray → USize → Array Target → String) :
     String :=
-  if !CStruct.sizesFit currentSpecs d then "a size_t that does not fit" else
-  back (CStruct.toBytes currentSpecs d) currentTables
-    (CStruct.tableIndex currentSpecs T).toUSize
-    (CStruct.toTargets currentSpecs d)
+  if !CStruct.sizesFit d then "a size_t that does not fit" else
+  back (CStruct.toBytes d) currentTables
+    (CStruct.tableIndex T).toUSize
+    (CStruct.toTargets d)
 
 /--
 What C finds wrong with `bindGroupLayout`, filled in by its generated table

@@ -5,9 +5,9 @@ public import WebGPU.Raw.Internal.Bytes
 /-!
 # Encoding a struct
 
-A helper for the generated bindings, not part of the API: of the bindings,
-only the generated encoders (`WebGPU.Raw.Encoders`) import it publicly, as
-their theorems mention it.
+A helper for the generated bindings, not part of the API. It reaches their
+users, through the generated encoders and functions (`WebGPU.Raw.Encoders`,
+`WebGPU.Raw.Functions`), whose types and theorems mention it.
 
 A struct of `webgpu.h` is encoded field by field: each `Field` an offset, a
 kind of scalar, and the number its bytes hold for a value. `encode` writes each

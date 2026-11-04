@@ -21,10 +21,6 @@ Pages publishes it.
 namespace WebGPURawWebTest
 open WebGPU.Raw
 
-/-- A new instance, from the test helper (`WebGPURawTest/c/instance.c`). -/
-@[extern "lean_wgpu_test_create_instance"]
-opaque createInstance : IO Instance
-
 /--
 `x`, but out of the compiler's sight: it cannot compute a check from it at
 compile time, so the check runs where the program does.
@@ -85,14 +81,30 @@ def main : IO UInt32 := do
   let failed := results.filter (!·.2)
   -- The bindings: an instance, and a method called through its shim.
   let bindings ← try
-      let wgpu ← WebGPURawWebTest.createInstance
+      let wgpu ← WebGPU.Raw.createInstance none
       wgpu.processEvents
       pure "ok   an instance created, and a method called on it"
     catch e => pure s!"FAIL the bindings: {e}"
   IO.println bindings
+  -- And with a descriptor, a struct C fills in; but not one with a `size_t`
+  -- too large for wasm32, which is refused before the call.
+  let descriptor ← try
+      let _ ← WebGPU.Raw.createInstance (some {
+        requiredLimits := some { timedWaitAnyMaxCount := 0 }
+      })
+      match ← (WebGPU.Raw.createInstance (some {
+        requiredLimits := some {
+          timedWaitAnyMaxCount := WebGPURawWebTest.runtime 0x100000000
+        }
+      })).toBaseIO with
+      | .ok _    => pure "FAIL a size_t too large for wasm32, not refused"
+      | .error _ => pure "ok   an instance created with a descriptor, and one \
+          with a size_t too large refused"
+    catch e => pure s!"FAIL an instance with a descriptor: {e}"
+  IO.println descriptor
   -- C fills in encoded structs' pointers as their tables say.
   let relocations ← try
-      let wgpu ← WebGPURawWebTest.createInstance
+      let wgpu ← WebGPU.Raw.createInstance none
       let checks := WebGPURawTest.Internal.Reloc.checks wgpu
       pure (checks.map fun (what, problem) =>
         if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
@@ -105,7 +117,7 @@ def main : IO UInt32 := do
   let dawn ← try
       let _ ← WebGPU.Raw.hasInstanceFeature .timedWaitAny
       if WebGPURawWebTest.hasWebGPU () then
-        let wgpu ← WebGPURawWebTest.createInstance
+        let wgpu ← WebGPU.Raw.createInstance none
         let _ ← wgpu.hasWGSLLanguageFeature .readonlyAndReadwriteStorageTextures
         pure "ok   a function and a method wgpu-native leaves unimplemented, \
           called"
@@ -115,7 +127,8 @@ def main : IO UInt32 := do
     catch e => pure s!"FAIL calling what wgpu-native does not implement: {e}"
   IO.println dawn
   let bindingsFailed :=
-    (bindings :: dawn :: relocations).filter (!·.startsWith "ok") |>.length
+    (bindings :: descriptor :: dawn :: relocations).filter
+      (!·.startsWith "ok") |>.length
   if failed.isEmpty && bindingsFailed == 0 then
     IO.println "All checks passed."
     return 0

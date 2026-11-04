@@ -790,10 +790,12 @@ def currentDecls (s : Struct) : List (List String) :=
         "      ((toTargets d).toList ++ ts) = some ts := by"]
       ++ cases ["currentSpecs", "toBytes", "toTargets"] fun n =>
         s!"exact walk_encode{n}_tableIndex d ts",
-    ["/-- It is a struct C fills in, on this target. -/",
-      s!"instance : CStruct currentSpecs {t} :=",
-      "  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,",
-      "    walk_toBytes⟩"]
+    ["/-- It is a struct C fills in. -/",
+      s!"instance : CStruct {t} :=",
+      "  ⟨toBytes, toTargets, tableIndex, sizesFit⟩"],
+    ["/-- C fills it in as its table says, on this target. -/",
+      s!"instance : CStruct.Fills currentSpecs {t} :=",
+      "  ⟨size_toBytes, walk_toBytes⟩"]
   ]
 
 /-- Every table on each width, by its index in a relocation. -/
@@ -834,6 +836,9 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
     "def currentTables : Array ByteArray :=",
     "  if System.Platform.numBits = 64 then tables64 else tables32"]
+  let tablesOf := Doc.lines [
+    "/-- The tables on this target, and no others: what a shim takes. -/",
+    "abbrev CurrentTablesOf := {ts : Array ByteArray // ts = currentTables}"]
   let currentSpecs := Doc.lines [
     "/-- Every table on this target, as the walk reads it. -/",
     "noncomputable def currentSpecs : Array Spec :=",
@@ -866,7 +871,7 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
       ++ ((currentDecls s).map (· ++ [""])).flatten
       ++ [s!"end {s.names.lean}"])
   [Doc.lines ["/-! ## Tables -/"]] ++ widths
-    ++ [current, currentSpecs, currentEq] ++ proofs
+    ++ [current, tablesOf, currentSpecs, currentEq] ++ proofs
 
 /-- The encoders' module, `WebGPU/Raw/Encoders.lean`; none if one is missing. -/
 def encodersFile (p : Provenance) (spec : Lowered.Spec) : Option String := do

@@ -3,9 +3,9 @@ module
 /-!
 # Bytes, little-endian
 
-A helper for the generated bindings, not part of the API: of the bindings,
-only the generated encoders (`WebGPU.Raw.Encoders`) import it publicly,
-through `Encode`, as their theorems mention it.
+A helper for the generated bindings, not part of the API. It reaches their
+users, through the generated encoders and functions (`WebGPU.Raw.Encoders`,
+`WebGPU.Raw.Functions`), whose types and theorems mention it.
 
 Writing numbers into a `ByteArray` as C lays them out in memory, and reading
 them back: what encoding a struct of `webgpu.h` writes. Every target the

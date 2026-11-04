@@ -35,6 +35,8 @@ run_cmd do
   let makers := encoders ++ generated env
     ["targets64", "targets32", "block64", "block32", "targetsAll64",
       "targetsAll32", "array64", "array32"]
+    ++ #[``WebGPU.Raw.Reloc.CStruct.optBytes,
+      ``WebGPU.Raw.Reloc.CStruct.optTargets]
   if encoders.isEmpty then throwError "no generated encoders found"
   if makers.size == encoders.size then throwError "no generated targets found"
   for n in encoders do

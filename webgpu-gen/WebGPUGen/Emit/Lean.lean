@@ -236,15 +236,38 @@ def receiverBinder (f : Lowered.Function) (borrowed : Bool) : List Binder :=
     ⟨"self", (if borrowed then "@& " else "") ++ names.lean⟩
 
 /--
+An argument's parameters in the raw declaration: one, its raw type, borrowed if
+an object; or, for a struct behind a pointer, four, as its shim takes them
+(`Emit.C.argCrossing`): the value, which the others' types are of; its bytes,
+its targets and its table's index, each typed as exactly the struct's own, so
+nothing else can be passed. None if a value has no raw type.
+-/
+def rawBinders (x : String) : Value → Option (List Binder)
+  | .structPointer names b =>
+    let (bytes, targets) := if b then ("OptBytesOf", "OptTargetsOf")
+      else ("BytesOf", "TargetsOf")
+    let type := if b then s!"Option {names.lean}" else names.lean
+    some [
+      ⟨x, "@& " ++ type⟩,
+      ⟨x ++ "Bytes", s!"@& {bytes} {x}"⟩,
+      ⟨x ++ "Targets", s!"@& {targets} {x}"⟩,
+      ⟨x ++ "Table", s!"@& IndexOf {names.lean}"⟩]
+  | v => v.rawLeanType.map fun type =>
+    [⟨x, (if v.isObject then "@& " else "") ++ type⟩]
+
+/-- The raw declaration's parameter for the tables, if `f` takes a struct. -/
+def tablesBinders (f : Lowered.Function) : List Binder :=
+  if Emit.C.takesStruct f then
+    [⟨"tables", "@& CurrentTablesOf"⟩]
+  else []
+
+/--
 The raw `@[extern]` declaration of `f`, as its shim implements it: objects and
 strings borrowed, an enum as its code and a bitflag type as its bits. None if a
 value has no raw type, which a bound function never has.
 -/
 def rawDecl (f : Lowered.Function) : Option Doc := do
-  let args ← f.args.toList.mapM fun a => do
-    let type ← a.value.rawLeanType
-    let borrowed := if a.value.isObject then "@& " else ""
-    pure (⟨a.names.lean, borrowed ++ type⟩ : Binder)
+  let args ← f.args.toList.mapM fun a => rawBinders a.names.lean a.value
   let result ← match f.result with
     | none   => pure "Unit"
     | some v => v.rawLeanType
@@ -254,15 +277,20 @@ def rawDecl (f : Lowered.Function) : Option Doc := do
     ++ signature {
       keyword := "opaque"
       name    := "Internal." ++ f.names.lean
-      binders := receiverBinder f true ++ args
+      binders := receiverBinder f true ++ args.flatten ++ tablesBinders f
       result  := ioOf result
     }
 
-/-- An argument `x` of `f`, converted to what the raw declaration takes. -/
-def rawArg (x : String) : Value → String
-  | .enum _    => s!"(CEnum.toC {x})"
-  | .bitflag _ => s!"{x}.bits"
-  | _          => x
+/--
+An argument `x` of `f`, converted to what the raw declaration takes: a struct
+behind a pointer as itself and its bytes, targets and table's index, each
+proved its own by `rfl`.
+-/
+def rawArg (x : String) : Value → List String
+  | .enum _          => [s!"(CEnum.toC {x})"]
+  | .bitflag _       => [s!"{x}.bits"]
+  | .structPointer .. => [x, "⟨_, rfl⟩", "⟨_, rfl⟩", "⟨_, rfl⟩"]
+  | _                => [x]
 
 /--
 `f` itself: its arguments and result in their Lean types, converted for its
@@ -279,13 +307,28 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
     | some v => v.resultLeanType
   let callArgs :=
     (f.receiver.toList.map fun _ => "self")
-      ++ f.args.toList.map fun a => rawArg a.names.lean a.value
+      ++ (f.args.toList.flatMap fun a => rawArg a.names.lean a.value)
+      ++ (if Emit.C.takesStruct f then ["⟨_, rfl⟩"] else [])
   let call := group (nest 4 (join space
     ((text ("Internal." ++ f.names.lean)) :: callArgs.map text)))
-  let body := match f.result with
+  let decoded := match f.result with
     | some (.enum _)          => text "CEnum.decode <$> " ++ call
     | some (.bitflag names)   => text s!"{names.lean}.mk <$> " ++ call
     | _                       => call
+  -- Each struct's `size_t`s must fit this target, as a `size_t` argument's
+  -- must: an `IO` error if not.
+  let fits := f.args.toList.filterMap fun a => match a.value with
+    | .structPointer _ b =>
+      let check := if b then "CStruct.optSizesFit" else "CStruct.sizesFit"
+      some s!"{check} {a.names.lean}"
+    | _ => none
+  let condition := group (nest 4 (text "if "
+    ++ join (text " &&" ++ space) (fits.map text) ++ text " then"))
+  let refusal := group (nest 2 (text "throw (IO.userError" ++ space
+    ++ text s!"\"{f.names.lean}: a size_t too large\")"))
+  let body := if fits.isEmpty then decoded else
+    condition ++ indented 2 decoded ++ hardline ++ text "else"
+      ++ indented 2 refusal
   pure <| docBefore 0 f.doc ++ text "@[inline]" ++ hardline
     ++ signature {
       keyword := "def"
@@ -495,7 +538,8 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
     [
       "public import WebGPU.Raw.CEnum",
       "public import WebGPU.Raw.Enums",
-      "public import WebGPU.Raw.Objects"
+      "public import WebGPU.Raw.Objects",
+      "public import WebGPU.Raw.Encoders"
     ]
     [
       "# Functions",
@@ -503,9 +547,11 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "The functions and methods of `webgpu.h` the bindings can bind so far, each in",
       "`IO`. A method takes its object first, as `self`, so `device.getQueue` calls",
       "`wgpuDeviceGetQueue`. Each calls a raw declaration under `Internal`, which",
-      "its C shim implements; `docs/Safety.md` gives the rules they follow."
+      "its C shim implements, and which is not API: only these functions call",
+      "them. `docs/Safety.md` gives the rules they follow."
     ]
-    ((Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
+    (text "open Reloc" ::
+      (Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
 
 /-- The module of constants. -/
 def constantsFile (p : Provenance) (spec : Lowered.Spec) : String :=

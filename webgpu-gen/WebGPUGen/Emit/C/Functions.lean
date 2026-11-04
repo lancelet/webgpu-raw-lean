@@ -1,4 +1,5 @@
 import WebGPUGen.Lowered
+import WebGPUGen.Lowered.BoundStructs
 import WebGPUGen.Emit.C.Objects
 
 /-!
@@ -17,7 +18,9 @@ the function, and returns its result boxed in an `IO` result:
 
 The shim is named `lean_` and the C function's name. A method's object is its
 first argument, `self`. Every object argument is borrowed, and a result object
-is owned: the rules are in `docs/Safety.md`.
+is owned: the rules are in `docs/Safety.md`. A struct passed by pointer
+crosses as its encoded bytes, targets and table's index (`argCrossing`), which
+the shim fills in, by the tables, into the pointer it passes.
 -/
 
 namespace WebGPUGen.Emit.C
@@ -178,6 +181,56 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
   | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .unsupported _     => none
 
+/-- The C function that fills in a struct argument's pointers (`c/reloc.c`). -/
+def fillArgName : String := "lean_wgpu_fill_arg"
+
+/--
+How an argument crosses into C: the shim's parameters for it, statements
+before the call, and the C value the function takes.
+-/
+structure Crossing where
+  params : List Param
+  before : List Stmt
+  value  : Expr
+
+/--
+How an argument `x` of the value `v` crosses, none if it cannot. Most cross as
+one parameter, converted (`argExpr`). A struct behind a pointer crosses as
+four: the Lean value, unused, which the proofs about the others are of; its
+bytes, as C lays it out (borrowed: Lean releases them after the call); what C
+fills in its pointers from; and its table's index. Before the call they are
+filled in, by the tables (the shim's `tables`), into a pointer to pass, as
+`void const *`, which C converts to the struct's pointer type.
+-/
+def argCrossing (objects : List Lowered.Object) (x : String) (v : Value) :
+    Option Crossing :=
+  match v with
+  | .structPointer .. =>
+    let filled := x ++ "_struct"
+    some {
+      params := [⟨"b_lean_obj_arg", x⟩, ⟨"b_lean_obj_arg", x ++ "_bytes"⟩,
+        ⟨"b_lean_obj_arg", x ++ "_targets"⟩, ⟨"b_lean_obj_arg", x ++ "_table"⟩]
+      before := [
+        .expr (.cast "void" (.name x)),
+        .decl "void const *" filled (some (.call fillArgName [
+          .name (x ++ "_bytes"), .name "tables",
+          .call "lean_usize_of_nat" [.name (x ++ "_table")],
+          .name (x ++ "_targets")]))]
+      value  := .name filled
+    }
+  | v => do
+    let type ← v.abiCType
+    let e ← argExpr objects x v
+    pure { params := [⟨type, x⟩], before := [], value := e }
+
+/-- Whether `f` takes a struct behind a pointer: its shim takes the tables. -/
+def takesStruct (f : Lowered.Function) : Bool :=
+  f.args.any (·.value matches .structPointer ..)
+
+/-- The shim's parameter for the tables, if `f` takes a struct. -/
+def tablesParams (f : Lowered.Function) : List Param :=
+  if takesStruct f then [⟨"b_lean_obj_arg", "tables"⟩] else []
+
 /--
 A check that must pass before the call, for an argument `x` of the Lean
 function `function`: a `size_t` must fit, or be the largest `UInt64`, which
@@ -287,24 +340,31 @@ def receiverArg (objects : List Lowered.Object) :
 
 /--
 The shim for `f`, if the bindings can pass all of its values: none otherwise,
-so a function that is not understood is not bound.
+so a function that is not understood is not bound; nor one that takes a
+struct not among the bound `structs`, which has no table.
 -/
-def functionShim (objects : List Lowered.Object) (f : Lowered.Function) :
-    Option Function := do
+def functionShim (objects : List Lowered.Object) (structs : List Names)
+    (f : Lowered.Function) : Option Function := do
   guard f.unsupported.isEmpty
-  -- An argument named like a shim's own variable would hide it.
-  guard (f.args.all fun a => !["self", "result"].contains a.names.c)
+  guard (f.args.all fun a => match a.value with
+    | .structPointer names _ => structs.contains names
+    | _                      => true)
+  -- An argument named like a shim's own variable, or like the parameters a
+  -- struct crosses as, on either side, would hide it.
+  guard (f.args.all fun a =>
+    !["self", "result", "tables"].contains a.names.c
+      && !(["_struct", "_bytes", "_targets", "_table"].any
+        (a.names.c.endsWith ·))
+      && !(["Bytes", "Targets", "Table"].any (a.names.lean.endsWith ·)))
   let shim := functionShimName f
   -- Every argument is borrowed, so a check that fails returns before any
   -- reference is taken, and nothing needs releasing.
   let receiver ← receiverArg objects f.receiver
-  let args ← f.args.toList.mapM fun a => do
-    let type ← a.value.abiCType
-    let e ← argExpr objects a.names.c a.value
-    pure ((⟨type, a.names.c⟩ : Param), e)
+  let args ← f.args.toList.mapM fun a => argCrossing objects a.names.c a.value
   let checks :=
     f.args.toList.flatMap fun a => argCheck f.names.lean a.names.c a.value
-  let call := Expr.call f.names.c ((receiver ++ args).map (·.2))
+  let call := Expr.call f.names.c
+    (receiver.map (·.2) ++ args.map (·.value))
   let body ← match f.result with
     | none => pure [
       .expr call,
@@ -315,14 +375,16 @@ def functionShim (objects : List Lowered.Object) (f : Lowered.Function) :
       let boxed ← resultExpr objects v
       pure ([.decl cType "result" (some call)] ++ resultCheck f v
         ++ [.ret (some (.call "lean_io_result_mk_ok" [boxed]))])
-  let params := (receiver ++ args).map (·.1)
+  let params := receiver.map (·.1) ++ args.flatMap (·.params)
+    ++ tablesParams f
   pure {
     doc    := s!"Lean's `{f.names.lean}`: calls `{f.names.c}`."
     attrs  := ["LEAN_EXPORT"]
     result := "lean_obj_res"
     name   := shim
     params := params
-    body   := guardStubs f params (checks ++ body)
+    body   := guardStubs f params
+      (checks ++ args.flatMap (·.before) ++ body)
   }
 
 /-- Every function and method of the spec, in its order. -/
@@ -335,13 +397,17 @@ a shim for. This is the one definition of what is bound, which the Lean side
 uses too, so no `@[extern]` is declared without its shim.
 -/
 def boundFunctions (spec : Lowered.Spec) : List (Lowered.Function × Function) :=
+  -- The bound structs a function can pass: not one that needs its chain.
+  let all := spec.structs.toList
+  let structs := ((boundStructs all).filter (!·.needsChain all)).map (·.names)
   (allFunctions spec).filterMap fun f =>
-    (functionShim spec.objects.toList f).map (f, ·)
+    (functionShim spec.objects.toList structs f).map (f, ·)
 
 /-- The source: the helpers the shims use, then the shims. -/
 def functionsSource (spec : Lowered.Spec) : List Decl :=
   let bound := boundFunctions spec
   [.include "stdint.h", .includeLocal "objects.h"]
+    ++ (if bound.any (takesStruct ·.1) then [.includeLocal "reloc.h"] else [])
     ++ helpers.filterMap (fun (needs, d) =>
       if bound.any (needs ·.1) then some d else none)
     ++ bound.map fun (_, shim) => .function shim

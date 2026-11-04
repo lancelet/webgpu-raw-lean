@@ -815,4 +815,32 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
   let empty := moduleFile provenance ["import X"] ["# Nothing"] []
   (empty.splitOn "namespace WebGPU.Raw\n\nend WebGPU.Raw\n").length == 2
 
+-- A struct behind a pointer: the raw declaration takes it, and its bytes,
+-- targets and table's index, each typed as its own (`OptBytesOf` and the
+-- rest), and the tables; the function passes each, proved by `rfl`, if its
+-- `size_t`s fit.
+#guard
+  let descriptor : Names := ⟨"WGPUDescriptor", "Descriptor"⟩
+  let f := function "wgpuDoIt" "doIt" none
+    #[arg "desc" (.structPointer descriptor true)] none
+  render ((rawDecl f).getD .nil) == dedent "
+    /-- The shim behind `doIt`. -/
+    @[extern \"lean_wgpuDoIt\"]
+    opaque Internal.doIt
+        (desc        : @& Option Descriptor)
+        (descBytes   : @& OptBytesOf desc)
+        (descTargets : @& OptTargetsOf desc)
+        (descTable   : @& IndexOf Descriptor)
+        (tables      : @& CurrentTablesOf) :
+        IO Unit
+    "
+  && render ((wrapperDecl f).getD .nil) == dedent "
+    @[inline]
+    def doIt (desc : Option Descriptor) : IO Unit :=
+      if CStruct.optSizesFit desc then
+        Internal.doIt desc ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩
+      else
+        throw (IO.userError \"doIt: a size_t too large\")
+    "
+
 end WebGPUGenTest.Emit.Lean

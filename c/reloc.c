@@ -117,3 +117,24 @@ void lean_wgpu_fill_struct(
     lean_wgpu_fill(data, size, tables, table, targets, &cursor);
     LEAN_WGPU_CHECK(cursor == lean_array_size(targets), "targets left over");
 }
+
+void const * lean_wgpu_fill_arg(
+        b_lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets) {
+    size_t size = lean_sarray_size(bytes);
+    if (size == 0) {
+        LEAN_WGPU_CHECK(lean_array_size(targets) == 0,
+            "targets for an empty argument");
+        return NULL;
+    }
+    // Written into in place: the bytes are fresh, held by the call alone.
+    LEAN_WGPU_CHECK(lean_is_exclusive(bytes),
+        "an argument's bytes held by anything else");
+    LEAN_WGPU_CHECK(table < lean_array_size(tables)
+        && size == lean_wgpu_u32(
+            lean_sarray_cptr(lean_array_get_core(tables, table))),
+        "an argument's bytes not one struct");
+    uint8_t * data = lean_sarray_cptr(bytes);
+    lean_wgpu_fill_struct(data, size, tables, table, targets);
+    return data;
+}

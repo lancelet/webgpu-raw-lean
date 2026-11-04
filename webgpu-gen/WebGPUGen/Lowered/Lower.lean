@@ -105,16 +105,30 @@ def named (r : Resolved.Spec) (t : Named) (value : Names → Value) : Value :=
   | none       => .unsupported "a reference out of range"
 
 /--
+The value `value` makes of the names of the struct `id`, if it is in range.
+-/
+def structNamed (r : Resolved.Spec) (id : Id .struct) (value : Names → Value) :
+    Value :=
+  match r.structs[id.idx]? with
+  | some s => value (bothNames typeName leanTypeName s.name)
+  | none   => .unsupported "a reference out of range"
+
+/--
 How an argument crosses into C, borrowed for the call. Only the shapes the
 bindings handle are passed: a primitive, enum, bitflag or object, not behind a
-pointer; a nullable float is not passed yet, its conversion coming with the
-structs'. An object can be optional: NULL in C. An argument with ownership
-stated is an output struct whose members the caller must free, which is not
-handled yet.
+pointer, or a struct behind an immutable one, which C only reads; a nullable
+float is not passed yet. An object or a struct can be optional: NULL in C. An
+argument with ownership stated is an output struct whose members the caller
+must free, which is not handled yet.
 -/
 def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
   let unsupported := Value.unsupported (describe p.type p.pointer)
-  if p.pointer.isSome || p.passedWithOwnership.isSome then unsupported else
+  if p.passedWithOwnership.isSome then unsupported else
+  match p.pointer, p.type with
+  | some .immutable, .named (.struct id) =>
+    structNamed r id (.structPointer · p.optional)
+  | some _, _ => unsupported
+  | none, _ =>
   match p.type with
   | .primitive (.scalar s) =>
     match scalarValue p.type s with
@@ -207,15 +221,15 @@ def memberValue (r : Resolved.Spec) (p : Parameter String) : Value :=
     if p.optional then unsupported else named r (.bitflag id) .bitflag
   | none, .named (.object id) => named r (.object id) (.object · p.optional)
   | none, .named (.struct id) =>
-    if p.optional then unsupported else structNamed id .struct
+    if p.optional then unsupported else structNamed r id .struct
   | some .immutable, .named (.struct id) =>
-    structNamed id (.structPointer · p.optional)
+    structNamed r id (.structPointer · p.optional)
   | some .immutable, .arrayOf (.enum id) =>
     if p.optional then unsupported
     else named r (.enum id) fun names => .array (.enum names) count
   | some .immutable, .arrayOf (.struct id) =>
     if p.optional then unsupported
-    else structNamed id fun names => .array (.struct names) count
+    else structNamed r id fun names => .array (.struct names) count
   | some .immutable, .arrayOf (.object id) =>
     if p.optional then unsupported
     else named r (.object id) fun names => .array (.object names false) count
@@ -226,10 +240,6 @@ def memberValue (r : Resolved.Spec) (p : Parameter String) : Value :=
   | _, _ => unsupported
 where
   count := arrayCountName p.name
-  structNamed (id : Id .struct) (value : Names → Value) : Value :=
-    match r.structs[id.idx]? with
-    | some s => value (bothNames typeName leanTypeName s.name)
-    | none   => .unsupported "a reference out of range"
 
 /--
 A member's default, naming what it refers to on both sides; none if it refers

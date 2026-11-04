@@ -22,4 +22,12 @@ void lean_wgpu_fill_struct(
     uint8_t * data, size_t size, b_lean_obj_arg tables, size_t table,
     b_lean_obj_arg targets);
 
+// Fill in the encoded struct `bytes`, an argument passed by pointer, by table
+// `table` from every target in `targets`, in place: it is fresh, and held by
+// the call alone. The pointer to pass: to the bytes, or NULL if they are empty,
+// an optional struct that is none.
+void const * lean_wgpu_fill_arg(
+    b_lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+    b_lean_obj_arg targets);
+
 #endif

@@ -90,8 +90,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_every_kind(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_buffer_descriptor_label(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUBufferDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     lean_obj_res label =
@@ -111,8 +110,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_buffer_descriptor_label(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_color_target_state(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets, uint8_t some) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUColorTargetState state;
     memcpy(&state, lean_sarray_cptr(bytes), sizeof state);
     WGPUBlendState const * blend = state.blend;
@@ -176,8 +174,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_entry(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_instance_descriptor(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets, uint8_t full) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUInstanceDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     WGPUInstanceFeatureName const * features = descriptor.requiredFeatures;
@@ -210,8 +207,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_instance_descriptor(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_layout(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUBindGroupLayoutDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     WGPUBindGroupLayoutEntry const * entries = descriptor.entries;
@@ -264,8 +260,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_objects(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_empty_bind_group_layout(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUBindGroupLayoutDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     char const * problem = "";
@@ -283,8 +278,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_empty_bind_group_layout(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_pipeline_layout(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUPipelineLayoutDescriptor descriptor;
     memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
     char const * problem = "";
@@ -307,8 +301,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_pipeline_layout(
 LEAN_EXPORT lean_obj_res lean_wgpu_test_vertex_buffer_layout(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
-    lean_wgpu_fill_struct(lean_sarray_cptr(bytes), lean_sarray_size(bytes),
-        tables, table, targets);
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
     WGPUVertexBufferLayout layout;
     memcpy(&layout, lean_sarray_cptr(bytes), sizeof layout);
     WGPUVertexAttribute const * attributes = layout.attributes;

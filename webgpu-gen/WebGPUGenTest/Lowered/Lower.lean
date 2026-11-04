@@ -280,9 +280,9 @@ def resultValue? (methods : String) : Option (Option Value) :=
     && Value.usize.leanType == some "UInt64"
     && Value.usize.cType == some "size_t"
 
--- What the bindings cannot pass yet is said, not guessed: a struct behind a
--- pointer, untyped memory, an optional number, and an argument with ownership
--- stated (in the spec, an output struct whose members the caller must free).
+-- What the bindings cannot pass yet is said, not guessed: untyped memory, an
+-- optional number, and an argument with ownership stated (in the spec, an
+-- output struct whose members the caller must free).
 #guard
   let input := dedent "
     - name: m
@@ -310,7 +310,6 @@ def resultValue? (methods : String) : Option (Option Value) :=
     (objects := deviceWith input)))
     |>.bind (·.objects[0]?.map (·.methods))
   (methods.bind (·[0]?.map (·.unsupported))) == some [
-    "struct (immutable pointer)",
     "c_void (immutable pointer)",
     "uint32",
     "object"
@@ -1088,6 +1087,33 @@ def membersOf (structs name : String) :
       == some [.unsupported "c_void (mutable pointer)"]
     && bound.any fun names =>
       !names.contains "Source" && !names.contains "Holder"
+
+-- A struct behind an immutable pointer, which C only reads, is passed: NULL
+-- if optional.
+#guard
+  let input := dedent "
+    - name: m
+      doc: x
+      args:
+        - name: a
+          doc: x
+          type: struct.s
+          pointer: immutable
+        - name: b
+          doc: x
+          type: struct.s
+          pointer: immutable
+          optional: true
+    "
+  let methods := (lowerText (spec
+    (structs := "- name: s\n  doc: x\n  type: standalone\n")
+    (objects := deviceWith input)))
+    |>.bind (·.objects[0]?.map (·.methods))
+  let s : Names := ⟨"WGPUS", "S"⟩
+  (methods.bind (·[0]?.map fun m => m.args.toList.map (·.value))) == some [
+    .structPointer s false,
+    .structPointer s true
+  ]
 
 -- C writes into an argument only through a mutable pointer, as `wait_any`
 -- writes back to its futures: none is bound, an array or a struct.
