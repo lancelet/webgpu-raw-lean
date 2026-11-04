@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 31fb51a (clean)
-  Generated:        2026-11-04 20:16:56 UTC
+  Generator commit: e15dbdb (clean)
+  Generated:        2026-11-04 21:04:11 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -14562,6 +14562,9 @@ theorem getElem?_specs32_objects : specs32[1]? = some (objectsSpec 4) := rfl
 def currentTables : Array ByteArray :=
   if System.Platform.numBits = 64 then tables64 else tables32
 
+/-- The tables on this target, and no others: what a shim takes. -/
+abbrev CurrentTablesOf := {ts : Array ByteArray // ts = currentTables}
+
 /-- Every table on this target, as the walk reads it. -/
 noncomputable def currentSpecs : Array Spec :=
   if System.Platform.numBits = 64 then specs64 else specs32
@@ -14674,10 +14677,13 @@ theorem walk_toBytes (d : BindGroupEntry) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BindGroupEntry :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BindGroupEntry :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BindGroupEntry :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BindGroupEntry
 
@@ -14759,10 +14765,13 @@ theorem walk_toBytes (d : BlendComponent) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BlendComponent :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BlendComponent :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BlendComponent :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BlendComponent
 
@@ -14844,10 +14853,13 @@ theorem walk_toBytes (d : BufferBindingLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BufferBindingLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BufferBindingLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BufferBindingLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BufferBindingLayout
 
@@ -14929,10 +14941,13 @@ theorem walk_toBytes (d : BufferDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BufferDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BufferDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BufferDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BufferDescriptor
 
@@ -15014,10 +15029,13 @@ theorem walk_toBytes (d : Color) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs Color :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct Color :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs Color :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end Color
 
@@ -15101,10 +15119,13 @@ theorem walk_toBytes (d : CommandBufferDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs CommandBufferDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct CommandBufferDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs CommandBufferDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end CommandBufferDescriptor
 
@@ -15188,10 +15209,13 @@ theorem walk_toBytes (d : CommandEncoderDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs CommandEncoderDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct CommandEncoderDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs CommandEncoderDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end CommandEncoderDescriptor
 
@@ -15275,10 +15299,13 @@ theorem walk_toBytes (d : CompatibilityModeLimits) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs CompatibilityModeLimits :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct CompatibilityModeLimits :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs CompatibilityModeLimits :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end CompatibilityModeLimits
 
@@ -15380,10 +15407,13 @@ theorem walk_toBytes (d : ConstantEntry) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ConstantEntry :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ConstantEntry :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ConstantEntry :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ConstantEntry
 
@@ -15465,10 +15495,13 @@ theorem walk_toBytes (d : Extent3D) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs Extent3D :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct Extent3D :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs Extent3D :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end Extent3D
 
@@ -15552,10 +15585,13 @@ theorem walk_toBytes (d : ExternalTextureBindingEntry) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ExternalTextureBindingEntry :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ExternalTextureBindingEntry :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ExternalTextureBindingEntry :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ExternalTextureBindingEntry
 
@@ -15641,10 +15677,13 @@ theorem walk_toBytes (d : ExternalTextureBindingLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ExternalTextureBindingLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ExternalTextureBindingLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ExternalTextureBindingLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ExternalTextureBindingLayout
 
@@ -15726,10 +15765,13 @@ theorem walk_toBytes (d : Future) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs Future :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct Future :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs Future :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end Future
 
@@ -15811,10 +15853,13 @@ theorem walk_toBytes (d : InstanceLimits) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs InstanceLimits :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct InstanceLimits :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs InstanceLimits :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end InstanceLimits
 
@@ -15896,10 +15941,13 @@ theorem walk_toBytes (d : Limits) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs Limits :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct Limits :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs Limits :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end Limits
 
@@ -15981,10 +16029,13 @@ theorem walk_toBytes (d : MultisampleState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs MultisampleState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct MultisampleState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs MultisampleState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end MultisampleState
 
@@ -16066,10 +16117,13 @@ theorem walk_toBytes (d : Origin3D) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs Origin3D :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct Origin3D :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs Origin3D :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end Origin3D
 
@@ -16151,10 +16205,13 @@ theorem walk_toBytes (d : PassTimestampWrites) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs PassTimestampWrites :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct PassTimestampWrites :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs PassTimestampWrites :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end PassTimestampWrites
 
@@ -16242,10 +16299,13 @@ theorem walk_toBytes (d : PipelineLayoutDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs PipelineLayoutDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct PipelineLayoutDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs PipelineLayoutDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end PipelineLayoutDescriptor
 
@@ -16327,10 +16387,13 @@ theorem walk_toBytes (d : PrimitiveState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs PrimitiveState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct PrimitiveState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs PrimitiveState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end PrimitiveState
 
@@ -16412,10 +16475,13 @@ theorem walk_toBytes (d : QuerySetDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs QuerySetDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct QuerySetDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs QuerySetDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end QuerySetDescriptor
 
@@ -16497,10 +16563,13 @@ theorem walk_toBytes (d : QueueDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs QueueDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct QueueDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs QueueDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end QueueDescriptor
 
@@ -16584,10 +16653,13 @@ theorem walk_toBytes (d : RenderBundleDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderBundleDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderBundleDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderBundleDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderBundleDescriptor
 
@@ -16673,10 +16745,13 @@ theorem walk_toBytes (d : RenderBundleEncoderDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderBundleEncoderDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderBundleEncoderDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderBundleEncoderDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderBundleEncoderDescriptor
 
@@ -16764,10 +16839,13 @@ theorem walk_toBytes (d : RenderPassDepthStencilAttachment) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderPassDepthStencilAttachment :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderPassDepthStencilAttachment :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderPassDepthStencilAttachment :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderPassDepthStencilAttachment
 
@@ -16851,10 +16929,13 @@ theorem walk_toBytes (d : RenderPassMaxDrawCount) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderPassMaxDrawCount :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderPassMaxDrawCount :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderPassMaxDrawCount :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderPassMaxDrawCount
 
@@ -16938,10 +17019,13 @@ theorem walk_toBytes (d : RequestAdapterOptions) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RequestAdapterOptions :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RequestAdapterOptions :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RequestAdapterOptions :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RequestAdapterOptions
 
@@ -17025,10 +17109,13 @@ theorem walk_toBytes (d : RequestAdapterWebXROptions) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RequestAdapterWebXROptions :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RequestAdapterWebXROptions :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RequestAdapterWebXROptions :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RequestAdapterWebXROptions
 
@@ -17110,10 +17197,13 @@ theorem walk_toBytes (d : SamplerBindingLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SamplerBindingLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SamplerBindingLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SamplerBindingLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SamplerBindingLayout
 
@@ -17195,10 +17285,13 @@ theorem walk_toBytes (d : SamplerDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SamplerDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SamplerDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SamplerDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SamplerDescriptor
 
@@ -17282,10 +17375,13 @@ theorem walk_toBytes (d : ShaderModuleDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ShaderModuleDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ShaderModuleDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ShaderModuleDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ShaderModuleDescriptor
 
@@ -17367,10 +17463,13 @@ theorem walk_toBytes (d : ShaderSourceWGSL) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ShaderSourceWGSL :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ShaderSourceWGSL :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ShaderSourceWGSL :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ShaderSourceWGSL
 
@@ -17452,10 +17551,13 @@ theorem walk_toBytes (d : StencilFaceState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs StencilFaceState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct StencilFaceState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs StencilFaceState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end StencilFaceState
 
@@ -17539,10 +17641,13 @@ theorem walk_toBytes (d : StorageTextureBindingLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs StorageTextureBindingLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct StorageTextureBindingLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs StorageTextureBindingLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end StorageTextureBindingLayout
 
@@ -17624,10 +17729,13 @@ theorem walk_toBytes (d : SupportedFeatures) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SupportedFeatures :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SupportedFeatures :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SupportedFeatures :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SupportedFeatures
 
@@ -17711,10 +17819,13 @@ theorem walk_toBytes (d : SupportedInstanceFeatures) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SupportedInstanceFeatures :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SupportedInstanceFeatures :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SupportedInstanceFeatures :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SupportedInstanceFeatures
 
@@ -17800,10 +17911,13 @@ theorem walk_toBytes (d : SupportedWGSLLanguageFeatures) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SupportedWGSLLanguageFeatures :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SupportedWGSLLanguageFeatures :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SupportedWGSLLanguageFeatures :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SupportedWGSLLanguageFeatures
 
@@ -17885,10 +17999,13 @@ theorem walk_toBytes (d : SurfaceCapabilities) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SurfaceCapabilities :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SurfaceCapabilities :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SurfaceCapabilities :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SurfaceCapabilities
 
@@ -17972,10 +18089,13 @@ theorem walk_toBytes (d : SurfaceColorManagement) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SurfaceColorManagement :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SurfaceColorManagement :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SurfaceColorManagement :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SurfaceColorManagement
 
@@ -18057,10 +18177,13 @@ theorem walk_toBytes (d : SurfaceConfiguration) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SurfaceConfiguration :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SurfaceConfiguration :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SurfaceConfiguration :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SurfaceConfiguration
 
@@ -18142,10 +18265,13 @@ theorem walk_toBytes (d : SurfaceDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SurfaceDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SurfaceDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SurfaceDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SurfaceDescriptor
 
@@ -18227,10 +18353,13 @@ theorem walk_toBytes (d : SurfaceTexture) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs SurfaceTexture :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct SurfaceTexture :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs SurfaceTexture :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end SurfaceTexture
 
@@ -18314,10 +18443,13 @@ theorem walk_toBytes (d : TexelCopyBufferLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TexelCopyBufferLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TexelCopyBufferLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TexelCopyBufferLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TexelCopyBufferLayout
 
@@ -18399,10 +18531,13 @@ theorem walk_toBytes (d : TextureBindingLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureBindingLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureBindingLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureBindingLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureBindingLayout
 
@@ -18486,10 +18621,13 @@ theorem walk_toBytes (d : TextureBindingViewDimension) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureBindingViewDimension :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureBindingViewDimension :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureBindingViewDimension :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureBindingViewDimension
 
@@ -18573,10 +18711,13 @@ theorem walk_toBytes (d : TextureComponentSwizzle) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureComponentSwizzle :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureComponentSwizzle :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureComponentSwizzle :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureComponentSwizzle
 
@@ -18660,10 +18801,13 @@ theorem walk_toBytes (d : TextureViewDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureViewDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureViewDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureViewDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureViewDescriptor
 
@@ -18765,10 +18909,13 @@ theorem walk_toBytes (d : VertexAttribute) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs VertexAttribute :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct VertexAttribute :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs VertexAttribute :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end VertexAttribute
 
@@ -18854,10 +19001,13 @@ theorem walk_toBytes (d : BindGroupDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BindGroupDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BindGroupDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BindGroupDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BindGroupDescriptor
 
@@ -18959,10 +19109,13 @@ theorem walk_toBytes (d : BindGroupLayoutEntry) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BindGroupLayoutEntry :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BindGroupLayoutEntry :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BindGroupLayoutEntry :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BindGroupLayoutEntry
 
@@ -19044,10 +19197,13 @@ theorem walk_toBytes (d : BlendState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BlendState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BlendState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BlendState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BlendState
 
@@ -19139,10 +19295,13 @@ theorem walk_toBytes (d : ComputePassDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ComputePassDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ComputePassDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ComputePassDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ComputePassDescriptor
 
@@ -19228,10 +19387,13 @@ theorem walk_toBytes (d : ComputeState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ComputeState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ComputeState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ComputeState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ComputeState
 
@@ -19313,10 +19475,13 @@ theorem walk_toBytes (d : DepthStencilState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs DepthStencilState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct DepthStencilState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs DepthStencilState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end DepthStencilState
 
@@ -19398,10 +19563,13 @@ theorem walk_toBytes (d : FutureWaitInfo) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs FutureWaitInfo :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct FutureWaitInfo :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs FutureWaitInfo :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end FutureWaitInfo
 
@@ -19493,10 +19661,13 @@ theorem walk_toBytes (d : InstanceDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs InstanceDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct InstanceDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs InstanceDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end InstanceDescriptor
 
@@ -19602,10 +19773,13 @@ theorem walk_toBytes (d : RenderPassColorAttachment) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderPassColorAttachment :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderPassColorAttachment :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderPassColorAttachment :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderPassColorAttachment
 
@@ -19687,10 +19861,13 @@ theorem walk_toBytes (d : TexelCopyBufferInfo) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TexelCopyBufferInfo :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TexelCopyBufferInfo :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TexelCopyBufferInfo :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TexelCopyBufferInfo
 
@@ -19772,10 +19949,13 @@ theorem walk_toBytes (d : TexelCopyTextureInfo) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TexelCopyTextureInfo :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TexelCopyTextureInfo :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TexelCopyTextureInfo :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TexelCopyTextureInfo
 
@@ -19864,10 +20044,13 @@ theorem walk_toBytes (d : TextureComponentSwizzleDescriptor)
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureComponentSwizzleDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureComponentSwizzleDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureComponentSwizzleDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureComponentSwizzleDescriptor
 
@@ -19949,10 +20132,13 @@ theorem walk_toBytes (d : TextureDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs TextureDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct TextureDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs TextureDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end TextureDescriptor
 
@@ -20058,10 +20244,13 @@ theorem walk_toBytes (d : VertexBufferLayout) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs VertexBufferLayout :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct VertexBufferLayout :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs VertexBufferLayout :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end VertexBufferLayout
 
@@ -20149,10 +20338,13 @@ theorem walk_toBytes (d : BindGroupLayoutDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs BindGroupLayoutDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct BindGroupLayoutDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs BindGroupLayoutDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end BindGroupLayoutDescriptor
 
@@ -20262,10 +20454,13 @@ theorem walk_toBytes (d : ColorTargetState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ColorTargetState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ColorTargetState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ColorTargetState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ColorTargetState
 
@@ -20353,10 +20548,13 @@ theorem walk_toBytes (d : ComputePipelineDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs ComputePipelineDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct ComputePipelineDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs ComputePipelineDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end ComputePipelineDescriptor
 
@@ -20458,10 +20656,13 @@ theorem walk_toBytes (d : RenderPassDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderPassDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderPassDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderPassDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderPassDescriptor
 
@@ -20549,10 +20750,13 @@ theorem walk_toBytes (d : VertexState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs VertexState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct VertexState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs VertexState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end VertexState
 
@@ -20640,10 +20844,13 @@ theorem walk_toBytes (d : FragmentState) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs FragmentState :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct FragmentState :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs FragmentState :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end FragmentState
 
@@ -20745,10 +20952,13 @@ theorem walk_toBytes (d : RenderPipelineDescriptor) (ts : List Target) :
   · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
     exact walk_encode32_tableIndex d ts
 
-/-- It is a struct C fills in, on this target. -/
-instance : CStruct currentSpecs RenderPipelineDescriptor :=
-  ⟨toBytes, toTargets, tableIndex, sizesFit, size_toBytes,
-    walk_toBytes⟩
+/-- It is a struct C fills in. -/
+instance : CStruct RenderPipelineDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs RenderPipelineDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
 
 end RenderPipelineDescriptor
 

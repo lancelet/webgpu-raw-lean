@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 31fb51a (clean)
-  Generated:        2026-11-04 20:16:56 UTC
+  Generator commit: e15dbdb (clean)
+  Generated:        2026-11-04 21:04:11 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 #include "objects.h"
+#include "reloc.h"
 
 // A view of the bytes of the Lean string `s`, which stays alive while the
 // string is borrowed. Its length leaves out the terminating NUL.
@@ -32,6 +33,28 @@ static inline lean_obj_res lean_wgpu_io_error(char const * message) {
     return lean_io_result_mk_error(
         lean_mk_io_user_error(lean_mk_string(message))
     );
+}
+
+// Lean's `createInstance`: calls `wgpuCreateInstance`.
+LEAN_EXPORT lean_obj_res lean_wgpuCreateInstance(
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUInstance result = wgpuCreateInstance(descriptor_struct);
+    if (result == NULL) {
+        return lean_wgpu_io_error("createInstance returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_instance_box(result));
 }
 
 // Lean's `hasInstanceFeature`: calls `wgpuHasInstanceFeature`.
@@ -178,6 +201,90 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandBufferSetLabel(
     #endif
 }
 
+// Lean's `CommandEncoder.finish`: calls `wgpuCommandEncoderFinish`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderFinish(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUCommandBuffer result = wgpuCommandEncoderFinish(
+        lean_wgpu_command_encoder_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("CommandEncoder.finish returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_command_buffer_box(result));
+}
+
+// Lean's `CommandEncoder.beginComputePass`: calls
+// `wgpuCommandEncoderBeginComputePass`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderBeginComputePass(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUComputePassEncoder result = wgpuCommandEncoderBeginComputePass(
+        lean_wgpu_command_encoder_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error(
+            "CommandEncoder.beginComputePass returned NULL"
+        );
+    }
+    return lean_io_result_mk_ok(lean_wgpu_compute_pass_encoder_box(result));
+}
+
+// Lean's `CommandEncoder.beginRenderPass`: calls
+// `wgpuCommandEncoderBeginRenderPass`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderBeginRenderPass(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPURenderPassEncoder result = wgpuCommandEncoderBeginRenderPass(
+        lean_wgpu_command_encoder_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error(
+            "CommandEncoder.beginRenderPass returned NULL"
+        );
+    }
+    return lean_io_result_mk_ok(lean_wgpu_render_pass_encoder_box(result));
+}
+
 // Lean's `CommandEncoder.copyBufferToBuffer`: calls
 // `wgpuCommandEncoderCopyBufferToBuffer`.
 LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderCopyBufferToBuffer(
@@ -195,6 +302,150 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderCopyBufferToBuffer(
         lean_wgpu_buffer_unbox(destination),
         destinationOffset,
         size
+    );
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Lean's `CommandEncoder.copyBufferToTexture`: calls
+// `wgpuCommandEncoderCopyBufferToTexture`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderCopyBufferToTexture(
+    b_lean_obj_arg self,
+    b_lean_obj_arg source,
+    b_lean_obj_arg source_bytes,
+    b_lean_obj_arg source_targets,
+    b_lean_obj_arg source_table,
+    b_lean_obj_arg destination,
+    b_lean_obj_arg destination_bytes,
+    b_lean_obj_arg destination_targets,
+    b_lean_obj_arg destination_table,
+    b_lean_obj_arg copySize,
+    b_lean_obj_arg copySize_bytes,
+    b_lean_obj_arg copySize_targets,
+    b_lean_obj_arg copySize_table,
+    b_lean_obj_arg tables
+) {
+    (void)source;
+    void const * source_struct = lean_wgpu_fill_arg(
+        source_bytes,
+        tables,
+        lean_usize_of_nat(source_table),
+        source_targets
+    );
+    (void)destination;
+    void const * destination_struct = lean_wgpu_fill_arg(
+        destination_bytes,
+        tables,
+        lean_usize_of_nat(destination_table),
+        destination_targets
+    );
+    (void)copySize;
+    void const * copySize_struct = lean_wgpu_fill_arg(
+        copySize_bytes,
+        tables,
+        lean_usize_of_nat(copySize_table),
+        copySize_targets
+    );
+    wgpuCommandEncoderCopyBufferToTexture(
+        lean_wgpu_command_encoder_unbox(self),
+        source_struct,
+        destination_struct,
+        copySize_struct
+    );
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Lean's `CommandEncoder.copyTextureToBuffer`: calls
+// `wgpuCommandEncoderCopyTextureToBuffer`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderCopyTextureToBuffer(
+    b_lean_obj_arg self,
+    b_lean_obj_arg source,
+    b_lean_obj_arg source_bytes,
+    b_lean_obj_arg source_targets,
+    b_lean_obj_arg source_table,
+    b_lean_obj_arg destination,
+    b_lean_obj_arg destination_bytes,
+    b_lean_obj_arg destination_targets,
+    b_lean_obj_arg destination_table,
+    b_lean_obj_arg copySize,
+    b_lean_obj_arg copySize_bytes,
+    b_lean_obj_arg copySize_targets,
+    b_lean_obj_arg copySize_table,
+    b_lean_obj_arg tables
+) {
+    (void)source;
+    void const * source_struct = lean_wgpu_fill_arg(
+        source_bytes,
+        tables,
+        lean_usize_of_nat(source_table),
+        source_targets
+    );
+    (void)destination;
+    void const * destination_struct = lean_wgpu_fill_arg(
+        destination_bytes,
+        tables,
+        lean_usize_of_nat(destination_table),
+        destination_targets
+    );
+    (void)copySize;
+    void const * copySize_struct = lean_wgpu_fill_arg(
+        copySize_bytes,
+        tables,
+        lean_usize_of_nat(copySize_table),
+        copySize_targets
+    );
+    wgpuCommandEncoderCopyTextureToBuffer(
+        lean_wgpu_command_encoder_unbox(self),
+        source_struct,
+        destination_struct,
+        copySize_struct
+    );
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Lean's `CommandEncoder.copyTextureToTexture`: calls
+// `wgpuCommandEncoderCopyTextureToTexture`.
+LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderCopyTextureToTexture(
+    b_lean_obj_arg self,
+    b_lean_obj_arg source,
+    b_lean_obj_arg source_bytes,
+    b_lean_obj_arg source_targets,
+    b_lean_obj_arg source_table,
+    b_lean_obj_arg destination,
+    b_lean_obj_arg destination_bytes,
+    b_lean_obj_arg destination_targets,
+    b_lean_obj_arg destination_table,
+    b_lean_obj_arg copySize,
+    b_lean_obj_arg copySize_bytes,
+    b_lean_obj_arg copySize_targets,
+    b_lean_obj_arg copySize_table,
+    b_lean_obj_arg tables
+) {
+    (void)source;
+    void const * source_struct = lean_wgpu_fill_arg(
+        source_bytes,
+        tables,
+        lean_usize_of_nat(source_table),
+        source_targets
+    );
+    (void)destination;
+    void const * destination_struct = lean_wgpu_fill_arg(
+        destination_bytes,
+        tables,
+        lean_usize_of_nat(destination_table),
+        destination_targets
+    );
+    (void)copySize;
+    void const * copySize_struct = lean_wgpu_fill_arg(
+        copySize_bytes,
+        tables,
+        lean_usize_of_nat(copySize_table),
+        copySize_targets
+    );
+    wgpuCommandEncoderCopyTextureToTexture(
+        lean_wgpu_command_encoder_unbox(self),
+        source_struct,
+        destination_struct,
+        copySize_struct
     );
     return lean_io_result_mk_ok(lean_box(0));
 }
@@ -450,6 +701,294 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePipelineSetLabel(
         "ComputePipeline.setLabel: not implemented by wgpu-native"
     );
     #endif
+}
+
+// Lean's `Device.createBindGroup`: calls `wgpuDeviceCreateBindGroup`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBindGroup(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUBindGroup result = wgpuDeviceCreateBindGroup(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createBindGroup returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_bind_group_box(result));
+}
+
+// Lean's `Device.createBindGroupLayout`: calls
+// `wgpuDeviceCreateBindGroupLayout`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBindGroupLayout(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUBindGroupLayout result = wgpuDeviceCreateBindGroupLayout(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createBindGroupLayout returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_bind_group_layout_box(result));
+}
+
+// Lean's `Device.createBuffer`: calls `wgpuDeviceCreateBuffer`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBuffer(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUBuffer result = wgpuDeviceCreateBuffer(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    return lean_io_result_mk_ok(lean_wgpu_buffer_box_option(result));
+}
+
+// Lean's `Device.createCommandEncoder`: calls `wgpuDeviceCreateCommandEncoder`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateCommandEncoder(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUCommandEncoder result = wgpuDeviceCreateCommandEncoder(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createCommandEncoder returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_command_encoder_box(result));
+}
+
+// Lean's `Device.createComputePipeline`: calls
+// `wgpuDeviceCreateComputePipeline`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipeline(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUComputePipeline result = wgpuDeviceCreateComputePipeline(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createComputePipeline returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_compute_pipeline_box(result));
+}
+
+// Lean's `Device.createPipelineLayout`: calls `wgpuDeviceCreatePipelineLayout`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreatePipelineLayout(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUPipelineLayout result = wgpuDeviceCreatePipelineLayout(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createPipelineLayout returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_pipeline_layout_box(result));
+}
+
+// Lean's `Device.createQuerySet`: calls `wgpuDeviceCreateQuerySet`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateQuerySet(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUQuerySet result = wgpuDeviceCreateQuerySet(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createQuerySet returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_query_set_box(result));
+}
+
+// Lean's `Device.createRenderBundleEncoder`: calls
+// `wgpuDeviceCreateRenderBundleEncoder`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderBundleEncoder(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPURenderBundleEncoder result = wgpuDeviceCreateRenderBundleEncoder(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error(
+            "Device.createRenderBundleEncoder returned NULL"
+        );
+    }
+    return lean_io_result_mk_ok(lean_wgpu_render_bundle_encoder_box(result));
+}
+
+// Lean's `Device.createRenderPipeline`: calls `wgpuDeviceCreateRenderPipeline`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderPipeline(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPURenderPipeline result = wgpuDeviceCreateRenderPipeline(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createRenderPipeline returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_render_pipeline_box(result));
+}
+
+// Lean's `Device.createSampler`: calls `wgpuDeviceCreateSampler`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateSampler(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUSampler result = wgpuDeviceCreateSampler(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createSampler returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_sampler_box(result));
+}
+
+// Lean's `Device.createTexture`: calls `wgpuDeviceCreateTexture`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateTexture(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUTexture result = wgpuDeviceCreateTexture(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Device.createTexture returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_texture_box(result));
 }
 
 // Lean's `Device.destroy`: calls `wgpuDeviceDestroy`.
@@ -811,6 +1350,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetIndexBuffer(
     return lean_io_result_mk_ok(lean_box(0));
 }
 
+// Lean's `RenderBundleEncoder.finish`: calls `wgpuRenderBundleEncoderFinish`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderFinish(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPURenderBundle result = wgpuRenderBundleEncoderFinish(
+        lean_wgpu_render_bundle_encoder_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("RenderBundleEncoder.finish returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_render_bundle_box(result));
+}
+
 // Lean's `RenderBundleEncoder.setLabel`: calls
 // `wgpuRenderBundleEncoderSetLabel`.
 LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetLabel(
@@ -960,6 +1525,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetStencilReference(
     wgpuRenderPassEncoderSetStencilReference(
         lean_wgpu_render_pass_encoder_unbox(self),
         reference
+    );
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Lean's `RenderPassEncoder.setBlendConstant`: calls
+// `wgpuRenderPassEncoderSetBlendConstant`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetBlendConstant(
+    b_lean_obj_arg self,
+    b_lean_obj_arg color,
+    b_lean_obj_arg color_bytes,
+    b_lean_obj_arg color_targets,
+    b_lean_obj_arg color_table,
+    b_lean_obj_arg tables
+) {
+    (void)color;
+    void const * color_struct = lean_wgpu_fill_arg(
+        color_bytes,
+        tables,
+        lean_usize_of_nat(color_table),
+        color_targets
+    );
+    wgpuRenderPassEncoderSetBlendConstant(
+        lean_wgpu_render_pass_encoder_unbox(self),
+        color_struct
     );
     return lean_io_result_mk_ok(lean_box(0));
 }
@@ -1172,6 +1761,26 @@ LEAN_EXPORT lean_obj_res lean_wgpuShaderModuleSetLabel(
     #endif
 }
 
+// Lean's `Surface.configure`: calls `wgpuSurfaceConfigure`.
+LEAN_EXPORT lean_obj_res lean_wgpuSurfaceConfigure(
+    b_lean_obj_arg self,
+    b_lean_obj_arg config,
+    b_lean_obj_arg config_bytes,
+    b_lean_obj_arg config_targets,
+    b_lean_obj_arg config_table,
+    b_lean_obj_arg tables
+) {
+    (void)config;
+    void const * config_struct = lean_wgpu_fill_arg(
+        config_bytes,
+        tables,
+        lean_usize_of_nat(config_table),
+        config_targets
+    );
+    wgpuSurfaceConfigure(lean_wgpu_surface_unbox(self), config_struct);
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
 // Lean's `Surface.present`: calls `wgpuSurfacePresent`.
 LEAN_EXPORT lean_obj_res lean_wgpuSurfacePresent(b_lean_obj_arg self) {
     WGPUStatus result = wgpuSurfacePresent(lean_wgpu_surface_unbox(self));
@@ -1202,6 +1811,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuSurfaceSetLabel(
         "Surface.setLabel: not implemented by wgpu-native"
     );
     #endif
+}
+
+// Lean's `Texture.createView`: calls `wgpuTextureCreateView`.
+LEAN_EXPORT lean_obj_res lean_wgpuTextureCreateView(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    b_lean_obj_arg tables
+) {
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUTextureView result = wgpuTextureCreateView(
+        lean_wgpu_texture_unbox(self),
+        descriptor_struct
+    );
+    if (result == NULL) {
+        return lean_wgpu_io_error("Texture.createView returned NULL");
+    }
+    return lean_io_result_mk_ok(lean_wgpu_texture_view_box(result));
 }
 
 // Lean's `Texture.setLabel`: calls `wgpuTextureSetLabel`.

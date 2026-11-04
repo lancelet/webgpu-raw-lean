@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 31fb51a (clean)
-  Generated:        2026-11-04 20:16:56 UTC
+  Generator commit: e15dbdb (clean)
+  Generated:        2026-11-04 21:04:11 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -17,6 +17,7 @@ module
 public import WebGPU.Raw.CEnum
 public import WebGPU.Raw.Enums
 public import WebGPU.Raw.Objects
+public import WebGPU.Raw.Encoders
 
 /-!
 # Functions
@@ -24,12 +25,33 @@ public import WebGPU.Raw.Objects
 The functions and methods of `webgpu.h` the bindings can bind so far, each in
 `IO`. A method takes its object first, as `self`, so `device.getQueue` calls
 `wgpuDeviceGetQueue`. Each calls a raw declaration under `Internal`, which
-its C shim implements; `docs/Safety.md` gives the rules they follow.
+its C shim implements, and which is not API: only these functions call
+them. `docs/Safety.md` gives the rules they follow.
 -/
 
 @[expose] public section
 
 namespace WebGPU.Raw
+
+open Reloc
+
+/-- The shim behind `createInstance`. -/
+@[extern "lean_wgpuCreateInstance"]
+opaque Internal.createInstance
+    (descriptor        : @& Option InstanceDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf InstanceDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO Instance
+
+/-- Create a WGPUInstance -/
+@[inline]
+def createInstance (descriptor : Option InstanceDescriptor) : IO Instance :=
+  if CStruct.optSizesFit descriptor then
+    Internal.createInstance descriptor ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩
+  else
+    throw (IO.userError "createInstance: a size_t too large")
 
 /-- The shim behind `hasInstanceFeature`. -/
 @[extern "lean_wgpuHasInstanceFeature"]
@@ -137,6 +159,87 @@ opaque Internal.CommandBuffer.setLabel
 def CommandBuffer.setLabel (self : CommandBuffer) (label : String) : IO Unit :=
   Internal.CommandBuffer.setLabel self label
 
+/-- The shim behind `CommandEncoder.finish`. -/
+@[extern "lean_wgpuCommandEncoderFinish"]
+opaque Internal.CommandEncoder.finish
+    (self              : @& CommandEncoder)
+    (descriptor        : @& Option CommandBufferDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf CommandBufferDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO CommandBuffer
+
+@[inline]
+def CommandEncoder.finish
+    (self       : CommandEncoder)
+    (descriptor : Option CommandBufferDescriptor) :
+    IO CommandBuffer :=
+  if CStruct.optSizesFit descriptor then
+    Internal.CommandEncoder.finish
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "CommandEncoder.finish: a size_t too large")
+
+/-- The shim behind `CommandEncoder.beginComputePass`. -/
+@[extern "lean_wgpuCommandEncoderBeginComputePass"]
+opaque Internal.CommandEncoder.beginComputePass
+    (self              : @& CommandEncoder)
+    (descriptor        : @& Option ComputePassDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf ComputePassDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO ComputePassEncoder
+
+@[inline]
+def CommandEncoder.beginComputePass
+    (self       : CommandEncoder)
+    (descriptor : Option ComputePassDescriptor) :
+    IO ComputePassEncoder :=
+  if CStruct.optSizesFit descriptor then
+    Internal.CommandEncoder.beginComputePass
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "CommandEncoder.beginComputePass: a size_t too large")
+
+/-- The shim behind `CommandEncoder.beginRenderPass`. -/
+@[extern "lean_wgpuCommandEncoderBeginRenderPass"]
+opaque Internal.CommandEncoder.beginRenderPass
+    (self              : @& CommandEncoder)
+    (descriptor        : @& RenderPassDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf RenderPassDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO RenderPassEncoder
+
+@[inline]
+def CommandEncoder.beginRenderPass
+    (self       : CommandEncoder)
+    (descriptor : RenderPassDescriptor) :
+    IO RenderPassEncoder :=
+  if CStruct.sizesFit descriptor then
+    Internal.CommandEncoder.beginRenderPass
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "CommandEncoder.beginRenderPass: a size_t too large")
+
 /-- The shim behind `CommandEncoder.copyBufferToBuffer`. -/
 @[extern "lean_wgpuCommandEncoderCopyBufferToBuffer"]
 opaque Internal.CommandEncoder.copyBufferToBuffer
@@ -164,6 +267,150 @@ def CommandEncoder.copyBufferToBuffer
       destination
       destinationOffset
       size
+
+/-- The shim behind `CommandEncoder.copyBufferToTexture`. -/
+@[extern "lean_wgpuCommandEncoderCopyBufferToTexture"]
+opaque Internal.CommandEncoder.copyBufferToTexture
+    (self               : @& CommandEncoder)
+    (source             : @& TexelCopyBufferInfo)
+    (sourceBytes        : @& BytesOf source)
+    (sourceTargets      : @& TargetsOf source)
+    (sourceTable        : @& IndexOf TexelCopyBufferInfo)
+    (destination        : @& TexelCopyTextureInfo)
+    (destinationBytes   : @& BytesOf destination)
+    (destinationTargets : @& TargetsOf destination)
+    (destinationTable   : @& IndexOf TexelCopyTextureInfo)
+    (copySize           : @& Extent3D)
+    (copySizeBytes      : @& BytesOf copySize)
+    (copySizeTargets    : @& TargetsOf copySize)
+    (copySizeTable      : @& IndexOf Extent3D)
+    (tables             : @& CurrentTablesOf) :
+    IO Unit
+
+@[inline]
+def CommandEncoder.copyBufferToTexture
+    (self        : CommandEncoder)
+    (source      : TexelCopyBufferInfo)
+    (destination : TexelCopyTextureInfo)
+    (copySize    : Extent3D) :
+    IO Unit :=
+  if CStruct.sizesFit source &&
+      CStruct.sizesFit destination &&
+      CStruct.sizesFit copySize then
+    Internal.CommandEncoder.copyBufferToTexture
+        self
+        source
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        destination
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        copySize
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError
+      "CommandEncoder.copyBufferToTexture: a size_t too large")
+
+/-- The shim behind `CommandEncoder.copyTextureToBuffer`. -/
+@[extern "lean_wgpuCommandEncoderCopyTextureToBuffer"]
+opaque Internal.CommandEncoder.copyTextureToBuffer
+    (self               : @& CommandEncoder)
+    (source             : @& TexelCopyTextureInfo)
+    (sourceBytes        : @& BytesOf source)
+    (sourceTargets      : @& TargetsOf source)
+    (sourceTable        : @& IndexOf TexelCopyTextureInfo)
+    (destination        : @& TexelCopyBufferInfo)
+    (destinationBytes   : @& BytesOf destination)
+    (destinationTargets : @& TargetsOf destination)
+    (destinationTable   : @& IndexOf TexelCopyBufferInfo)
+    (copySize           : @& Extent3D)
+    (copySizeBytes      : @& BytesOf copySize)
+    (copySizeTargets    : @& TargetsOf copySize)
+    (copySizeTable      : @& IndexOf Extent3D)
+    (tables             : @& CurrentTablesOf) :
+    IO Unit
+
+@[inline]
+def CommandEncoder.copyTextureToBuffer
+    (self        : CommandEncoder)
+    (source      : TexelCopyTextureInfo)
+    (destination : TexelCopyBufferInfo)
+    (copySize    : Extent3D) :
+    IO Unit :=
+  if CStruct.sizesFit source &&
+      CStruct.sizesFit destination &&
+      CStruct.sizesFit copySize then
+    Internal.CommandEncoder.copyTextureToBuffer
+        self
+        source
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        destination
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        copySize
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError
+      "CommandEncoder.copyTextureToBuffer: a size_t too large")
+
+/-- The shim behind `CommandEncoder.copyTextureToTexture`. -/
+@[extern "lean_wgpuCommandEncoderCopyTextureToTexture"]
+opaque Internal.CommandEncoder.copyTextureToTexture
+    (self               : @& CommandEncoder)
+    (source             : @& TexelCopyTextureInfo)
+    (sourceBytes        : @& BytesOf source)
+    (sourceTargets      : @& TargetsOf source)
+    (sourceTable        : @& IndexOf TexelCopyTextureInfo)
+    (destination        : @& TexelCopyTextureInfo)
+    (destinationBytes   : @& BytesOf destination)
+    (destinationTargets : @& TargetsOf destination)
+    (destinationTable   : @& IndexOf TexelCopyTextureInfo)
+    (copySize           : @& Extent3D)
+    (copySizeBytes      : @& BytesOf copySize)
+    (copySizeTargets    : @& TargetsOf copySize)
+    (copySizeTable      : @& IndexOf Extent3D)
+    (tables             : @& CurrentTablesOf) :
+    IO Unit
+
+@[inline]
+def CommandEncoder.copyTextureToTexture
+    (self        : CommandEncoder)
+    (source      : TexelCopyTextureInfo)
+    (destination : TexelCopyTextureInfo)
+    (copySize    : Extent3D) :
+    IO Unit :=
+  if CStruct.sizesFit source &&
+      CStruct.sizesFit destination &&
+      CStruct.sizesFit copySize then
+    Internal.CommandEncoder.copyTextureToTexture
+        self
+        source
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        destination
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        copySize
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError
+      "CommandEncoder.copyTextureToTexture: a size_t too large")
 
 /-- The shim behind `CommandEncoder.clearBuffer`. -/
 @[extern "lean_wgpuCommandEncoderClearBuffer"]
@@ -423,6 +670,307 @@ def ComputePipeline.setLabel
     (label : String) :
     IO Unit :=
   Internal.ComputePipeline.setLabel self label
+
+/-- The shim behind `Device.createBindGroup`. -/
+@[extern "lean_wgpuDeviceCreateBindGroup"]
+opaque Internal.Device.createBindGroup
+    (self              : @& Device)
+    (descriptor        : @& BindGroupDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf BindGroupDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO BindGroup
+
+@[inline]
+def Device.createBindGroup
+    (self       : Device)
+    (descriptor : BindGroupDescriptor) :
+    IO BindGroup :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createBindGroup
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createBindGroup: a size_t too large")
+
+/-- The shim behind `Device.createBindGroupLayout`. -/
+@[extern "lean_wgpuDeviceCreateBindGroupLayout"]
+opaque Internal.Device.createBindGroupLayout
+    (self              : @& Device)
+    (descriptor        : @& BindGroupLayoutDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf BindGroupLayoutDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO BindGroupLayout
+
+@[inline]
+def Device.createBindGroupLayout
+    (self       : Device)
+    (descriptor : BindGroupLayoutDescriptor) :
+    IO BindGroupLayout :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createBindGroupLayout
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createBindGroupLayout: a size_t too large")
+
+/-- The shim behind `Device.createBuffer`. -/
+@[extern "lean_wgpuDeviceCreateBuffer"]
+opaque Internal.Device.createBuffer
+    (self              : @& Device)
+    (descriptor        : @& BufferDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf BufferDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO (Option Buffer)
+
+/--
+If `BufferDescriptor.mappedAtCreation` is `true` and the mapping allocation
+fails, returns `NULL`.
+-/
+@[inline]
+def Device.createBuffer
+    (self       : Device)
+    (descriptor : BufferDescriptor) :
+    IO (Option Buffer) :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createBuffer
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createBuffer: a size_t too large")
+
+/-- The shim behind `Device.createCommandEncoder`. -/
+@[extern "lean_wgpuDeviceCreateCommandEncoder"]
+opaque Internal.Device.createCommandEncoder
+    (self              : @& Device)
+    (descriptor        : @& Option CommandEncoderDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf CommandEncoderDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO CommandEncoder
+
+@[inline]
+def Device.createCommandEncoder
+    (self       : Device)
+    (descriptor : Option CommandEncoderDescriptor) :
+    IO CommandEncoder :=
+  if CStruct.optSizesFit descriptor then
+    Internal.Device.createCommandEncoder
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createCommandEncoder: a size_t too large")
+
+/-- The shim behind `Device.createComputePipeline`. -/
+@[extern "lean_wgpuDeviceCreateComputePipeline"]
+opaque Internal.Device.createComputePipeline
+    (self              : @& Device)
+    (descriptor        : @& ComputePipelineDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf ComputePipelineDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO ComputePipeline
+
+@[inline]
+def Device.createComputePipeline
+    (self       : Device)
+    (descriptor : ComputePipelineDescriptor) :
+    IO ComputePipeline :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createComputePipeline
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createComputePipeline: a size_t too large")
+
+/-- The shim behind `Device.createPipelineLayout`. -/
+@[extern "lean_wgpuDeviceCreatePipelineLayout"]
+opaque Internal.Device.createPipelineLayout
+    (self              : @& Device)
+    (descriptor        : @& PipelineLayoutDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf PipelineLayoutDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO PipelineLayout
+
+@[inline]
+def Device.createPipelineLayout
+    (self       : Device)
+    (descriptor : PipelineLayoutDescriptor) :
+    IO PipelineLayout :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createPipelineLayout
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createPipelineLayout: a size_t too large")
+
+/-- The shim behind `Device.createQuerySet`. -/
+@[extern "lean_wgpuDeviceCreateQuerySet"]
+opaque Internal.Device.createQuerySet
+    (self              : @& Device)
+    (descriptor        : @& QuerySetDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf QuerySetDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO QuerySet
+
+@[inline]
+def Device.createQuerySet
+    (self       : Device)
+    (descriptor : QuerySetDescriptor) :
+    IO QuerySet :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createQuerySet
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createQuerySet: a size_t too large")
+
+/-- The shim behind `Device.createRenderBundleEncoder`. -/
+@[extern "lean_wgpuDeviceCreateRenderBundleEncoder"]
+opaque Internal.Device.createRenderBundleEncoder
+    (self              : @& Device)
+    (descriptor        : @& RenderBundleEncoderDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf RenderBundleEncoderDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO RenderBundleEncoder
+
+@[inline]
+def Device.createRenderBundleEncoder
+    (self       : Device)
+    (descriptor : RenderBundleEncoderDescriptor) :
+    IO RenderBundleEncoder :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createRenderBundleEncoder
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createRenderBundleEncoder: a size_t too large")
+
+/-- The shim behind `Device.createRenderPipeline`. -/
+@[extern "lean_wgpuDeviceCreateRenderPipeline"]
+opaque Internal.Device.createRenderPipeline
+    (self              : @& Device)
+    (descriptor        : @& RenderPipelineDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf RenderPipelineDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO RenderPipeline
+
+@[inline]
+def Device.createRenderPipeline
+    (self       : Device)
+    (descriptor : RenderPipelineDescriptor) :
+    IO RenderPipeline :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createRenderPipeline
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createRenderPipeline: a size_t too large")
+
+/-- The shim behind `Device.createSampler`. -/
+@[extern "lean_wgpuDeviceCreateSampler"]
+opaque Internal.Device.createSampler
+    (self              : @& Device)
+    (descriptor        : @& Option SamplerDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf SamplerDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO Sampler
+
+@[inline]
+def Device.createSampler
+    (self       : Device)
+    (descriptor : Option SamplerDescriptor) :
+    IO Sampler :=
+  if CStruct.optSizesFit descriptor then
+    Internal.Device.createSampler
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createSampler: a size_t too large")
+
+/-- The shim behind `Device.createTexture`. -/
+@[extern "lean_wgpuDeviceCreateTexture"]
+opaque Internal.Device.createTexture
+    (self              : @& Device)
+    (descriptor        : @& TextureDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf TextureDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO Texture
+
+@[inline]
+def Device.createTexture
+    (self       : Device)
+    (descriptor : TextureDescriptor) :
+    IO Texture :=
+  if CStruct.sizesFit descriptor then
+    Internal.Device.createTexture
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createTexture: a size_t too large")
 
 /-- The shim behind `Device.destroy`. -/
 @[extern "lean_wgpuDeviceDestroy"]
@@ -773,6 +1321,33 @@ def RenderBundleEncoder.setIndexBuffer
       offset
       size
 
+/-- The shim behind `RenderBundleEncoder.finish`. -/
+@[extern "lean_wgpuRenderBundleEncoderFinish"]
+opaque Internal.RenderBundleEncoder.finish
+    (self              : @& RenderBundleEncoder)
+    (descriptor        : @& Option RenderBundleDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf RenderBundleDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO RenderBundle
+
+@[inline]
+def RenderBundleEncoder.finish
+    (self       : RenderBundleEncoder)
+    (descriptor : Option RenderBundleDescriptor) :
+    IO RenderBundle :=
+  if CStruct.optSizesFit descriptor then
+    Internal.RenderBundleEncoder.finish
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "RenderBundleEncoder.finish: a size_t too large")
+
 /-- The shim behind `RenderBundleEncoder.setLabel`. -/
 @[extern "lean_wgpuRenderBundleEncoderSetLabel"]
 opaque Internal.RenderBundleEncoder.setLabel
@@ -940,6 +1515,34 @@ def RenderPassEncoder.setStencilReference
     (reference : UInt32) :
     IO Unit :=
   Internal.RenderPassEncoder.setStencilReference self reference
+
+/-- The shim behind `RenderPassEncoder.setBlendConstant`. -/
+@[extern "lean_wgpuRenderPassEncoderSetBlendConstant"]
+opaque Internal.RenderPassEncoder.setBlendConstant
+    (self         : @& RenderPassEncoder)
+    (color        : @& Color)
+    (colorBytes   : @& BytesOf color)
+    (colorTargets : @& TargetsOf color)
+    (colorTable   : @& IndexOf Color)
+    (tables       : @& CurrentTablesOf) :
+    IO Unit
+
+@[inline]
+def RenderPassEncoder.setBlendConstant
+    (self  : RenderPassEncoder)
+    (color : Color) :
+    IO Unit :=
+  if CStruct.sizesFit color then
+    Internal.RenderPassEncoder.setBlendConstant
+        self
+        color
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError
+      "RenderPassEncoder.setBlendConstant: a size_t too large")
 
 /-- The shim behind `RenderPassEncoder.setViewport`. -/
 @[extern "lean_wgpuRenderPassEncoderSetViewport"]
@@ -1131,6 +1734,36 @@ opaque Internal.ShaderModule.setLabel
 def ShaderModule.setLabel (self : ShaderModule) (label : String) : IO Unit :=
   Internal.ShaderModule.setLabel self label
 
+/-- The shim behind `Surface.configure`. -/
+@[extern "lean_wgpuSurfaceConfigure"]
+opaque Internal.Surface.configure
+    (self          : @& Surface)
+    (config        : @& SurfaceConfiguration)
+    (configBytes   : @& BytesOf config)
+    (configTargets : @& TargetsOf config)
+    (configTable   : @& IndexOf SurfaceConfiguration)
+    (tables        : @& CurrentTablesOf) :
+    IO Unit
+
+/--
+Configures parameters for rendering to `surface`. Produces a [DeviceError] for
+all content-timeline errors defined by the WebGPU specification.
+
+See [Surface-Configuration] for more details.
+
+[DeviceError]: https://webgpu-native.github.io/webgpu-headers/Errors.html#DeviceError
+[Surface-Configuration]: https://webgpu-native.github.io/webgpu-headers/Surfaces.html#Surface-Configuration
+-/
+@[inline]
+def Surface.configure
+    (self   : Surface)
+    (config : SurfaceConfiguration) :
+    IO Unit :=
+  if CStruct.sizesFit config then
+    Internal.Surface.configure self config ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩
+  else
+    throw (IO.userError "Surface.configure: a size_t too large")
+
 /-- The shim behind `Surface.present`. -/
 @[extern "lean_wgpuSurfacePresent"]
 opaque Internal.Surface.present (self : @& Surface) : IO UInt32
@@ -1170,6 +1803,33 @@ opaque Internal.Surface.setLabel
 @[inline]
 def Surface.setLabel (self : Surface) (label : String) : IO Unit :=
   Internal.Surface.setLabel self label
+
+/-- The shim behind `Texture.createView`. -/
+@[extern "lean_wgpuTextureCreateView"]
+opaque Internal.Texture.createView
+    (self              : @& Texture)
+    (descriptor        : @& Option TextureViewDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf TextureViewDescriptor)
+    (tables            : @& CurrentTablesOf) :
+    IO TextureView
+
+@[inline]
+def Texture.createView
+    (self       : Texture)
+    (descriptor : Option TextureViewDescriptor) :
+    IO TextureView :=
+  if CStruct.optSizesFit descriptor then
+    Internal.Texture.createView
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Texture.createView: a size_t too large")
 
 /-- The shim behind `Texture.setLabel`. -/
 @[extern "lean_wgpuTextureSetLabel"]
