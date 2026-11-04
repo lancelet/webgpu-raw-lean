@@ -1140,4 +1140,68 @@ def membersOf (structs name : String) :
     "struct (mutable pointer)"
   ]
 
+
+/-! ## Extensions -/
+
+/-- A struct for the extension tests: of `kind`, with `members`. -/
+def bareStruct (name : String) (kind : Common.StructKind)
+    (members : List Member) (sType : Option Names := none) : Lowered.Struct where
+  names           := ⟨s!"WGPU{name}", name⟩
+  doc             := ""
+  kind            := kind
+  extendedStructs := #[]
+  sType           := sType
+  freeMembers     := false
+  members         := members.toArray
+
+-- A base keeps only the extensions the bindings can bind: not one that refers
+-- to a struct they cannot, which would otherwise leave the base unbound too.
+#guard
+  let handle := bareStruct "Handle" .standalone
+    [⟨⟨"window", "window"⟩, "", .unsupported "void *", none⟩]
+  let held := bareStruct "Held" .extension
+    [⟨⟨"handle", "handle"⟩, "", .structPointer handle.names false, none⟩]
+    (sType := some ⟨"WGPUSType_Held", "held"⟩)
+  let plain := bareStruct "Plain" .extension []
+    (sType := some ⟨"WGPUSType_Plain", "plain"⟩)
+  let base := { bareStruct "Base" .extensible [] with
+    extensions := #[held.names, plain.names] }
+  let spec : Lowered.Spec := {
+    constants := #[], enums := #[], bitflags := #[], objects := #[]
+    functions := #[], structs := #[handle, held, plain, base]
+  }
+  let kept := keepPassableExtensions spec
+  (kept.structs.find? (·.names == base.names)).map (·.extensions)
+      == some #[plain.names]
+    && (boundStructs kept.structs.toList).any (·.names == base.names)
+
+-- A function that takes a struct of no use without its chain (extensible,
+-- only a label, extended) must be given a chain: one with only a label that
+-- nothing extends need not.
+#guard
+  let wgsl := bareStruct "WGSL" .extension []
+    (sType := some ⟨"WGPUSType_WGSL", "wgsl"⟩)
+  let module := { bareStruct "Module" .extensible
+    [⟨⟨"label", "label"⟩, "", .string false, none⟩] with
+    extensions := #[wgsl.names] }
+  let wgsl := { wgsl with extendedStructs := #[module.names] }
+  let labelled := bareStruct "Labelled" .extensible
+    [⟨⟨"label", "label"⟩, "", .string false, none⟩]
+  let f : Lowered.Function := {
+    names    := ⟨"wgpuMake", "make"⟩
+    doc      := ""
+    receiver := none
+    args     := #[
+      ⟨⟨"module", "module"⟩, "", .structPointer module.names false⟩,
+      ⟨⟨"labelled", "labelled"⟩, "", .structPointer labelled.names false⟩
+    ]
+    result   := none
+    callback := false
+  }
+  let spec : Lowered.Spec := {
+    constants := #[], enums := #[], bitflags := #[], objects := #[]
+    functions := #[f], structs := #[wgsl, module, labelled]
+  }
+  (markRequiredChains spec).functions.map (·.requiredChains) == #[["module"]]
+
 end WebGPUGenTest.Lowered.Lower

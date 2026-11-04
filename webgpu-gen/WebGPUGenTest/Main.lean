@@ -556,9 +556,9 @@ def main : IO Unit := do
   unless wrong.isEmpty do
     failWith s!"structs C keeps beyond a call, not excluded: {wrong}"
 
-  -- No function is bound whose struct describes nothing but by its chain,
-  -- which the bindings do not fill in yet: wgpu-native aborts without it.
-  let chained := ["wgpuDeviceCreateShaderModule", "wgpuInstanceCreateSurface"]
+  -- No function is bound whose struct describes nothing but by a chain it
+  -- cannot have: wgpu-native aborts without it.
+  let chained := ["wgpuInstanceCreateSurface"]
   let boundNames := (WebGPUGen.Emit.C.boundFunctions lowered).map (·.1.names.c)
   let bad := chained.filter boundNames.contains
   unless bad.isEmpty do

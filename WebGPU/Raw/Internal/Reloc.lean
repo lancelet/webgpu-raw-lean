@@ -14,9 +14,11 @@ in. Where each goes, and what it points to, is a struct's relocations: each an
 offset in the struct and a kind of pointer. They are the same for every value
 of the struct, so they are a table, made once: `serialize` lays one out in
 bytes for C to read. What each pointer is filled from is a value's targets,
-one for each relocation but a null one, in order: a string, an object, or a
+one for each relocation but a null one, in order: a string, an object, a
 block of bytes, another encoded struct, or an array's elements, whose own
-relocations follow from its own table, its targets next in order.
+relocations follow from its own table, its targets next in order; or a chain
+of extensions, each element's bytes with the index of its own table, all of
+their targets next, element by element.
 
 One C function, `lean_wgpu_fill` (`c/reloc.c`), walks a table over the bytes,
 and each element of a block, taking each target in turn. A table's header is
@@ -28,7 +30,8 @@ index of the block's table:
 
 all little-endian. A block's elements are the size of its table's struct, and
 an empty block is a null pointer: an optional struct that is none, or an empty
-array.
+array. A chain's elements are filled in first, then each linked to the next by
+its first pointer, its `next`; an empty chain is a null pointer.
 -/
 
 @[expose] public section
@@ -62,7 +65,15 @@ inductive Kind where
   | optObject
   /-- A block of bytes, filled in by table number `table`; null if empty. -/
   | block (table : Nat)
-  /-- A pointer left null, taking no target: a struct chain's, for now. -/
+  /--
+  A struct's chain of extensions: each element filled in by its own table,
+  each linked to the next by its first pointer; null if empty.
+  -/
+  | chain
+  /--
+  A pointer left null, taking no target: an extension's `next`, which its
+  chain links, or the chain of a struct no extension can join.
+  -/
   | null
   deriving Repr, DecidableEq
 
@@ -76,7 +87,8 @@ def Kind.code : Kind → UInt8
   | .object    => 2
   | .optObject => 3
   | .block _   => 4
-  | .null      => 5
+  | .chain     => 5
+  | .null      => 6
 
 /-- A pointer of a struct: its offset, and what it points to. -/
 structure Reloc where
@@ -100,6 +112,8 @@ inductive Target where
   | object    (o : Object)
   | optObject (o : Option Object)
   | block     (bytes : ByteArray)
+  /-- A chain: each element's bytes, and its table's index. -/
+  | chain     (links : Array (ByteArray × Nat))
 
 /-- The number `n` in 4 bytes, little-endian. -/
 def le32 (n : Nat) : List UInt8 :=
@@ -138,10 +152,12 @@ Which targets `lean_wgpu_fill` takes, in which order, and of which kinds, as
 Lean: the specification it implements (by review and test). A table, as the
 walk reads it, is its struct's size and its relocations; each element of the
 bytes takes, for each relocation but a null one, the next target, which must
-be of its kind, and a block's own targets come next, by its own table. The
-walk is none if a target is missing or of the wrong kind, if the bytes are
-not whole elements, or if a block's table does not come before its own, as
-every generated one does: so it ends.
+be of its kind, and a block's own targets come next, by its own table, as a
+chain's links' do, each by its own. The walk is none if a target is missing
+or of the wrong kind, if the bytes are not whole elements, if a link is not
+one element of its table whose first pointer is a null `next` at 0, where C
+writes the link (`Spec.isLink`), or if a block's or link's table does not
+come before its own, as every generated one does: so it ends.
 
 It says nothing of where C writes each pointer (each struct's pointers are
 proved within it, `pointers64_within`), of alignment, or of a block being
@@ -155,8 +171,34 @@ generator writes both from the same array).
 /-- A table as the walk reads it: its struct's size, and its relocations. -/
 abbrev Spec := Nat × List Reloc
 
-/-- One relocation's step: the targets after it, if the next is of its kind. -/
-def step (walk : Nat → Nat → List Target → Option (List Target)) (r : Reloc)
+/--
+Whether `size` bytes can be a chain's link by the table `spec`: exactly one
+of its structs, whose first pointer, at 0, is its `next`, left null by its
+table for C to link.
+-/
+def Spec.isLink (spec : Spec) (size : Nat) : Bool :=
+  size == spec.1 && spec.2.head? == some ⟨0, .null⟩
+
+/--
+A chain's links in turn, each by its own table of `specs` (`walk`), its
+targets after it: the targets left after them all; none if one is not a link
+by its table (`Spec.isLink`), as C writes each one's `next`.
+-/
+def walkLinks (specs : Array Spec)
+    (walk : Nat → Nat → List Target → Option (List Target))
+    (links : Array (ByteArray × Nat)) (ts : List Target) :
+    Option (List Target) :=
+  links.toList.foldlM (init := ts) fun ts link =>
+    if specs[link.2]?.any (·.isLink link.1.size) then
+      walk link.2 link.1.size ts
+    else none
+
+/--
+One relocation's step: the targets after it, if the next is of its kind; a
+chain's links by their tables of `specs`.
+-/
+def step (specs : Array Spec)
+    (walk : Nat → Nat → List Target → Option (List Target)) (r : Reloc)
     (ts : List Target) : Option (List Target) :=
   match r.kind, ts with
   | .null,      ts                 => some ts
@@ -165,6 +207,7 @@ def step (walk : Nat → Nat → List Target → Option (List Target)) (r : Relo
   | .object,    .object _ :: ts    => some ts
   | .optObject, .optObject _ :: ts => some ts
   | .block j,   .block bytes :: ts => walk j bytes.size ts
+  | .chain,     .chain links :: ts => walkLinks specs walk links ts
   | _,          _                  => none
 
 /--
@@ -178,8 +221,9 @@ def walk (specs : Array Spec) (table size : Nat) (targets : List Target) :
   else
     (List.replicate (size / stride) ()).foldlM (init := targets) fun ts _ =>
       relocs.foldlM (init := ts) fun ts r =>
-        step (fun j size ts => if j < table then walk specs j size ts
-          else none) r ts
+        step specs
+          (fun j size ts => if j < table then walk specs j size ts else none)
+          r ts
 termination_by table
 
 
@@ -190,7 +234,7 @@ its table before `table`.
 def element (specs : Array Spec) (table : Nat) (relocs : List Reloc)
     (ts : List Target) : Option (List Target) :=
   relocs.foldlM (init := ts) fun ts r =>
-    step (fun j size ts =>
+    step specs (fun j size ts =>
       if j < table then walk specs j size ts else none) r ts
 
 /-- The walk, element by element. -/
@@ -320,6 +364,28 @@ theorem toList_targetsOfAll {α : Type} (f : α → Array Target) (xs : Array α
     | cons x l ih => intro acc; simp [ih, List.append_assoc]
   rw [this]
   simp [Array.emptyWithCapacity]
+
+/--
+A chain of links, each a link by its own table and taking exactly its own
+targets, takes all theirs, in turn: the targets of a struct's chain, each
+element by its own table.
+-/
+theorem walkLinks_map {specs : Array Spec}
+    {walk : Nat → Nat → List Target → Option (List Target)}
+    {α : Type} (link : α → ByteArray × Nat) (targets : α → Array Target)
+    (hl : ∀ x, specs[(link x).2]?.any (·.isLink (link x).1.size))
+    (h : ∀ x ts,
+      walk (link x).2 (link x).1.size ((targets x).toList ++ ts) = some ts)
+    (xs : Array α) (ts : List Target) :
+    walkLinks specs walk (xs.map link)
+      ((targetsOfAll targets xs).toList ++ ts) = some ts := by
+  rw [walkLinks, toList_targetsOfAll, Array.toList_map]
+  induction xs.toList generalizing ts with
+  | nil => rfl
+  | cons x xs ih =>
+    simp only [List.map_cons, List.foldlM_cons, List.flatMap_cons,
+      List.append_assoc, hl, h, if_true]
+    exact ih ts
 
 /-- An array of enums takes no targets. -/
 theorem walk_words {specs : Array Spec} {table : Nat}

@@ -114,11 +114,13 @@ it could call unimplemented.)
   callbacks, which live as long as the device, and a surface source's OS
   handles, which live as long as the surface. A callback and a mutable
   `void *` lower to unsupported; a struct with an unsupported member is not
-  bound, nor any that holds one. *Checked by:* proof (a bound struct has no
-  unsupported member, and every struct it refers to is bound), and test (a
-  handle C keeps is unsupported; and each of those structs of the spec, by
-  name, is unsupported for its reason and not bound); and a function taking a
-  struct is bound only if the struct is (test). That C keeps nothing else is
+  bound, nor any that holds one, nor offered as an extension in a chain.
+  *Checked by:* proof (a bound struct has no unsupported member, and every
+  struct it refers to is bound), and test (a handle C keeps is unsupported;
+  each of those structs of the spec, by name, is unsupported for its reason
+  and not bound; and an extension that refers to one is not offered, nor
+  keeps its base from being bound); and a function taking a struct is bound
+  only if the struct is (test). That C keeps nothing else is
   not checked.
 - **C writes into an input only through a mutable pointer, and no mutable
   pointer argument is bound**: not `wait_any`'s futures, which it writes back
@@ -148,30 +150,36 @@ it could call unimplemented.)
   from the next target: a string's bytes, an object's handle, or a block of
   bytes it fills in first, a struct pointed to or an array's elements (of
   structs, each by its table; of enums, numbers with no pointers; of objects,
-  handles, each from an object target). It trusts the table, the targets and
-  the bytes to agree: offsets within the struct, targets of the kinds the
+  handles, each from an object target), or a chain: blocks it fills in first,
+  each by its own table, then links, each element's first pointer, its
+  `next`, to the next element, the last's left null. Each element is one of
+  its table's structs, whose first pointer is that `next`, so the link is
+  written within it; and it is an extension's bytes, which its encoder starts
+  with its `sType`, a constant of the extension, as the chain's type, a sum of
+  the struct's extensions, offers only those. It trusts the table, the targets
+  and the bytes to agree: offsets within the struct, targets of the kinds the
   table says, as many as it needs, blocks of whole elements, held by nothing
   else and aligned; and an array's count, a field of its struct, to be its
   block's length in elements, as the generator writes both from the same
-  array.
-  Whatever a pointer points into is a target, held by the call's targets, so
-  borrowed for the call (see above: C keeps no input after it). A block C
-  writes into must never be a constant Lean computes once (an empty one, which
-  C does not write into, may: an optional struct that is none is the one
-  `ByteArray.empty`), so what makes one is `@[never_extract]`: the encoders,
-  and what makes the targets. *Checked by:*
+  array. Whatever a pointer points into is a target, held by the call's
+  targets, so borrowed for the call (see above: C keeps no input after it). A
+  block C writes into must never be a constant Lean computes once (an empty
+  one, which C does not write into, may: an optional struct that is none is
+  the one `ByteArray.empty`), so what makes one is `@[never_extract]`: the
+  encoders, and what makes the targets and a chain's links. *Checked by:*
   proof, of every generated table, that its relocations are exactly its
   struct's pointers, each within the struct, and that its bytes are their
-  serialization; a check, as
-  the tests build, that every encoder and maker of targets is
-  `@[never_extract]`; test, natively and on the web, of every kind of pointer,
-  none and some, blocks two deep, empty and of two elements, and of generated
-  tables against C; and CI runs the tests in the checked build, where the
-  walker checks every one of the above, stopping the program if not. And proof,
-  of every generated struct, that the walker's Lean specification (`walk`),
-  walking its table over its bytes, takes exactly its targets, each of the
-  kind its relocation needs: the agreement the checked build checks. That C
-  implements the specification is by review and test.
+  serialization; a check, as the tests build, that every encoder and maker of
+  targets is `@[never_extract]`; test, natively and on the web, of every kind
+  of pointer, none and some, blocks two deep, empty and of two elements,
+  chains empty and of two elements, and of generated tables against C; and CI
+  runs the tests in the checked build, where the walker checks every one of
+  the above, stopping the program if not. And proof, of every generated
+  struct, that the walker's Lean specification (`walk`), walking its table
+  over its bytes, takes exactly its targets, each of the kind its relocation
+  needs, and each chain's element one of its table's structs, its `next`
+  first: the agreement the checked build checks. That C implements the
+  specification is by review and test.
 
 ## Threads
 
@@ -207,9 +215,16 @@ bound: every bound `setLabel` method (21), `hasInstanceFeature`,
 `Instance.hasWGSLLanguageFeature`, `Buffer.getMapState` and
 `Texture.getTextureBindingViewDimension`. Dawn, used on the web, implements
 them. wgpu-native also aborts on values it does not support: a timed
-`waitAny` feature or limit in an instance descriptor (`createInstance`). That
+`waitAny` feature or limit in an instance descriptor (`createInstance`), which
 is not memory-unsafe, but ends the program; the bindings do not check for it
-yet.
+yet. And it aborts on a descriptor without the chain it needs, which the
+bindings refuse: a struct that describes nothing but by its chain
+(`Struct.chainRequired`, as a shader module descriptor), passed with an empty
+one, raises an `IO` error instead (`createShaderModule`: "nothing chained to
+descriptor"); and a function taking one whose extensions cannot be passed yet
+is not bound (`createSurface`, whose surface sources hold OS handles).
+*Checked by:* test (of the generated check, and that `createSurface` is not
+bound).
 
 - **Their shims call them only when built against an implementation known to
   implement them**, which the build says by defining a macro: the web build

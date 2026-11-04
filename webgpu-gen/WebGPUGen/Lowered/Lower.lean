@@ -312,6 +312,9 @@ def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
   kind            := s.kind
   extendedStructs := s.extendedStructs.filterMap fun id =>
     r.structs[id.idx]?.map (bothNames typeName leanTypeName ·.name)
+  extensions      := r.structs.filterMap fun e =>
+    if e.extendedStructs.any (r.structs[·.idx]?.map (·.name) == some s.name)
+    then some (bothNames typeName leanTypeName e.name) else none
   sType           := if s.kind != .extension then none else do
     -- The entry of the `s_type` enum named after the struct.
     let sTypes ← r.enums.find? (·.name.text == "s_type")
@@ -475,6 +478,44 @@ def settleStructDefaults (spec : Lowered.Spec) : Lowered.Spec :=
   mapMembers (settleNested zeros) zeros
 
 /--
+Each struct's extensions, only those the bindings can bind, as structs of
+their own (`boundStructs`, ignoring every chain): a struct chains only those,
+so one that cannot be passed yet, or refers to a struct that cannot, does not
+keep its base from being bound.
+-/
+def keepPassableExtensions (spec : Lowered.Spec) : Lowered.Spec :=
+  let bound := boundStructs
+    (spec.structs.toList.map fun s => { s with extensions := #[] })
+  { spec with structs := spec.structs.map fun s =>
+      { s with extensions := s.extensions.filter fun n =>
+          bound.any (·.names == n) } }
+
+/--
+Each function's arguments whose struct must be given a chain
+(`Struct.chainRequired`), and each method's: a struct passed by pointer, not
+optional.
+-/
+def markRequiredChains (spec : Lowered.Spec) : Lowered.Spec :=
+  let structs := spec.structs.toList
+  let mark (f : Lowered.Function) : Lowered.Function :=
+    { f with requiredChains := f.args.toList.filterMap fun a =>
+        match a.value with
+        | .structPointer names false =>
+          if structs.any fun s =>
+              s.names == names && s.chainRequired structs
+          then some a.names.lean else none
+        | _ => none }
+  { spec with
+    functions := spec.functions.map mark
+    objects   := spec.objects.map fun o =>
+      { o with methods := o.methods.map mark } }
+
+/-- It leaves the structs as they are. -/
+theorem structs_markRequiredChains (spec : Lowered.Spec) :
+    (markRequiredChains spec).structs = spec.structs :=
+  rfl
+
+/--
 Lower a resolved spec. `sections` are the documentation sections its docs may
 refer to, each with its page (`articleSections` reads them from upstream's
 articles); `stubs` are the functions each implementation leaves unimplemented
@@ -487,7 +528,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
     sections  := Std.HashMap.ofList sections
   }
   let mark := markStubs stubs
-  settleStructDefaults {
+  settleStructDefaults <| markRequiredChains <| keepPassableExtensions {
     constants := r.constants.map (lowerConstant ctx)
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)

@@ -254,6 +254,11 @@ structure Function where
   instead.
   -/
   notImplementedBy : List String := []
+  /--
+  The arguments, by their Lean names, whose struct must be given a chain
+  (`Struct.chainRequired`): its function refuses one with none.
+  -/
+  requiredChains   : List String := []
   deriving Repr, DecidableEq
 
 /--
@@ -378,6 +383,11 @@ structure Struct where
   /-- The structs an extension attaches to: the spec's `extends`. -/
   extendedStructs : Array Names
   /--
+  The structs that attach to it, if it is extensible: those whose `extends`
+  name it, which its `chain` holds.
+  -/
+  extensions      : Array Names := #[]
+  /--
   For an extension, the entry of the `SType` enum that marks it in a chain:
   `WGPUSType_ShaderSourceWGSL`, `shaderSourceWGSL`.
   -/
@@ -398,15 +408,22 @@ def Struct.unsupported (s : Struct) : List String :=
 
 /--
 Whether a struct describes nothing but by its chain: extensible, with no
-member but its label, and extended by others, as a shader module descriptor is
-by its WGSL or SPIR-V source, and a surface descriptor by its surface source.
-Passed without its chain, which the bindings do not fill in yet, it is of no
-use, and an implementation may abort (wgpu-native does).
+member but its label, and extended by others, as a shader module descriptor
+is by its sources. Passed without a chain it is of no use, and an
+implementation may abort (wgpu-native does).
 -/
-def Struct.needsChain (structs : List Struct) (s : Struct) : Bool :=
+def Struct.chainRequired (structs : List Struct) (s : Struct) : Bool :=
   s.kind == .extensible
     && s.members.all (·.names.lean == "label")
     && structs.any (·.extendedStructs.contains s.names)
+
+/--
+Whether a struct describes nothing but by a chain it cannot have: one that
+requires a chain (`chainRequired`), but whose extensions the bindings cannot
+pass, as a surface descriptor's are surface sources, which hold OS handles.
+-/
+def Struct.needsChain (structs : List Struct) (s : Struct) : Bool :=
+  s.chainRequired structs && s.extensions.isEmpty
 
 /--
 The struct a value names, if any: by value, by pointer, or as the elements of
@@ -419,7 +436,7 @@ def Value.structRef? : Value → Option Names
 
 /-- The structs a struct's members refer to. -/
 def Struct.references (s : Struct) : List Names :=
-  s.members.toList.filterMap (·.value.structRef?)
+  s.members.toList.filterMap (·.value.structRef?) ++ s.extensions.toList
 
 /--
 The structs the bindings can bind, in an order in which each comes after the

@@ -53,8 +53,11 @@ bindings prove, in Lean:
   specified in Lean (`walk`), which C implements (by review and test): for
   every such struct, both widths, it is proved that walking its table over its
   bytes takes exactly its targets, each of the kind its relocation needs, a
-  nested struct's by its own table, an array's element by element: so C never
-  meets a target of the wrong kind, nor runs out of them. Every bound struct
+  nested struct's by its own table, an array's element by element, a chain's
+  extension by extension, each by its own table and exactly one of its
+  structs, its `next` first, where C links it: so C never meets a target of
+  the wrong kind, nor runs out of them, nor links outside an element. Every
+  bound struct
   has a table: arrays of enums, of objects and of structs included. And each
   is a `CStruct`, its bytes, targets, table and those proofs together, for the
   target the program runs on: its bytes proved one struct, the size its table
@@ -89,4 +92,4 @@ each pointer, and the arrays that hold them. An array of structs is one block,
 each element poked into it at its offset.
 Making the Lean value is not counted, as C's struct on the stack is free.
 
-Status: WIP: approximately 72% complete.
+Status: WIP: approximately 74% complete.

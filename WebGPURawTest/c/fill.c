@@ -140,9 +140,9 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_color_target_state(
 }
 
 // Fill an encoded bind group entry by table `table`, then check it as WebGPU
-// would read it: `WebGPURawTest.Internal.Reloc.bindGroupEntry`, its three
-// optional objects none, each a target, so all three taken. The first field
-// that is not what it should be, or "".
+// would read it: `WebGPURawTest.Internal.Reloc.bindGroupEntry`, its chain
+// empty and its three optional objects none, each a target, so all four taken.
+// The first field that is not what it should be, or "".
 LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_entry(
         lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
         b_lean_obj_arg targets) {
@@ -160,8 +160,8 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_bind_group_entry(
     } else if (entry.buffer != NULL || entry.sampler != NULL
             || entry.textureView != NULL) {
         problem = "the objects, not null";
-    } else if (cursor != 3) {
-        problem = "the targets, not the three objects";
+    } else if (cursor != 4) {
+        problem = "the targets, not the chain and the three objects";
     }
     lean_dec(bytes);
     return lean_mk_string(problem);
@@ -321,6 +321,46 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_vertex_buffer_layout(
             || attributes[1].offset != 8
             || attributes[1].shaderLocation != 1) {
         problem = "the attributes' fields";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// The WGSL source at `p` has the code `code`.
+static int lean_wgpu_test_wgsl(
+        WGPUShaderSourceWGSL const * p, char const * code) {
+    size_t length = strlen(code);
+    return p != NULL && p->chain.sType == WGPUSType_ShaderSourceWGSL
+        && p->code.length == length && memcmp(p->code.data, code, length) == 0;
+}
+
+// Fill an encoded shader module descriptor by table `table`, then check its
+// chain as WebGPU would read it: if `chained`, two WGSL sources, `first` then
+// `second`, each linked to the next by its chain; else none, a null pointer.
+// The first link that is not what it should be, or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_shader_module(
+        lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
+        b_lean_obj_arg targets, uint8_t chained) {
+    lean_wgpu_fill_arg(bytes, tables, table, targets);
+    WGPUShaderModuleDescriptor descriptor;
+    memcpy(&descriptor, lean_sarray_cptr(bytes), sizeof descriptor);
+    WGPUShaderSourceWGSL const * first =
+        (WGPUShaderSourceWGSL const *)descriptor.nextInChain;
+    char const * problem = "";
+    if (descriptor.label.length != 6
+            || memcmp(descriptor.label.data, "module", 6) != 0) {
+        problem = "the label";
+    } else if (!chained) {
+        if (first != NULL) {
+            problem = "the chain, not null";
+        }
+    } else if (!lean_wgpu_test_wgsl(first, "first")) {
+        problem = "the first source";
+    } else if (!lean_wgpu_test_wgsl(
+            (WGPUShaderSourceWGSL const *)first->chain.next, "second")) {
+        problem = "the second source, linked from the first";
+    } else if (first->chain.next->next != NULL) {
+        problem = "the end of the chain, not null";
     }
     lean_dec(bytes);
     return lean_mk_string(problem);

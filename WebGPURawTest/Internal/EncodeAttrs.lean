@@ -34,7 +34,8 @@ run_cmd do
     ++ #[``WebGPU.Raw.Encode.encodeU32s, ``WebGPU.Raw.Reloc.objectsBlock]
   let makers := encoders ++ generated env
     ["targets64", "targets32", "block64", "block32", "targetsAll64",
-      "targetsAll32", "array64", "array32"]
+      "targetsAll32", "array64", "array32", "chainLink64", "chainLink32",
+      "chainTargets64", "chainTargets32"]
     ++ #[``WebGPU.Raw.Reloc.CStruct.optBytes,
       ``WebGPU.Raw.Reloc.CStruct.optTargets]
   if encoders.isEmpty then throwError "no generated encoders found"

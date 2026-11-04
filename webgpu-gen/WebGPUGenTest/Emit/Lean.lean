@@ -843,4 +843,24 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
         throw (IO.userError \"doIt: a size_t too large\")
     "
 
+-- A struct that is of no use without its chain: the function refuses it with
+-- an empty chain, as an implementation may abort (wgpu-native does), before
+-- checking its `size_t`s.
+#guard
+  let descriptor : Names := ⟨"WGPUDescriptor", "Descriptor"⟩
+  let f := { function "wgpuDoIt" "doIt" none
+    #[arg "desc" (.structPointer descriptor false)] none with
+    requiredChains := ["desc"] }
+  render ((wrapperDecl f).getD .nil) == dedent "
+    @[inline]
+    def doIt (desc : Descriptor) : IO Unit :=
+      if desc.chain.isEmpty then
+        throw (IO.userError \"doIt: nothing chained to desc\")
+      else
+        if CStruct.sizesFit desc then
+          Internal.doIt desc ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩ ⟨_, rfl⟩
+        else
+          throw (IO.userError \"doIt: a size_t too large\")
+    "
+
 end WebGPUGenTest.Emit.Lean

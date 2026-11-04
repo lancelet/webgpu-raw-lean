@@ -21,7 +21,8 @@ enum {
     LEAN_WGPU_OBJECT     = 2,
     LEAN_WGPU_OPT_OBJECT = 3,
     LEAN_WGPU_BLOCK      = 4,
-    LEAN_WGPU_NULL       = 5,
+    LEAN_WGPU_CHAIN      = 5,
+    LEAN_WGPU_NULL       = 6,
 };
 
 // The little-endian u32 at `p`. Every target is little-endian.
@@ -100,6 +101,34 @@ void lean_wgpu_fill(
                 lean_wgpu_fill(block, length, tables,
                     lean_wgpu_u32(reloc + 8), targets, cursor);
                 pointer = length == 0 ? NULL : block;
+                break;
+            }
+            case LEAN_WGPU_CHAIN: {
+                // Each element, of `links` (an `Array (ByteArray × Nat)`),
+                // filled in by its own table, its targets in turn; then each
+                // linked to the next by its first pointer, its chain's `next`.
+                // Linking must come after filling: each element's table
+                // writes its `next` null. The walk (`walkLinks`) refuses a
+                // link that is not one element of its table, its `next` at
+                // 0, so this write is within it.
+                size_t count = lean_array_size(value);
+                for (size_t k = 0; k < count; k++) {
+                    lean_object * link = lean_array_get_core(value, k);
+                    lean_object * element = lean_ctor_get(link, 0);
+                    size_t length = lean_sarray_size(element);
+                    LEAN_WGPU_CHECK(length >= sizeof(void *)
+                        && lean_is_exclusive(element),
+                        "a chain's element empty, or held by anything else");
+                    lean_wgpu_fill(lean_sarray_cptr(element), length, tables,
+                        lean_usize_of_nat(lean_ctor_get(link, 1)), targets,
+                        cursor);
+                }
+                for (size_t k = count; k-- > 0;) {
+                    uint8_t * element = lean_sarray_cptr(lean_ctor_get(
+                        lean_array_get_core(value, k), 0));
+                    memcpy(element, &pointer, sizeof pointer);
+                    pointer = element;
+                }
                 break;
             }
             default:

@@ -66,8 +66,13 @@ What a pointer of a struct points to, and the Lean expression of what C fills
 it in from: a member of a value at `d`.
 -/
 inductive Pointer where
-  /-- A struct chain's next: left null, for now. -/
-  | chain
+  /--
+  A struct chain's next, left null: an extension's, which C links, or one no
+  extension can join.
+  -/
+  | next
+  /-- The chain of the struct with these names: its `chain` field, at `expr`. -/
+  | chain     (names : Names) (expr : String)
   | string    (expr : String)
   | optString (expr : String)
   /-- An object of the type with these names. -/
@@ -119,9 +124,11 @@ def items (structs : List Struct) (w : Width) (s : Struct) (path : String) :
   | 0 => none
   | fuel + 1 => do
     let chain ← match s.kind with
-      | .extensible | .extensibleCallbackArg => some [Item.pointer .chain]
+      | .extensible | .extensibleCallbackArg => some [Item.pointer
+        (if s.extensions.isEmpty then .next
+          else .chain s.names s!"{path}.chain")]
       | .extension => s.sType.map fun e =>
-        [Item.pointer .chain, .int s!"CEnum.toC SType.{e.lean}"]
+        [Item.pointer .next, .int s!"CEnum.toC SType.{e.lean}"]
       | .standalone => some []
     let members ← s.members.toList.mapM fun m =>
       member fuel m.value s!"{path}.{m.names.lean}"
@@ -388,7 +395,8 @@ array's elements of another kind, not yet filled in, or a struct with no table.
 An array of numbers is a block of table 0, of objects of table 1.
 -/
 def kind (index : Names → Option Nat) : Pointer → Option (String × Nat × Nat)
-  | .chain                     => some (".null", 5, 0)
+  | .next                      => some (".null", 6, 0)
+  | .chain ..                  => some (".chain", 5, 0)
   | .string _                  => some (".string", 0, 0)
   | .optString _               => some (".optString", 1, 0)
   | .object ..                 => some (".object", 2, 0)
@@ -440,7 +448,10 @@ inductive Piece where
 
 /-- What C fills a pointer in from, on a width. -/
 def pieces (w : Width) : Pointer → List Piece
-  | .chain                      => []
+  | .next                       => []
+  | .chain names e              =>
+    [.target s!".chain ({e}.map {names.lean}.chainLink{n})",
+      .targets s!"targetsOfAll {names.lean}.chainTargets{n} {e}"]
   | .string e                   => [.target s!".string {e}"]
   | .optString e                => [.target s!".optString {e}"]
   | .object names e             => [.target s!".object ({object names} {e})"]
@@ -502,8 +513,8 @@ A struct's relocations, table and targets on one width, each declaration as
 its lines; none if a pointer cannot be filled in yet. `index` gives each
 struct's table.
 -/
-def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
-    (index : Names → Option Nat) (isArrayed : Bool) :
+def relocDecls (structs : List Struct) (s : Struct) (w : Width) (size : Nat)
+    (entries : List Entry) (index : Names → Option Nat) (isArrayed : Bool) :
     Option (List (List String)) := do
   let t := s.names.lean
   let n := suffix w
@@ -532,7 +543,30 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let head := s!"noncomputable def relocs{n} : List Reloc :="
   let relocList := if relocs.isEmpty then [head ++ " []"]
     else [head ++ " ["] ++ indent 2 (fill 2 relocs) ++ ["]"]
-  pure ([
+  -- Its chain's elements: each extension's bytes, table and targets.
+  let links := s.extensions.toList.filterMap fun e => do
+    let x ← structs.find? (·.names == e)
+    let entry ← x.sType
+    pure (entry.lean, e.lean)
+  -- An arm on one line, or two, or its parts on lines of their own.
+  let arm (c : String) (parts : List String) : List String :=
+    let rhs := " ".intercalate parts
+    let flat := s!"  | .{c} x => {rhs}"
+    if flat.length ≤ width then [flat]
+    else if 4 + rhs.length ≤ width then [s!"  | .{c} x =>", s!"    {rhs}"]
+    else [s!"  | .{c} x =>"] ++ parts.zipIdx.map fun (p, i) =>
+      (if i == 0 then "    " else "      ") ++ p
+  let chainDecls := if links.isEmpty then [] else [
+    [s!"/-- An element of its chain on {on}: its bytes, and its table. -/",
+      "@[never_extract]",
+      s!"def chainLink{n} : Chained → ByteArray × Nat"]
+      ++ links.flatMap fun (c, x) =>
+        arm c [s!"({x}.encode{n} x,", s!"{x}.tableIndex)"],
+    [s!"/-- What C fills in an element of its chain from on {on}. -/",
+      "@[never_extract]",
+      s!"def chainTargets{n} : Chained → Array Target"]
+      ++ links.flatMap fun (c, x) => arm c [s!"{x}.targets{n} x"]]
+  pure (chainDecls ++ [
     [s!"/-- Its pointers' relocations on {on}: what C fills each in from. -/"]
       ++ relocList,
     [s!"/-- Its table on {on}, for C: `serialize` of its relocations. -/",
@@ -626,7 +660,7 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
   let isArrayed := (arrayed structs tables).contains s.names
   let relocs (w : Width) (size : Nat) (entries : List Entry) :=
     if (index s.names).isSome then
-      relocDecls s w size entries index isArrayed
+      relocDecls structs s w size entries index isArrayed
     else none
   -- Its table's index, and its targets on this target, if it has a table.
   let tableDecls := match index s.names with
@@ -740,18 +774,58 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
     | .pointer (.array (.structs names) _) =>
       some [s!"{names.lean}.array{n}", s!"{names.lean}.walk_encodeAll{n}"]
     | _                                    => none).flatten
+  -- The chains' lemmas: each walks its links by its own table, before this.
+  let chainLemmas := entries.filterMap fun (_, _, it) => match it with
+    | .pointer (.chain names _) =>
+      some s!"{names.lean}.walk_chain{n} (table := {i}) (by decide)"
+    | _ => none
   let relocs := entries.filter fun (_, _, it) => it.isPointer
   let lemmas := ["element", s!"relocs{n}", s!"targets{n}"]
     ++ (if relocs.isEmpty then [] else ["step"])
     ++ (if optional.isEmpty then [] else ["optBlock"])
     ++ (optional.zipIdx.map fun (_, k) => hyp k)
-    ++ (pointeeLemmas ++ empties ++ arrayLemmas).eraseDups
+    ++ (pointeeLemmas ++ empties ++ arrayLemmas ++ chainLemmas).eraseDups
   let cases := optional.zipIdx.map fun ((_, e, _), k) =>
     s!"cases {hyp k} : {e} <;>"
   let statement (name : String) (args : String) (lhs : List String) :
       List String :=
     lineOrBroken 0 s!"theorem {name} {args}" ["(ts : List Target) :"] ++ lhs
-  [
+  -- Its chain's walk, if it has extensions: each link's by its own walk.
+  let chainWalkLemmas := [s!"chainLink{n}", s!"chainTargets{n}"]
+    ++ s.extensions.toList.map fun e => s!"{e.lean}.walk_encode{n}_tableIndex"
+  let chainProof := if s.extensions.isEmpty then [] else [
+    ["/-- Each link's table comes before its own. -/",
+      s!"theorem chainLink{n}_lt_tableIndex (c : Chained) :",
+      s!"    (chainLink{n} c).2 < tableIndex := by",
+      "  cases c <;>"]
+      ++ simpLines 4 ([s!"chainLink{n}", "tableIndex"]
+        ++ s.extensions.toList.map fun e => s!"{e.lean}.tableIndex"),
+    ["/-- Each link is one element of its own table, its `next` first. -/",
+      s!"theorem chainLink{n}_isLink (c : Chained) :",
+      s!"    specs{n}[(chainLink{n} c).2]?.any",
+      s!"      (·.isLink (chainLink{n} c).1.size) := by",
+      "  cases c <;>"]
+      ++ simpLines 4 ([s!"chainLink{n}", "Spec.isLink"]
+        ++ (s.extensions.toList.map fun e => [s!"{e.lean}.tableIndex",
+          s!"{e.lean}.getElem?_specs{n}", s!"{e.lean}.size_encode{n}",
+          s!"{e.lean}.relocs{n}"]).flatten),
+    ["/--",
+      "Walking its chain, from a table not before its own, takes exactly its",
+      "links' targets, in turn.",
+      "-/",
+      s!"theorem walk_chain{n} \{table : Nat}",
+      s!"    (h : tableIndex ≤ table) (cs : Array Chained)",
+      "    (ts : List Target) :",
+      s!"    walkLinks specs{n} (fun j size ts =>",
+      s!"        if j < table then walk specs{n} j size ts else none)",
+      s!"      (cs.map chainLink{n})",
+      s!"      ((targetsOfAll chainTargets{n} cs).toList ++ ts) = some ts :=",
+      s!"  walkLinks_map _ _ chainLink{n}_isLink (fun c ts => by",
+      s!"    have := Nat.lt_of_lt_of_le (chainLink{n}_lt_tableIndex c) h",
+      "    cases c <;> simp_all ["]
+      ++ Encoders.indent 6 (closed (fill 6 chainWalkLemmas))
+      ++ ["  ) cs ts"]]
+  chainProof ++ [
     ["/-- Its index finds its table as the walk reads it. -/",
       s!"theorem getElem?_specs{n} :",
       s!"    specs{n}[{i}]? = some ({size}, relocs{n}) :=",

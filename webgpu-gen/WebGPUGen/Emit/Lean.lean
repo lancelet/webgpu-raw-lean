@@ -329,6 +329,13 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
   let body := if fits.isEmpty then decoded else
     condition ++ indented 2 decoded ++ hardline ++ text "else"
       ++ indented 2 refusal
+  -- A struct of no use without its chain must be given one: an `IO` error if
+  -- not, as an implementation may abort.
+  let body := f.requiredChains.foldr (init := body) fun x body =>
+    let refusal := group (nest 2 (text "throw (IO.userError" ++ space
+      ++ text s!"\"{f.names.lean}: nothing chained to {x}\")"))
+    text s!"if {x}.chain.isEmpty then" ++ indented 2 refusal ++ hardline
+      ++ text "else" ++ indented 2 body
   pure <| docBefore 0 f.doc ++ text "@[inline]" ++ hardline
     ++ signature {
       keyword := "def"
@@ -392,7 +399,7 @@ A struct's fields, aligned in columns, each with its doc: a nullable float's
 says what `none` is, as upstream's speaks of NaN.
 -/
 def structFields (s : Lowered.Struct) : Doc :=
-  documentedRows 2 (s.members.toList.filterMap fun m => do
+  let members := s.members.toList.filterMap fun m => do
     let type ← m.value.leanType
     let cells := [m.names.lean, ":", type]
     let doc := match m.value with
@@ -401,13 +408,40 @@ def structFields (s : Lowered.Struct) : Doc :=
       | _ => m.doc
     pure (doc, cells ++ match m.default with
       | some d => [":=", leanDefault m.value d]
-      | none   => []))
+      | none   => [])
+  -- Its extensions, chained to it (C's `nextInChain`): aligned on their own,
+  -- so that its long type does not widen the members' columns.
+  let chain := if s.extensions.isEmpty then [] else
+    [("Extensions chained to it (`nextInChain`), in order.",
+      ["chain", ":", s!"Array {s.names.lean}.Chained", ":=", "#[]"])]
+  join hardline (([members, chain].filter (!·.isEmpty)).map (documentedRows 2))
+
+/--
+What can be chained to the struct `s`, if anything: its extensions, as an
+inductive `T.Chained`, each a constructor named by its `SType` entry. None if
+it has no extensions.
+-/
+def chainedDecl (structs : List Lowered.Struct) (s : Lowered.Struct) :
+    Option Doc := do
+  guard !s.extensions.isEmpty
+  let ctors ← s.extensions.toList.mapM fun n => do
+    let e ← structs.find? (·.names == n)
+    let entry ← e.sType
+    pure (entry.lean, n.lean)
+  let width := (ctors.map (·.1.length)).foldl max 0
+  let pad (x : String) := x.pushn ' ' (width - x.length)
+  pure <| Doc.lines ([
+    s!"/-- What can be chained to a `{s.names.lean}`: one of its " ++
+      "extensions. -/",
+    s!"inductive {s.names.lean}.Chained where"]
+    ++ ctors.map fun (c, t) => s!"  | {pad c} (s : {t})")
 
 /-- A struct, as a Lean structure. -/
 def structDecl (s : Lowered.Struct) : Doc :=
   let header := text s!"structure {s.names.lean} where"
   docBefore 0 s.doc ++ header
-    ++ (if s.members.isEmpty then nil else indented 2 (structFields s))
+    ++ (if s.members.isEmpty && s.extensions.isEmpty then nil
+      else indented 2 (structFields s))
 
 /--
 The value of the struct `s` with every byte zero (C's `_wgpu_STRUCT_ZERO_INIT`),
@@ -452,7 +486,8 @@ def structDecls (spec : Lowered.Spec) : List Doc :=
   let zeros := zeroValues bound
   bound.flatMap fun s =>
     let zero := zeros.find? (·.1.c == s.names.c)
-    [structDecl s] ++ zero.toList.map fun (_, f) => zeroDecl s f
+    (chainedDecl bound s).toList ++ [structDecl s]
+      ++ zero.toList.map fun (_, f) => zeroDecl s f
 
 /-! ## Files -/
 
@@ -578,7 +613,8 @@ def structsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "The structs of `webgpu.h` the bindings can pass so far, as Lean structures,",
       "with the defaults C's initialisers give: so `{ size := 64 }` is a buffer",
       "descriptor with every other field at its default. A field with no default",
-      "must be given. Chained structs (`nextInChain`) come later."
+      "must be given. An extensible struct's `chain` holds its extensions, linked",
+      "in order as C's `nextInChain`."
     ]
     (structDecls spec)
 

@@ -11,8 +11,8 @@ them (`c/reloc.c`): every kind of pointer, each optional one some and none,
 blocks two deep, of two elements, of none, and with no pointers, by tables
 written here; and, by the generated tables and targets, a buffer descriptor's
 label, read back as WebGPU would, by its pointer and length, and a color target
-state's blend state, a block of its own, and a bind group entry's optional
-objects.
+state's blend state, a block of its own, a bind group entry's optional
+objects, and a shader module's chain of two WGSL sources.
 These run at run time, natively and on the web, and again in the checked
 build, where the C checks the table, the targets and the bytes agree.
 -/
@@ -31,8 +31,9 @@ open WebGPU.Raw WebGPU.Raw.Reloc
 
 -- Each kind's code.
 #guard
-  let kinds := [Kind.string, .optString, .object, .optObject, .block 0, .null]
-  kinds.map Kind.code == [0, 1, 2, 3, 4, 5]
+  let kinds :=
+    [Kind.string, .optString, .object, .optObject, .block 0, .chain, .null]
+  kinds.map Kind.code == [0, 1, 2, 3, 4, 5, 6]
 
 /-! ## The walk
 
@@ -90,6 +91,45 @@ example : walk walkSpecs 1 16 [.block (zerosOf 0)] = some [] := by
 example :
     walk #[(8, [⟨0, .block 0⟩])] 0 8 [.block (zerosOf 8)] = none := by
   simp [walk, step]
+
+/--
+Tables for chains: an extension of 16 bytes, its `next` null, then a string
+(table 0); a struct of 8 bytes, a string first (table 1), which cannot be
+linked; and a struct of 8 bytes, its chain (table 2).
+-/
+def linkSpecs : Array Spec := #[
+  (16, [⟨0, .null⟩, ⟨8, .string⟩]),
+  (8,  [⟨0, .string⟩]),
+  (8,  [⟨0, .chain⟩])
+]
+
+-- A chain takes each link's targets, by its own table, after it.
+example :
+    walk linkSpecs 2 8
+      [.chain #[(zerosOf 16, 0), (zerosOf 16, 0)], .string "a", .string "b"]
+      = some [] := by
+  rw [walk]
+  simp [linkSpecs, step, walkLinks, Spec.isLink, size_zerosOf]
+  rw [walk]
+  simp [step]
+  rw [walk]
+  simp [step]
+
+-- C writes each link's `next`, so a link must be one element of its own
+-- table, whose first pointer is its `next`: not empty, nor two, nor of a
+-- table whose first pointer is another.
+example : walk linkSpecs 2 8 [.chain #[(zerosOf 0, 0)]] = none := by
+  rw [walk]
+  simp [linkSpecs, step, walkLinks, Spec.isLink, size_zerosOf]
+example :
+    walk linkSpecs 2 8 [.chain #[(zerosOf 32, 0)], .string "a", .string "b"]
+      = none := by
+  rw [walk]
+  simp [linkSpecs, step, walkLinks, Spec.isLink, size_zerosOf]
+example :
+    walk linkSpecs 2 8 [.chain #[(zerosOf 8, 1)], .string "a"] = none := by
+  rw [walk]
+  simp [linkSpecs, step, walkLinks, Spec.isLink, size_zerosOf]
 
 /-! ## Filling in -/
 
@@ -386,6 +426,36 @@ def objectsCheck (inst : Instance) : String :=
     (#[.block (objectsBlock ptrBytes insts)]
       ++ objectsOf instanceObject insts) inst
 
+/-! ## Chains -/
+
+/--
+Fill an encoded shader module descriptor by table `table` of `tables`; what C
+finds wrong with its chain, two sources if `chained`, else none; or "".
+-/
+@[extern "lean_wgpu_test_shader_module"]
+opaque shaderModuleBack (bytes : ByteArray) (tables : @& Array ByteArray)
+  (table : USize) (targets : @& Array Target) (chained : Bool) : String
+
+/-- A shader module descriptor: two WGSL sources chained, if `chained`. -/
+def shaderModule (chained : Bool) : ShaderModuleDescriptor := {
+  label := "module"
+  chain := if chained then #[
+    .shaderSourceWGSL { code := "first" },
+    .shaderSourceWGSL { code := "second" }
+  ] else #[]
+}
+
+/--
+What C finds wrong with `shaderModule chained`, filled in by its generated
+table and targets: at run time.
+-/
+@[noinline, never_extract]
+def shaderModuleCheck (chained : Bool) : String :=
+  let d := shaderModule chained
+  shaderModuleBack (ShaderModuleDescriptor.toBytes d) currentTables
+    ShaderModuleDescriptor.tableIndex.toUSize
+    (ShaderModuleDescriptor.toTargets d) chained
+
 /-- Each check, on the instance `inst`: what it is, and whether it held. -/
 @[noinline]
 def checks (inst : Instance) : List (String × String) :=
@@ -436,7 +506,10 @@ def checks (inst : Instance) : List (String × String) :=
       pipelineLayoutCheck ()),
     ("a vertex buffer layout, its attributes an array of structs",
       vertexBufferCheck ()),
-    ("an array of objects, a block of handles", objectsCheck inst)
+    ("an array of objects, a block of handles", objectsCheck inst),
+    ("a chain of two extensions, each linked to the next",
+      shaderModuleCheck true),
+    ("an empty chain, a null pointer", shaderModuleCheck false)
   ]
 
 end WebGPURawTest.Internal.Reloc

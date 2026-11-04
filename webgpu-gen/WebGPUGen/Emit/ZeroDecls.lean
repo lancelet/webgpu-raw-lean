@@ -84,8 +84,8 @@ theorem fields_of_within {z : Names × List (Names × Default)} {d : Default}
 /-- A struct with a member holding another struct refers to it. -/
 theorem mem_references {t : Struct} {m : Member} {n : Names}
     (hm : m ∈ t.members) (hv : m.value = .struct n) : n ∈ t.references := by
-  simp only [Struct.references, List.mem_filterMap]
-  exact ⟨m, by simpa using hm, by simp [hv, Value.structRef?]⟩
+  simp only [Struct.references, List.mem_append, List.mem_filterMap]
+  exact Or.inl ⟨m, by simpa using hm, by simp [hv, Value.structRef?]⟩
 
 /--
 With distinct C names, a zero value within an aligned one of a bound struct is

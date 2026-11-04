@@ -54,7 +54,7 @@ def member (name : String) (value : Value) : Member :=
     member "inner" (.struct inner.names)
   ]
   let expected (w : String) (size : String) : List Item := [
-    .pointer .chain,
+    .pointer .next,
     .pointer (.string "d.label"), .int s!"d.label.utf8ByteSize.toUInt{w}",
     .pointer (.optString "d.name"), .int s!"viewLength{w} d.name",
     .int "CEnum.toC d.mode",
@@ -77,7 +77,7 @@ def member (name : String) (value : Value) : Member :=
   let input := struct "WGPUExtra" "Extra" .extension [member "n" .uint32]
     (sType := some ⟨"WGPUSType_Extra", "extra"⟩)
   items [input] .bits64 input "d" 2
-    == some [.pointer .chain, .int "CEnum.toC SType.extra", .int "d.n"]
+    == some [.pointer .next, .int "CEnum.toC SType.extra", .int "d.n"]
 
 -- A member that cannot be written gives no items.
 #guard
@@ -180,17 +180,18 @@ def member (name : String) (value : Value) : Member :=
   let inner : Names := ⟨"WGPUInner", "Inner"⟩
   let index (names : Names) := if names == inner then some 7 else none
   let pointers : List Pointer := [
-    .chain, .string "d.a", .optString "d.b",
+    .next, .string "d.a", .optString "d.b",
     .object ⟨"WGPUBuffer", "Buffer"⟩ "d.c",
     .optObject ⟨"WGPUBuffer", "Buffer"⟩ "d.e",
     .struct inner "d.f" false,
     .array (.words "id") "d.g",
     .array (.objects ⟨"WGPUBuffer", "Buffer"⟩) "d.h",
     .array (.structs inner) "d.i",
-    .array .other "d.j"
+    .array .other "d.j",
+    .chain inner "d.chain"
   ]
   pointers.map (kind index) == [
-    some (".null", 5, 0),
+    some (".null", 6, 0),
     some (".string", 0, 0),
     some (".optString", 1, 0),
     some (".object", 2, 0),
@@ -199,7 +200,8 @@ def member (name : String) (value : Value) : Member :=
     some (".block 0", 4, 0),
     some (".block 1", 4, 1),
     some (".block 7", 4, 7),
-    none
+    none,
+    some (".chain", 5, 0)
   ]
 
 -- The structs with tables: each after those it points to, by its index; not
@@ -250,7 +252,7 @@ def member (name : String) (value : Value) : Member :=
   let decls (isArrayed : Bool) :=
     match structEntries [input] .bits64 input with
     | some (size, entries) =>
-      relocDecls input .bits64 size entries (fun _ => none) isArrayed
+      relocDecls [input] input .bits64 size entries (fun _ => none) isArrayed
     | none => none
   let tail := (decls true).map fun ds =>
     ds.drop ((decls false).getD []).length
@@ -340,6 +342,40 @@ def member (name : String) (value : Value) : Member :=
     && has ("def targets64 (d : Outer) : Array Target :=\n" ++
       "  #[.string d.label] ++ optBlock Inner.block64 d.inner")
     && has "def tableIndex : Nat := 3"
+
+/-! ## Chains -/
+
+-- A struct with extensions: its chain is filled in from its `chain` field, its
+-- links each by its own encoder, table and targets, and walked by each one's
+-- walk, each table before its own.
+#guard
+  let wgsl := struct "WGPUWGSL" "WGSL" .extension
+    [member "code" (.string false)] (sType := some ⟨"WGPUSType_WGSL", "wgsl"⟩)
+  let input := { struct "WGPUModule" "Module" .extensible
+    [member "label" (.string false)] with extensions := #[wgsl.names] }
+  let entries := (structEntries [wgsl, input] .bits64 input).map (·.2)
+  let decls := match structEntries [wgsl, input] .bits64 input with
+    | some (size, entries) =>
+      (relocDecls [wgsl, input] input .bits64 size entries
+        (fun n => if n == wgsl.names then some 2 else none) false).getD []
+    | none => []
+  let walks := match structEntries [wgsl, input] .bits64 input with
+    | some (size, entries) => walkDecls input .bits64 size entries 3 false
+    | none => []
+  let printed := "\n".intercalate (decls ++ walks).flatten
+  let has (s : String) := (printed.splitOn s).length > 1
+  entries.map (·.head?.map (·.2.2)) == some (some (.pointer
+      (.chain input.names "d.chain")))
+    && has ("def targets64 (d : Module) : Array Target :=\n" ++
+      "  #[.chain (d.chain.map Module.chainLink64)]\n" ++
+      "  ++ targetsOfAll Module.chainTargets64 d.chain")
+    && has ("def chainLink64 : Chained → ByteArray × Nat\n" ++
+      "  | .wgsl x => (WGSL.encode64 x, WGSL.tableIndex)")
+    && has ("def chainTargets64 : Chained → Array Target\n" ++
+      "  | .wgsl x => WGSL.targets64 x")
+    && has "theorem chainLink64_isLink (c : Chained) :"
+    && has "theorem walk_chain64 {table : Nat}"
+    && has "Module.walk_chain64 (table := 3) (by decide)"
 
 /-! ## Walks -/
 
