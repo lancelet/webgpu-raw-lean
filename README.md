@@ -63,4 +63,28 @@ bindings prove, in Lean:
   and table's index, each typed as exactly its own: so the walk the proofs
   are of is the one C makes.
 
-Status: WIP: approximately 71% complete.
+## Performance
+
+What passing a struct to C costs, measured by `lake exe webgpu-raw-bench`
+(`WebGPURawBench.lean`), against C filling the same struct on the stack. In
+nanoseconds a struct, the fastest of five runs of a million, each including
+its loop's own cost (about 1 ns, within which C's figures mostly fall), on an
+AMD Ryzen AI 9 HX 370 (2026-11-05):
+
+| Struct              |   C | Lean: encoding | Lean: all a shim does |
+|---------------------|----:|---------------:|----------------------:|
+| Buffer descriptor   | 0.9 |           19.5 |                  24.2 |
+| Instance descriptor | 1.2 |           70.2 |                  78.2 |
+| Bind group layout   | 7.5 |          132.8 |                 147.7 |
+
+A buffer descriptor is a label and scalars; an instance descriptor, an array
+of enums and limits behind a pointer; a bind group layout, an array of four
+structs, each with structs nested by value.
+
+Encoding is the struct's bytes and its targets, its arrays and the structs it
+points to among them, each a block of bytes of its own; all a shim does adds C
+filling in its pointers, but not calling WebGPU. Most of the cost is in the
+blocks, each allocated, and in an array's targets, built through a list.
+Making the Lean value is not counted, as C's struct on the stack is free.
+
+Status: WIP: approximately 72% complete.

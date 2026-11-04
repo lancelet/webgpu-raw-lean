@@ -188,6 +188,14 @@ lean_exe «webgpu-raw-test» where
   root := `WebGPURawTest.Main
 
 /--
+The benchmark (`WebGPURawBench.lean`): how long the bindings take to pass a
+struct to C, against C filling it. Run with `lake exe webgpu-raw-bench`.
+-/
+lean_exe «webgpu-raw-bench» where
+  root         := `WebGPURawBench
+  moreLinkObjs := #[testHelpers, wgpuShim]
+
+/--
 The web self-test (`WebGPURawWebTest/SelfTest.lean`): Lake compiles it to C,
 which `web/build.sh` compiles to WebAssembly with the test helpers.
 -/

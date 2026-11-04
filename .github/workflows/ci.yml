@@ -116,6 +116,12 @@ jobs:
       - name: Reconfigure for the normal build
         run: lake build -R
 
+      # Not a build step: the benchmark, briefly, so that it keeps building and
+      # running. Its figures here mean little (a shared machine); run it
+      # yourself with `lake exe webgpu-raw-bench`.
+      - name: Run the benchmark briefly
+        run: lake exe webgpu-raw-bench 10000
+
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
   # web/emscripten-version (and cmake and make), then run web/build.sh. The
