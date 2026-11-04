@@ -518,6 +518,14 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let codes := kinds.map (·.2)
   let bytes := (tableBytes size codes).map toString
   let ps := pointers.flatMap fun (_, p) => pieces w p
+  -- An element's fields poked into an array's block, at its offset there.
+  let fields := entries.filter fun (_, _, i) => !i.isPointer
+  let intoPokes := fields.flatMap fun (o, k, i) =>
+    lineOrBroken 2 s!"let b := b.{pokeName w k i} (off + {o})"
+      [value i, "(by omega)"]
+  let usesD := fields.any fun (_, _, i) => (value i).contains "d."
+  let intoArg := if usesD then "d" else "_"
+  let proof := if fields.isEmpty then "_h" else "h"
   let body := piecesLines 2 ps
   let arg := if ps.isEmpty then "_" else "d"
   -- Only for the proofs: C reads the table, its bytes.
@@ -546,18 +554,32 @@ def relocDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
       s!"def block{n} (d : {t}) : Array Target :=",
       s!"  #[.block (encode{n} d)] ++ targets{n} d"]
   ] ++ if !isArrayed then [] else [
-    [s!"/-- An array of them, encoded in turn, on {on}. -/",
+    [s!"/-- `d` poked into `b` at `off`, as `encode{n}` lays it out. -/",
+      "@[inline]",
+      s!"def encodeInto{n} \{total : Nat} (b : Block total) (off : Nat)",
+      s!"    ({proof} : off + {size} ≤ total) ({intoArg} : {t}) :",
+      "    Block total :="]
+      ++ Encoders.indent 2 intoPokes ++ ["  b"],
+    [s!"/-- An array of them, encoded in turn into one block, on {on}. -/",
       "@[noinline, never_extract]",
       s!"def encodeAll{n} (xs : Array {t}) : ByteArray :=",
-      s!"  encodeAll {size} encode{n} xs"],
+      s!"  (go 0 (Block.fresh (xs.size * {size}))).1",
+      "where",
+      "  /-- Each element from the `i`th on, encoded into `b`. -/",
+      s!"  go (i : Nat) (b : Block (xs.size * {size})) :",
+      s!"      Block (xs.size * {size}) :=",
+      "    if h : i < xs.size then",
+      s!"      go (i + 1) (encodeInto{n} b (i * {size}) (by omega) xs[i])",
+      "    else b",
+      "  termination_by xs.size - i"],
     ["/-- An array of them is their size. -/",
       s!"theorem size_encodeAll{n} (xs : Array {t}) :",
       s!"    (encodeAll{n} xs).size = xs.size * {size} :=",
-      s!"  size_encodeAll {size} encode{n} size_encode{n} xs"],
+      s!"  (encodeAll{n}.go xs 0 (Block.fresh (xs.size * {size}))).2"],
     [s!"/-- What C fills in an array of them's pointers from on {on}. -/",
       "@[never_extract]",
       s!"def targetsAll{n} (xs : Array {t}) : Array Target :=",
-      s!"  (xs.toList.flatMap fun d => (targets{n} d).toList).toArray"],
+      s!"  targetsOfAll targets{n} xs"],
     [s!"/-- An array of them as a block on {on}, and its targets. -/",
       "@[never_extract]",
       s!"def array{n} (xs : Array {t}) : Array Target :=",
@@ -593,9 +615,9 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
   -- The checks, each on a line of its own if they do not fit on one.
   let fit := match sizes with
     | []  => lineOrBroken 2 "true" []
-    | [c] => lineOrBroken 2 "System.Platform.numBits = 64 ||" [c]
+    | [c] => lineOrBroken 2 "Width.is64 () ||" [c]
     | c :: cs =>
-      lineOrBroken 2 "System.Platform.numBits = 64 ||"
+      lineOrBroken 2 "Width.is64 () ||"
         ((("(" ++ c) :: cs).zipIdx.map fun (c, i) =>
           if i == cs.length then c ++ ")" else c ++ " &&")
   let t := s.names.lean
@@ -614,7 +636,7 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
       ["/-- What C fills in `d`'s pointers from on this target. -/",
         "@[inline]",
         s!"def toTargets (d : {t}) : Array Target :=",
-        "  if System.Platform.numBits = 64 then targets64 d else targets32 d"]]
+        "  if Width.is64 () then targets64 d else targets32 d"]]
     | none => []
   let decls := widthDecls s .bits64 size64 entries64
     ++ (relocs .bits64 size64 entries64).getD []
@@ -641,7 +663,7 @@ def structEncoders (structs tables : List Struct) (s : Struct) :
           "-/"]) ++
       ["@[inline]",
         s!"def toBytes (d : {t}) : ByteArray :=",
-        "  if System.Platform.numBits = 64 then encode64 d else encode32 d"]
+        "  if Width.is64 () then encode64 d else encode32 d"]
     ] ++ tableDecls
   pure (text s!"/-! ### `{t}` -/" ++ hardline ++ hardline
     ++ text s!"namespace {t}" ++ hardline ++ hardline
@@ -756,7 +778,7 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
       ++ statement s!"walk_encodeAll{n}" s!"(xs : Array {t})"
         [s!"    walk specs{n} {i} (encodeAll{n} xs).size",
           s!"      ((targetsAll{n} xs).toList ++ ts) = some ts := by",
-          s!"  rw [targetsAll{n}, List.toList_toArray]",
+          s!"  rw [targetsAll{n}, toList_targetsOfAll]",
           s!"  exact walk_elements getElem?_specs{n} (by decide) xs.toList",
           s!"    (fun d => (targets{n} d).toList) _",
           s!"    (by rw [size_encodeAll{n}, Array.length_toList])",
@@ -770,11 +792,16 @@ and its instance of `CStruct`: each declaration as its lines.
 def currentDecls (s : Struct) : List (List String) :=
   let t := s.names.lean
   -- By cases on the width, each case by its width's lemma.
+  -- (In the second, `h` makes the width `false`, which `Bool.false_eq_true`
+  -- turns from a condition into one `simp` can decide.)
   let cases (lemmas : List String) (each : String → String) :=
-    let simps := ", ".intercalate (lemmas ++ ["h", "↓reduceIte"])
-    ["  by_cases h : System.Platform.numBits = 64"]
-      ++ (["64", "32"].flatMap fun n =>
-        [s!"  · simp only [{simps}]", s!"    {each n}"])
+    let simps (more : List String) :=
+      let all := lemmas ++ ["h"] ++ more ++ ["↓reduceIte"]
+      let flat := s!"  · simp only [{", ".intercalate all}]"
+      if flat.length ≤ width then [flat]
+      else ["  · simp only ["] ++ Encoders.indent 6 (closed (fill 6 all))
+    ["  by_cases h : Width.is64 () = true"] ++ simps [] ++ [s!"    {each "64"}"]
+      ++ simps ["Bool.false_eq_true"] ++ [s!"    {each "32"}"]
   [
     ["/-- Its bytes are one struct, on this target. -/",
       s!"theorem size_toBytes (d : {t}) :",
@@ -835,23 +862,24 @@ def tablesDecls (spec : Lowered.Spec) : List Doc :=
           s!"some (objectsSpec {ptr}) := rfl"]]
   let current := Doc.lines ["/-- Every table on this target. -/", "@[inline]",
     "def currentTables : Array ByteArray :=",
-    "  if System.Platform.numBits = 64 then tables64 else tables32"]
+    "  if Width.is64 () then tables64 else tables32"]
   let tablesOf := Doc.lines [
     "/-- The tables on this target, and no others: what a shim takes. -/",
     "abbrev CurrentTablesOf := {ts : Array ByteArray // ts = currentTables}"]
   let currentSpecs := Doc.lines [
     "/-- Every table on this target, as the walk reads it. -/",
     "noncomputable def currentSpecs : Array Spec :=",
-    "  if System.Platform.numBits = 64 then specs64 else specs32"]
+    "  if Width.is64 () then specs64 else specs32"]
   let currentEq := Doc.lines [
     "/-- The tables C reads on this target are the tables the walk reads. -/",
     "theorem currentTables_eq :",
     "    currentTables.toList = currentSpecs.toList.map fun (size, relocs) =>",
     "      serialize size relocs := by",
-    "  by_cases h : System.Platform.numBits = 64",
+    "  by_cases h : Width.is64 () = true",
     "  · simp only [currentTables, currentSpecs, h, ↓reduceIte]",
     "    exact tables64_eq",
-    "  · simp only [currentTables, currentSpecs, h, ↓reduceIte]",
+    "  · simp only [currentTables, currentSpecs, h, Bool.false_eq_true,",
+    "      ↓reduceIte]",
     "    exact tables32_eq"]
   -- Each struct's index finds its tables, and its walk takes its targets.
   let proofs := tables.zipIdx.map fun (s, i) =>

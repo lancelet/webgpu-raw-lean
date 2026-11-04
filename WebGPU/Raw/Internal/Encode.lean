@@ -44,6 +44,15 @@ inductive Width where
 def Width.current : Width :=
   if System.Platform.numBits = 64 then .bits64 else .bits32
 
+/--
+Whether pointers are 8 bytes on the target the program runs on, as its C
+compiler knows it: so the choice between widths is made as the program
+compiles, and costs nothing as it runs. Never computed once, as a constant,
+which would make it a load.
+-/
+@[never_extract, extern c inline "(sizeof(void *) == 8)"]
+opaque Width.is64 : Unit → Bool
+
 /-- The bytes in a pointer or `size_t`. -/
 def Width.bytes : Width → Nat
   | .bits32 => 4
@@ -313,39 +322,8 @@ theorem Block.val_pokeF64 {size : Nat} (b : Block size) (offset : Nat)
 /-! ## Arrays
 
 An array's elements, encoded one after another: what a pointer to the
-elements of a C array points to. -/
-
-/--
-Each element of `xs` encoded by `f`, of `size` bytes, one after another: an
-array of structs.
--/
-@[inline]
-def encodeAll {α : Type} (size : Nat) (f : α → ByteArray) (xs : Array α) :
-    ByteArray :=
-  xs.foldl (fun bytes x => bytes ++ f x)
-    (ByteArray.emptyWithCapacity (xs.size * size))
-
-/-- An array of structs is its elements' size. -/
-theorem size_encodeAll {α : Type} (size : Nat) (f : α → ByteArray)
-    (hf : ∀ x, (f x).size = size) (xs : Array α) :
-    (encodeAll size f xs).size = xs.size * size := by
-  rw [encodeAll, ← Array.foldl_toList, ← Array.length_toList]
-  -- Each element adds its size to what is there.
-  have : ∀ (l : List α) (b : ByteArray),
-      (l.foldl (fun bytes x => bytes ++ f x) b).size
-        = b.size + l.length * size := by
-    intro l
-    induction l with
-    | nil => simp
-    | cons x l ih =>
-      intro b
-      simp only [List.foldl_cons, ih, ByteArray.size_append, hf,
-        List.length_cons]
-      rw [Nat.succ_mul]
-      omega
-  rw [this]
-  simp only [ByteArray.size, ByteArray.emptyWithCapacity]
-  exact Nat.zero_add _
+elements of a C array points to. An array of structs is encoded by its
+struct's generated `encodeAll64`, each element poked into one block. -/
 
 /--
 Each element of `xs`, as the `UInt32` that `f` gives, 4 bytes, one after

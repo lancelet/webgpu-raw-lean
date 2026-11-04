@@ -297,6 +297,30 @@ def objectsBlock {α : Type} (ptr : Nat) (xs : Array α) : ByteArray :=
 def objectsOf {α : Type} (g : α → Object) (xs : Array α) : Array Target :=
   xs.map fun x => .object (g x)
 
+/--
+An array's elements' targets, each element's in turn, appended to `init`: no
+list built.
+-/
+@[inline]
+def targetsOfAll {α : Type} (f : α → Array Target) (xs : Array α) :
+    Array Target :=
+  xs.foldl (fun acc x => acc ++ f x) (Array.emptyWithCapacity xs.size)
+
+/-- They are each element's targets, in turn. -/
+theorem toList_targetsOfAll {α : Type} (f : α → Array Target) (xs : Array α) :
+    (targetsOfAll f xs).toList = xs.toList.flatMap fun x => (f x).toList := by
+  rw [targetsOfAll, ← Array.foldl_toList]
+  -- Each element appends its own to what is there.
+  have : ∀ (l : List α) (acc : Array Target),
+      (l.foldl (fun acc x => acc ++ f x) acc).toList
+        = acc.toList ++ l.flatMap fun x => (f x).toList := by
+    intro l
+    induction l with
+    | nil => simp
+    | cons x l ih => intro acc; simp [ih, List.append_assoc]
+  rw [this]
+  simp [Array.emptyWithCapacity]
+
 /-- An array of enums takes no targets. -/
 theorem walk_words {specs : Array Spec} {table : Nat}
     (h : specs[table]? = some wordsSpec) {α : Type} (f : α → UInt32)
