@@ -26,8 +26,9 @@ Lean through elan as usual. Then, from the repository root:
 The build writes the page and its program to `.lake/web/site/`. To open the
 page, serve that directory (a browser will not load WebAssembly from a `file:`
 URL) with `node web/serve.mjs`, then open http://localhost:8000/.
-`web/check-page.sh` loads it in headless Chrome or Chromium, and passes if it
-reports that all checks passed; CI runs both checks.
+`web/check-page.sh` loads it in headless Chrome or Chromium (with Node 22 or
+later, for its WebSocket), and passes if it reports that all checks passed;
+CI runs both checks.
 
 ## What it does
 
@@ -81,9 +82,18 @@ natively, where wgpu-native calls back during the request.
   or an error a callback the browser runs raises (`docs/Safety.md`), ends the
   program at once only when no other request is pending; otherwise it ends
   once those callbacks have run, which they still do.
+- **A device's own callbacks keep nothing alive.** Its device-lost and
+  uncaptured-error callbacks are not requests: a program waiting only for
+  them ends first, unless it keeps itself alive meanwhile (the self-test
+  does, by `emscripten_runtime_keepalive_push`).
+- **In headless Chrome, a device's uncaptured error reached its callback
+  only while a request was pending** (observed, not documented): the
+  self-test keeps one pending, the queue's `onSubmittedWorkDone`.
 
 The self-test (`WebGPURawWebTest/SelfTest.lean`) is written this way: in a
-browser it finishes in `requestAdapter`'s callback.
+browser it goes on in `requestAdapter`'s callback, then, with an adapter,
+through a device's (`WebGPURawWebTest/Device.lean`), and finishes in the
+last.
 
 ## What to know
 

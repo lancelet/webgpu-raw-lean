@@ -42,12 +42,15 @@ def device? (wgpu : Instance) (adapter : Adapter)
   wgpu.processEvents
   found.get
 
-/-- A buffer descriptor C refuses: mapped at creation, of 3 bytes, not 4. -/
+/--
+A buffer descriptor WebGPU refuses, a validation error: mapped both to read
+and to write. (Not one mapped at creation of a size not a multiple of 4,
+which wgpu-native refuses so, but a browser by an exception in the call.)
+-/
 def badBuffer : BufferDescriptor := {
-  label            := "bad"
-  usage            := ⟨0x8⟩
-  size             := 3
-  mappedAtCreation := true
+  label := "bad"
+  usage := .mapRead ||| .mapWrite
+  size  := 4
 }
 
 /--

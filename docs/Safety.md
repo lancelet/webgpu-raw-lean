@@ -298,9 +298,11 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   event loop once `main` has returned: the program is kept alive while a
   request is pending, and ends when a callback calls `IO.Process.exit`, or,
   once the last pending callback returns without exiting, with `main`'s code
-  (`web/README.md`). *Checked by:* test: in a browser, the self-test
-  finishes in `requestAdapter`'s callback, and `main` returns 1, so the page
-  fails if the callback does not run, or does not end the program.
+  (`web/README.md`). A device's own callbacks are not requests, and keep
+  nothing alive. *Checked by:* test: in a browser, the self-test goes on in
+  `requestAdapter`'s callback, and through a device's, kept alive meanwhile,
+  to the last, which ends it; `main` returns 1, so the page fails if a
+  callback does not run, or the last does not end the program.
 - **A string C passes a callback is copied at once** into a new Lean string,
   as it is valid only during the callback: valid UTF-8, each invalid byte
   U+FFFD; sized, or NUL-terminated (`WGPU_STRLEN`); the null view `""`.
@@ -321,7 +323,9 @@ their own (`WebGPURawTest/Internal/Family.lean`), natively and on the web,
 a closure filled in among them; and a device's, natively, where there is an
 adapter, as in CI on every OS (on Linux, Mesa's software one, lavapipe)
 (`WebGPURawTest/Internal/Device.lean`): its callbacks, mapping a buffer, a
-queue's work done, and an error scope.
+queue's work done, and an error scope; and in a browser, as in CI's
+headless Chrome (`WebGPURawWebTest/Device.lean`): its callbacks run by the
+event loop, its loss by `destroy` once, and its family's release.
 
 - **A family keeps its closures while anything keeps it, and releases them
   exactly once, when the last thing is gone**: its maker, and each Lean

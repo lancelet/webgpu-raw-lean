@@ -4,6 +4,7 @@ import WebGPURawTest.Internal.Callback
 import WebGPURawTest.Internal.Family
 import WebGPURawTest.Internal.Encode
 import WebGPURawTest.Internal.Reloc
+import WebGPURawWebTest.Device
 
 /-!
 # The web self-test
@@ -170,7 +171,9 @@ def main : IO UInt32 := do
   -- In a browser, an adapter is requested, and the program goes on in its
   -- callback, which the browser runs from its event loop once `main` has
   -- returned: the program is kept alive while the request is pending, and
-  -- the callback ends it (`web/README.md`). Elsewhere it ends here.
+  -- the callbacks end it (`web/README.md`). With an adapter, a device's
+  -- checks go on in callbacks too (`WebGPURawWebTest/Device.lean`).
+  -- Elsewhere it ends here.
   if WebGPURawWebTest.hasWebGPU () then
     let wgpu ← WebGPU.Raw.createInstance none
     let _ ← wgpu.requestAdapter none .allowSpontaneous
@@ -182,9 +185,15 @@ def main : IO UInt32 := do
             (a success: {success})"
         else s!"FAIL requestAdapter called back with an adapter \
           {adapter.isSome}, a success {success}: {message}")
-        IO.Process.exit (← WebGPURawWebTest.finish
-          (failures + if ok then 0 else 1)).toUInt8
-    -- The program ends with this once the callback returns, if it does not
+        let finish (lines : List String) : IO Unit := do
+          lines.forM IO.println
+          let more := lines.filter (·.startsWith "FAIL") |>.length
+          IO.Process.exit (← WebGPURawWebTest.finish
+            (failures + more + if ok then 0 else 1)).toUInt8
+        match adapter with
+        | some adapter => WebGPURawWebTest.Device.run wgpu adapter finish
+        | none => finish ["note: no adapter here, so no device checked"]
+    -- The program ends with this once the callbacks return, if they do not
     -- end it: so a callback that forgets to fails.
     return 1
   else

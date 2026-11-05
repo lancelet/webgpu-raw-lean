@@ -224,6 +224,7 @@ export app
   echo WebGPURawWebTest.lean
   echo WebGPURawTest/Internal/Bytes.lean
   echo WebGPURawTest/Internal/Callback.lean
+  echo WebGPURawTest/Internal/Device.lean
   echo WebGPURawTest/Internal/Family.lean
   echo WebGPURawTest/Internal/Encode.lean
   echo WebGPURawTest/Internal/Reloc.lean

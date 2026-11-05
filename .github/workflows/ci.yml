@@ -207,8 +207,11 @@ jobs:
       - name: Run the self-test under Node
         run: node .lake/web/site/webgpu-raw-web-test.js
 
-      # The page around it, in headless Chrome (installed on GitHub's runners).
+      # The page around it, in headless Chrome (installed on GitHub's runners),
+      # whose software adapter (SwiftShader) the device checks require here.
       - name: Check the page in a browser
+        env:
+          WEBGPU_RAW_REQUIRE_ADAPTER: 1
         run: web/check-page.sh
 
       # CI only: the built site, for the pages job to publish.
