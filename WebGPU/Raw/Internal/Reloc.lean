@@ -442,6 +442,35 @@ theorem toList_targetsOfAll {α : Type} (f : α → Array Target) (xs : Array α
   simp [Array.emptyWithCapacity]
 
 /--
+An empty chain's targets: a constant, made once. A literal in `chainTargetsOf`
+would be built anew at each call, as it is inlined into the makers of
+targets, which are `@[never_extract]`; C walks no link of it, nor writes.
+-/
+def emptyChainTargets : Array Target := #[.chain #[]]
+
+/--
+A chain's targets: the chain, each link by `link`, then each link's own
+targets, by `targets`. Most chains are empty, whose targets are a constant,
+`emptyChainTargets`: no array built.
+-/
+@[inline]
+def chainTargetsOf {α : Type} (link : α → ByteArray × Nat)
+    (targets : α → Array Target) (chain : Array α) : Array Target :=
+  if chain.isEmpty then emptyChainTargets
+  else #[.chain (chain.map link)] ++ targetsOfAll targets chain
+
+/-- They are the chain's, then its links' targets, empty or not. -/
+@[simp]
+theorem chainTargetsOf_eq {α : Type} (link : α → ByteArray × Nat)
+    (targets : α → Array Target) (chain : Array α) :
+    chainTargetsOf link targets chain
+      = #[.chain (chain.map link)] ++ targetsOfAll targets chain := by
+  unfold chainTargetsOf
+  split
+  · simp_all [Array.isEmpty_iff, targetsOfAll, emptyChainTargets]
+  · rfl
+
+/--
 A chain of links, each a link by its own table and taking exactly its own
 targets, takes all theirs, in turn: the targets of a struct's chain, each
 element by its own table.

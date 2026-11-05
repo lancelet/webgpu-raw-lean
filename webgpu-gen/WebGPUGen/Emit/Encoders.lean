@@ -469,9 +469,8 @@ inductive Piece where
 /-- What C fills a pointer in from, on a width. -/
 def pieces (w : Width) : Pointer → List Piece
   | .next                       => []
-  | .chain names e              =>
-    [.target s!".chain ({e}.map {names.lean}.chainLink{n})",
-      .targets s!"targetsOfAll {names.lean}.chainTargets{n} {e}"]
+  | .chain _ e                  =>
+    [.targets s!"chainTargetsOf chainLink{n} chainTargets{n} {e}"]
   | .string e                   => [.target s!".string {e}"]
   | .optString e                => [.target s!".optString {e}"]
   | .object names e             => [.target s!".object ({object names} {e})"]
@@ -796,10 +795,12 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
       some [s!"{names.lean}.array{n}", s!"{names.lean}.walk_encodeAll{n}"]
     | _                                    => none).flatten
   -- The chains' lemmas: each walks its links by its own table, before this.
-  let chainLemmas := entries.filterMap fun (_, _, it) => match it with
+  -- (After `chainTargetsOf_eq`, which states a chain's targets as they walk.)
+  let chainLemmas := entries.flatMap fun (_, _, it) => match it with
     | .pointer (.chain names _) =>
-      some s!"{names.lean}.walk_chain{n} (table := {i}) (by decide)"
-    | _ => none
+      ["chainTargetsOf_eq",
+        s!"{names.lean}.walk_chain{n} (table := {i}) (by decide)"]
+    | _ => []
   let relocs := entries.filter fun (_, _, it) => it.isPointer
   let lemmas := ["element", s!"relocs{n}", s!"targets{n}"]
     ++ (if relocs.isEmpty then [] else ["step"])

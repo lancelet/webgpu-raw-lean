@@ -367,14 +367,15 @@ def member (name : String) (value : Value) : Member :=
   entries.map (·.head?.map (·.2.2)) == some (some (.pointer
       (.chain input.names "d.chain")))
     && has ("def targets64 (d : Module) : Array Target :=\n" ++
-      "  #[.chain (d.chain.map Module.chainLink64)]\n" ++
-      "  ++ targetsOfAll Module.chainTargets64 d.chain")
+      "  chainTargetsOf chainLink64 chainTargets64 d.chain " ++
+      "++ #[.string d.label]")
     && has ("def chainLink64 : Chained → ByteArray × Nat\n" ++
       "  | .wgsl x => (WGSL.encode64 x, WGSL.tableIndex)")
     && has ("def chainTargets64 : Chained → Array Target\n" ++
       "  | .wgsl x => WGSL.targets64 x")
     && has "theorem chainLink64_isLink (c : Chained) :"
     && has "theorem walk_chain64 {table : Nat}"
+    && has "chainTargetsOf_eq,"
     && has "Module.walk_chain64 (table := 3) (by decide)"
 
 /-! ## Callbacks kept -/
