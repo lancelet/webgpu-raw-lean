@@ -3,7 +3,8 @@
 #
 # To build yourself, do what each step's comment says, in a POSIX shell (on
 # Windows, Git Bash). Nothing here needs a GPU: the tests create an instance and
-# call functions on it, which needs none.
+# call functions on it, which needs none; and they test a device where there
+# is an adapter, which on Linux Mesa's software Vulkan (lavapipe) gives.
 name: CI
 
 on:
@@ -30,6 +31,16 @@ jobs:
       - name: Check the shell scripts
         if: runner.os == 'Linux'
         run: shellcheck vendor/*/fetch.sh scripts/*.sh
+
+      # On Linux, a GPU in software, Mesa's lavapipe, through the Vulkan loader:
+      # CI's runners have none. With it, the tests require an adapter, rather
+      # than skip a device's checks where there is none.
+      - name: Install a software GPU (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mesa-vulkan-drivers libvulkan1
+          echo "WEBGPU_RAW_REQUIRE_ADAPTER=1" >> "$GITHUB_ENV"
 
       # Fetch the prebuilt wgpu-native release for this platform, into
       # vendor/wgpu-native/<platform>/.

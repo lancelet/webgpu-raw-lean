@@ -135,6 +135,90 @@ def defaulted (wgpu : Instance) (adapter : Adapter) : IO String := do
     pure (problemUnless (e.startsWith "WebGPU validation error: ")
       s!"raised {repr e}")
 
+/--
+Run `wgpu`'s events until `done` holds, at most `tries` times: whether it did.
+wgpu-native completes a buffer's map, or a queue's work, only when events
+are processed after the GPU is done.
+-/
+def pumpUntil (wgpu : Instance) (done : IO Bool) (tries : Nat := 1000) :
+    IO Bool := do
+  for _ in [0:tries] do
+    if ← done then return true
+    wgpu.processEvents
+  done
+
+/-- A buffer of 4 bytes of `device`, to map for reading. -/
+def readable (device : Device) : IO (Option Buffer) :=
+  device.createBuffer { size := 4, usage := .mapRead ||| .copyDst }
+
+/-- A buffer maps, its callback called once, a success, by `processEvents`. -/
+def mapped (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let some buffer ← readable device | pure "no buffer"
+    let calls ← IO.mkRef #[]
+    let _ ← buffer.mapAsync .read 0 4 .allowProcessEvents fun status _ =>
+      calls.modify (·.push (status matches .ok .success))
+    let done ← pumpUntil wgpu (return !(← calls.get).isEmpty)
+    let got ← calls.get
+    pure (problemUnless (done && got == #[true]) s!"called back {got}")
+
+/--
+An error a buffer's map callback raises is the error of the call that ran it:
+`mapAsync` itself, as wgpu-native completes a map with nothing pending on
+the buffer in the call, or the `processEvents` that does. Never the end of
+the program, as every call is bracketed.
+-/
+def mapRaised (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let some buffer ← readable device | pure "no buffer"
+    let e ← errorOf do
+      let _ ← buffer.mapAsync .read 0 4 .allowProcessEvents fun _ _ =>
+        throw (IO.userError "map refused")
+      let _ ← pumpUntil wgpu (return false) (tries := 100)
+    pure (problemUnless (e == "map refused") s!"raised {repr e}")
+
+/-- A queue calls back, once, a success, when its work is done. -/
+def workDone (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let calls ← IO.mkRef #[]
+    let _ ← (← device.getQueue).onSubmittedWorkDone .allowProcessEvents
+      fun status _ => calls.modify (·.push (status matches .ok .success))
+    let done ← pumpUntil wgpu (return !(← calls.get).isEmpty)
+    let got ← calls.get
+    pure (problemUnless (done && got == #[true]) s!"called back {got}")
+
+/--
+An error scope catches a validation error, which its pop gives its callback,
+and which the uncaptured-error callback then is not given.
+-/
+def inScope (wgpu : Instance) (adapter : Adapter) : IO String := do
+  let uncaptured ← IO.mkRef 0
+  let device ← device? wgpu adapter (some {
+    uncapturedErrorCallbackInfo := some {
+      callback := fun _ _ => uncaptured.modify (· + 1)
+    }
+  })
+  match device with
+  | .error e => pure e
+  | .ok device =>
+    device.pushErrorScope .validation
+    let _ ← device.createBuffer badBuffer
+    let popped ← IO.mkRef #[]
+    let _ ← device.popErrorScope .allowProcessEvents fun status type _ =>
+      popped.modify (·.push
+        (status matches .ok .success, type matches .ok .validation))
+    let done ← pumpUntil wgpu (return !(← popped.get).isEmpty)
+    let got ← popped.get
+    let missed ← uncaptured.get
+    pure (problemUnless (done && got == #[(true, true)] && missed == 0)
+      s!"popped {got}; uncaptured {missed}")
+
 /-- A device requested with no descriptor, which is given one of defaults. -/
 def noDescriptor (wgpu : Instance) (adapter : Adapter) : IO String := do
   match ← device? wgpu adapter none with
@@ -157,7 +241,12 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
     ("an error its uncaptured-error closure raises, the call's",
       raised wgpu adapter),
     ("with no such closure, the bindings' own handler raising it",
-      defaulted wgpu adapter)
+      defaulted wgpu adapter),
+    ("a buffer mapped, by processEvents", mapped wgpu adapter),
+    ("an error a map callback raises, the error of the call that ran it",
+      mapRaised wgpu adapter),
+    ("a queue's work done, by processEvents", workDone wgpu adapter),
+    ("an error scope catching a validation error", inScope wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

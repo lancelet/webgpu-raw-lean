@@ -97,7 +97,11 @@ def main (args : List String) : IO Unit := do
       throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
   -- And a device, if there is an adapter, its callbacks kept by its family.
   match ← WebGPURawTest.Internal.Device.checks wgpu with
-  | none => IO.println "note: no adapter here, so no device checked"
+  | none =>
+    -- Where a software adapter is installed (CI's Linux), there must be one.
+    if (← IO.getEnv "WEBGPU_RAW_REQUIRE_ADAPTER").isSome then
+      throw (IO.userError "FAIL: no adapter, though one is required")
+    IO.println "note: no adapter here, so no device checked"
   | some checks =>
     for (what, problem) in checks do
       unless problem.isEmpty do

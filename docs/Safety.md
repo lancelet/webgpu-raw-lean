@@ -279,8 +279,12 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   the program. *Checked by:* test,
   of the shims printed; under Node, where `requestAdapter`'s callback runs
   in `processEvents` (a regression test: it ran outside every call, ending
-  the program); and natively, with an adapter, where an uncaptured-error
-  closure's error, and the bindings' own handler's, are `createBuffer`'s.
+  the program); and natively, with an adapter (in CI, on Linux, lavapipe),
+  where an uncaptured-error closure's error, and the bindings' own
+  handler's, are `createBuffer`'s, and a map callback's, the call's that
+  ran it (wgpu-native completes a map with nothing pending on the buffer in
+  `mapAsync` itself). That `unmap` and `destroy` run a pending map's
+  callback, aborted, is not tested: a map is rarely still pending then.
 - **An error a callback raises outside every call ends the program**, printed,
   as an error `main` raises does: a callback the browser's event loop runs,
   or one a finalizer runs outside every call, has no caller to raise it to.
@@ -315,7 +319,9 @@ which a shim taking a struct that keeps callbacks makes: a device
 descriptor, which `Adapter.requestDevice` takes. The families are tested on
 their own (`WebGPURawTest/Internal/Family.lean`), natively and on the web,
 a closure filled in among them; and a device's, natively, where there is an
-adapter (`WebGPURawTest/Internal/Device.lean`).
+adapter, as in CI on Linux, Mesa's software one, lavapipe
+(`WebGPURawTest/Internal/Device.lean`): its callbacks, mapping a buffer, a
+queue's work done, and an error scope.
 
 - **A family keeps its closures while anything keeps it, and releases them
   exactly once, when the last thing is gone**: its maker, and each Lean
