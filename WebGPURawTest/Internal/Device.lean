@@ -525,8 +525,9 @@ def triangle (wgpu : Instance) (adapter : Adapter) : IO String := do
 
 /--
 An adapter's limits, read, are the adapter's: a device that requires them
-all (passed to C by the encoder, its layout proved) has each, read back; so
-each side has its words in the same order. Its features (some its
+all has its `maxBindGroups` (not every limit: Direct3D's may differ), read
+back. (That the words are in the same order on each side, the encoding
+checks show, of every member.) Its features (some its
 implementation's own, their codes kept), and those of a device of it, read;
 its information, of a backend and type known, and a device named. The
 instance's limits read. What wgpu-native leaves unimplemented, an IO error.
@@ -538,9 +539,6 @@ def supported (wgpu : Instance) (adapter : Adapter) : IO String := do
   | .error e => pure e
   | .ok device =>
     let (deviceStatus, deviceLimits) ← device.getLimits
-    -- Each word, compared: what each side has of each member.
-    let (_, words) ← Internal.Adapter.getLimits adapter
-    let (_, deviceWords) ← Internal.Device.getLimits device
     let adapterFeatures ← adapter.getFeatures
     let deviceFeatures ← device.getFeatures
     let (infoStatus, info) ← adapter.getInfo
@@ -555,7 +553,7 @@ def supported (wgpu : Instance) (adapter : Adapter) : IO String := do
       | .ok f => CEnum.toC f
       | .error c => c
     pure (problemUnless (success status && (4 ≤ wanted && wanted ≤ 1024)
-        && success deviceStatus && deviceWords == words
+        && success deviceStatus && deviceLimits.maxBindGroups == wanted
         && !adapterFeatures.isEmpty
         && (deviceFeatures.map code).all (adapterFeatures.map code).contains
         && success infoStatus && info.backendType matches .ok _

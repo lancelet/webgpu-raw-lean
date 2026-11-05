@@ -4,6 +4,7 @@
 #include <string.h>
 #include <lean/lean.h>
 #include <webgpu/webgpu.h>
+#include "objects.h"
 
 // The bytes of `size` bytes at `data`, as a new Lean byte array.
 static lean_obj_res lean_wgpu_test_bytes(void const * data, size_t size) {
@@ -106,4 +107,13 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_device_descriptor(
                 lean_WGPUUncapturedErrorCallback_default_address(lean_box(0));
     }
     return lean_wgpu_test_bytes(&descriptor, sizeof descriptor);
+}
+
+// The words of a `WGPULimits`, as Lean's `Limits.ofWords` takes them, by the
+// generated reader, of the limits encoded as `bytes` (borrowed): its layout,
+// as the encoder writes it.
+LEAN_EXPORT lean_obj_res lean_wgpu_test_limits_words(b_lean_obj_arg bytes) {
+    WGPULimits limits;
+    memcpy(&limits, lean_sarray_cptr(bytes), sizeof limits);
+    return lean_wgpu_Limits_words(&limits);
 }

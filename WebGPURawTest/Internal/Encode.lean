@@ -49,6 +49,23 @@ opaque cDepthStencilState : Unit → ByteArray
 @[extern "lean_wgpu_test_shader_source_wgsl"]
 opaque cShaderSourceWGSL (codeLength : USize) : ByteArray
 
+/--
+The words C's reader gives of limits encoded as `bytes` (`descriptors.c`), as
+`Limits.ofWords` takes them.
+-/
+@[extern "lean_wgpu_test_limits_words"]
+opaque cLimitsWords (bytes : @& ByteArray) : Array UInt64
+
+/--
+Limits of a distinct value in each member, `k + 1` for the `k`th, as
+`Limits.ofWords` takes them: encoded (its layout proved), and read by C's
+reader of each member by name, they are the same words, in the same order.
+So the generated reader and `ofWords` agree on every member.
+-/
+def limitsWordsAgree : Bool :=
+  let words := (Array.range 32).map (·.toUInt64 + 1)
+  cLimitsWords (Limits.toBytes (Limits.ofWords words)) == words
+
 /-- Instance limits C fills in, with this count. -/
 @[extern "lean_wgpu_test_instance_limits"]
 opaque cInstanceLimits (timedWaitAnyMaxCount : USize) : ByteArray
@@ -105,6 +122,8 @@ def same (a b : ByteArray) : Bool :=
 /-- Each check: what it is, and whether it held. -/
 @[noinline]
 def checks : List (String × Bool) := [
+  ("limits read by C, member by member, as ofWords takes them",
+    limitsWordsAgree),
   ("a buffer descriptor encodes as C lays it out",
     same (BufferDescriptor.toBytes descriptor)
       (cBufferDescriptor 0x28 0x10000 1 8)),

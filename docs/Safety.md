@@ -115,12 +115,13 @@ it could call unimplemented.)
   (`lean_wgpu_Limits_words`), and made of them by Lean the generator writes
   from the same members (`Limits.ofWords`): so neither side needs the
   other's layout, and C names each member, which the C compiler checks.
-  *Checked by:* test, with an adapter: the limits a device requires (all
-  the adapter's, passed by the encoder, its layout proved) read back from
-  it, each word the adapter's, which a swap of two members that differ
-  fails; features, information and the instance's limits read, natively and
-  in a browser; what wgpu-native leaves unimplemented, an IO error
-  natively, read in a browser.
+  *Checked by:* test: limits of a distinct value in each member, encoded
+  (the layout proved) and read by the generated reader, are the words
+  `ofWords` took, which a swap of any two fails, natively and on the web;
+  with an adapter, a device that requires the adapter's limits has its
+  `maxBindGroups`; features, information and the instance's limits read,
+  natively and in a browser; what wgpu-native leaves unimplemented, an IO
+  error natively, read in a browser.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
