@@ -9,6 +9,7 @@ public import WebGPU.Raw.Structs
 public import WebGPU.Raw.Functions
 public import WebGPU.Raw.Wait
 public import WebGPU.Raw.Mapped
+public import WebGPU.Raw.Queries
 
 /-!
 # WebGPU, raw

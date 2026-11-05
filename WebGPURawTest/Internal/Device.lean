@@ -426,6 +426,52 @@ def mappedMemory (wgpu : Instance) (adapter : Adapter) : IO String := do
       s!"mapped {mapped}, {back.toList}; {repr outside}; {repr misaligned}; \
         {repr tooFar}; copied {copied}, {through.toList}")
 
+/-! ### What is supported -/
+
+/--
+An adapter's limits, read, are the adapter's: a device that requires them
+all (passed to C by the encoder, its layout proved) has each, read back; so
+each side has its words in the same order. Its features (some its
+implementation's own, their codes kept), and those of a device of it, read;
+its information, of a backend and type known, and a device named. The
+instance's limits read. What wgpu-native leaves unimplemented, an IO error.
+-/
+def supported (wgpu : Instance) (adapter : Adapter) : IO String := do
+  let (status, limits) ← adapter.getLimits
+  let wanted := limits.maxBindGroups
+  match ← device? wgpu adapter (some { requiredLimits := some limits }) with
+  | .error e => pure e
+  | .ok device =>
+    let (deviceStatus, deviceLimits) ← device.getLimits
+    -- Each word, compared: what each side has of each member.
+    let (_, words) ← Internal.Adapter.getLimits adapter
+    let (_, deviceWords) ← Internal.Device.getLimits device
+    let adapterFeatures ← adapter.getFeatures
+    let deviceFeatures ← device.getFeatures
+    let (infoStatus, info) ← adapter.getInfo
+    let (instanceStatus, _) ← getInstanceLimits
+    let unimplemented ← [
+      errorOf getInstanceFeatures,
+      errorOf wgpu.getWGSLLanguageFeatures,
+      errorOf device.getAdapterInfo
+    ].mapM id
+    let success (s : Except UInt32 Status) := s matches .ok .success
+    let code : Except UInt32 FeatureName → UInt32
+      | .ok f => CEnum.toC f
+      | .error c => c
+    pure (problemUnless (success status && (4 ≤ wanted && wanted ≤ 1024)
+        && success deviceStatus && deviceWords == words
+        && !adapterFeatures.isEmpty
+        && (deviceFeatures.map code).all (adapterFeatures.map code).contains
+        && success infoStatus && info.backendType matches .ok _
+        && info.adapterType matches .ok _ && !info.device.isEmpty
+        && success instanceStatus
+        && unimplemented.all (·.endsWith "not implemented by wgpu-native"))
+      s!"limits {repr status |>.pretty} {wanted}, device's \
+        {repr deviceStatus |>.pretty} {deviceLimits.maxBindGroups}; \
+        features {adapterFeatures.size}, {deviceFeatures.size}; info \
+        {repr infoStatus |>.pretty} {info.device}; {unimplemented}")
+
 /--
 `setImmediates`, which Dawn lacks, reaches wgpu-native, which the native
 build says it is built against: whatever wgpu-native makes of it (with no
@@ -495,7 +541,8 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
       written wgpu adapter),
     ("setImmediates, which Dawn lacks, called", immediates wgpu adapter),
     ("mapped memory read and written, by copies, within it",
-      mappedMemory wgpu adapter)
+      mappedMemory wgpu adapter),
+    ("limits, features and information read", supported wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

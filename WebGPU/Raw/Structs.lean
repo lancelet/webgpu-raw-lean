@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 3e49594 (clean)
-  Generated:        2026-11-05 12:23:21 UTC
+  Generator commit: 1eb4c97 (clean)
+  Generated:        2026-11-05 13:00:37 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -164,6 +164,13 @@ structure InstanceLimits where
   with `timeoutNS > 0`.
   -/
   timedWaitAnyMaxCount : UInt64 := 0
+
+/--
+`InstanceLimits` made of its members as C gives them, in order
+(`lean_wgpu_InstanceLimits_words`), each a word; its chain, if any, empty.
+-/
+def InstanceLimits.ofWords (words : Array UInt64) : InstanceLimits where
+  timedWaitAnyMaxCount := words.getD 0 0
 
 structure MultisampleState where
   count                  : UInt32 := 1
@@ -719,6 +726,44 @@ structure Limits where
   maxImmediateSize                          : UInt32 := limitU32Undefined
   /-- Extensions chained to it (`nextInChain`), in order. -/
   chain : Array Limits.Chained := #[]
+
+/--
+`Limits` made of its members as C gives them, in order
+(`lean_wgpu_Limits_words`), each a word; its chain, if any, empty.
+-/
+def Limits.ofWords (words : Array UInt64) : Limits where
+  maxTextureDimension1D                     := (words.getD 0 0).toUInt32
+  maxTextureDimension2D                     := (words.getD 1 0).toUInt32
+  maxTextureDimension3D                     := (words.getD 2 0).toUInt32
+  maxTextureArrayLayers                     := (words.getD 3 0).toUInt32
+  maxBindGroups                             := (words.getD 4 0).toUInt32
+  maxBindGroupsPlusVertexBuffers            := (words.getD 5 0).toUInt32
+  maxBindingsPerBindGroup                   := (words.getD 6 0).toUInt32
+  maxDynamicUniformBuffersPerPipelineLayout := (words.getD 7 0).toUInt32
+  maxDynamicStorageBuffersPerPipelineLayout := (words.getD 8 0).toUInt32
+  maxSampledTexturesPerShaderStage          := (words.getD 9 0).toUInt32
+  maxSamplersPerShaderStage                 := (words.getD 10 0).toUInt32
+  maxStorageBuffersPerShaderStage           := (words.getD 11 0).toUInt32
+  maxStorageTexturesPerShaderStage          := (words.getD 12 0).toUInt32
+  maxUniformBuffersPerShaderStage           := (words.getD 13 0).toUInt32
+  maxUniformBufferBindingSize               := words.getD 14 0
+  maxStorageBufferBindingSize               := words.getD 15 0
+  minUniformBufferOffsetAlignment           := (words.getD 16 0).toUInt32
+  minStorageBufferOffsetAlignment           := (words.getD 17 0).toUInt32
+  maxVertexBuffers                          := (words.getD 18 0).toUInt32
+  maxBufferSize                             := words.getD 19 0
+  maxVertexAttributes                       := (words.getD 20 0).toUInt32
+  maxVertexBufferArrayStride                := (words.getD 21 0).toUInt32
+  maxInterStageShaderVariables              := (words.getD 22 0).toUInt32
+  maxColorAttachments                       := (words.getD 23 0).toUInt32
+  maxColorAttachmentBytesPerSample          := (words.getD 24 0).toUInt32
+  maxComputeWorkgroupStorageSize            := (words.getD 25 0).toUInt32
+  maxComputeInvocationsPerWorkgroup         := (words.getD 26 0).toUInt32
+  maxComputeWorkgroupSizeX                  := (words.getD 27 0).toUInt32
+  maxComputeWorkgroupSizeY                  := (words.getD 28 0).toUInt32
+  maxComputeWorkgroupSizeZ                  := (words.getD 29 0).toUInt32
+  maxComputeWorkgroupsPerDimension          := (words.getD 30 0).toUInt32
+  maxImmediateSize                          := (words.getD 31 0).toUInt32
 
 structure RenderPassColorAttachment where
   /--

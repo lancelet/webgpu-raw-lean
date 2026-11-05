@@ -105,6 +105,22 @@ it could call unimplemented.)
   read mapping accepted; in a browser, a buffer not mapped, a range asked
   for again, and a write into a read mapping, refused. A buffer not mapped,
   natively: not checked.
+- **A struct C fills is given Lean as words and strings, copied** (written
+  by hand, `c/queries.c`): C fills one the shim declares, initialised as
+  upstream's `WGPU_*_INIT` says, its chain empty; the shim copies out what
+  Lean needs (strings by `lean_wgpu_string_of_view`), then frees the members
+  C allocated by the struct's `FreeMembers`, before the call returns. A
+  struct of integers alone (`Limits`, `InstanceLimits`) is given as its
+  members in order, each a word, by C the generator writes
+  (`lean_wgpu_Limits_words`), and made of them by Lean the generator writes
+  from the same members (`Limits.ofWords`): so neither side needs the
+  other's layout, and C names each member, which the C compiler checks.
+  *Checked by:* test, with an adapter: the limits a device requires (all
+  the adapter's, passed by the encoder, its layout proved) read back from
+  it, each word the adapter's, which a swap of two members that differ
+  fails; features, information and the instance's limits read, natively and
+  in a browser; what wgpu-native leaves unimplemented, an IO error
+  natively, read in a browser.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
@@ -554,9 +570,8 @@ Rules that later parts of the bindings must follow, decided in advance:
 - An `Option Float32` (upstream's `nullable_float32`) that is `none` is passed
   as NaN, and `some x` as `x`; NaN from C becomes `none`. So `some` of a NaN
   means `none` too, which C accepts: no float is invalid to pass.
-- A struct C fills in (one whose members C frees, as `SurfaceTexture` or
-  `Limits`) can be built in Lean but is never read as an input: the bindings
-  pass C zeroed memory for it, and read it back.
+- A struct C fills in (as `SurfaceTexture`) can be built in Lean but is never
+  read as an input: the bindings pass C memory for it, and read it back.
 
 [abi]: https://lean-lang.org/doc/reference/latest/Run-Time-Code/Foreign-Function-Interface/
 [repr]: https://lean-lang.org/doc/reference/latest/The-Type-System/Inductive-Types/

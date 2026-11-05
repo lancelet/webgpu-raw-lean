@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 3e49594 (clean)
-  Generated:        2026-11-05 12:23:21 UTC
+  Generator commit: 1eb4c97 (clean)
+  Generated:        2026-11-05 13:00:37 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -1300,4 +1300,174 @@ WGPUTextureView lean_wgpu_texture_view_unbox_option(b_lean_obj_arg option) {
         return NULL;
     }
     return lean_wgpu_texture_view_unbox(lean_ctor_get(option, 0));
+}
+
+// `WGPUInstanceLimits`'s members, in order, each a word: for Lean's
+// `InstanceLimits.ofWords`.
+lean_obj_res lean_wgpu_InstanceLimits_words(WGPUInstanceLimits const * s) {
+    lean_object * words = lean_alloc_array(1, 1);
+    lean_array_set_core(
+        words,
+        0,
+        lean_box_uint64((uint64_t)s->timedWaitAnyMaxCount)
+    );
+    return words;
+}
+
+// `WGPULimits`'s members, in order, each a word: for Lean's `Limits.ofWords`.
+lean_obj_res lean_wgpu_Limits_words(WGPULimits const * s) {
+    lean_object * words = lean_alloc_array(32, 32);
+    lean_array_set_core(
+        words,
+        0,
+        lean_box_uint64((uint64_t)s->maxTextureDimension1D)
+    );
+    lean_array_set_core(
+        words,
+        1,
+        lean_box_uint64((uint64_t)s->maxTextureDimension2D)
+    );
+    lean_array_set_core(
+        words,
+        2,
+        lean_box_uint64((uint64_t)s->maxTextureDimension3D)
+    );
+    lean_array_set_core(
+        words,
+        3,
+        lean_box_uint64((uint64_t)s->maxTextureArrayLayers)
+    );
+    lean_array_set_core(words, 4, lean_box_uint64((uint64_t)s->maxBindGroups));
+    lean_array_set_core(
+        words,
+        5,
+        lean_box_uint64((uint64_t)s->maxBindGroupsPlusVertexBuffers)
+    );
+    lean_array_set_core(
+        words,
+        6,
+        lean_box_uint64((uint64_t)s->maxBindingsPerBindGroup)
+    );
+    lean_array_set_core(
+        words,
+        7,
+        lean_box_uint64((uint64_t)s->maxDynamicUniformBuffersPerPipelineLayout)
+    );
+    lean_array_set_core(
+        words,
+        8,
+        lean_box_uint64((uint64_t)s->maxDynamicStorageBuffersPerPipelineLayout)
+    );
+    lean_array_set_core(
+        words,
+        9,
+        lean_box_uint64((uint64_t)s->maxSampledTexturesPerShaderStage)
+    );
+    lean_array_set_core(
+        words,
+        10,
+        lean_box_uint64((uint64_t)s->maxSamplersPerShaderStage)
+    );
+    lean_array_set_core(
+        words,
+        11,
+        lean_box_uint64((uint64_t)s->maxStorageBuffersPerShaderStage)
+    );
+    lean_array_set_core(
+        words,
+        12,
+        lean_box_uint64((uint64_t)s->maxStorageTexturesPerShaderStage)
+    );
+    lean_array_set_core(
+        words,
+        13,
+        lean_box_uint64((uint64_t)s->maxUniformBuffersPerShaderStage)
+    );
+    lean_array_set_core(
+        words,
+        14,
+        lean_box_uint64((uint64_t)s->maxUniformBufferBindingSize)
+    );
+    lean_array_set_core(
+        words,
+        15,
+        lean_box_uint64((uint64_t)s->maxStorageBufferBindingSize)
+    );
+    lean_array_set_core(
+        words,
+        16,
+        lean_box_uint64((uint64_t)s->minUniformBufferOffsetAlignment)
+    );
+    lean_array_set_core(
+        words,
+        17,
+        lean_box_uint64((uint64_t)s->minStorageBufferOffsetAlignment)
+    );
+    lean_array_set_core(
+        words,
+        18,
+        lean_box_uint64((uint64_t)s->maxVertexBuffers)
+    );
+    lean_array_set_core(words, 19, lean_box_uint64((uint64_t)s->maxBufferSize));
+    lean_array_set_core(
+        words,
+        20,
+        lean_box_uint64((uint64_t)s->maxVertexAttributes)
+    );
+    lean_array_set_core(
+        words,
+        21,
+        lean_box_uint64((uint64_t)s->maxVertexBufferArrayStride)
+    );
+    lean_array_set_core(
+        words,
+        22,
+        lean_box_uint64((uint64_t)s->maxInterStageShaderVariables)
+    );
+    lean_array_set_core(
+        words,
+        23,
+        lean_box_uint64((uint64_t)s->maxColorAttachments)
+    );
+    lean_array_set_core(
+        words,
+        24,
+        lean_box_uint64((uint64_t)s->maxColorAttachmentBytesPerSample)
+    );
+    lean_array_set_core(
+        words,
+        25,
+        lean_box_uint64((uint64_t)s->maxComputeWorkgroupStorageSize)
+    );
+    lean_array_set_core(
+        words,
+        26,
+        lean_box_uint64((uint64_t)s->maxComputeInvocationsPerWorkgroup)
+    );
+    lean_array_set_core(
+        words,
+        27,
+        lean_box_uint64((uint64_t)s->maxComputeWorkgroupSizeX)
+    );
+    lean_array_set_core(
+        words,
+        28,
+        lean_box_uint64((uint64_t)s->maxComputeWorkgroupSizeY)
+    );
+    lean_array_set_core(
+        words,
+        29,
+        lean_box_uint64((uint64_t)s->maxComputeWorkgroupSizeZ)
+    );
+    lean_array_set_core(
+        words,
+        30,
+        lean_box_uint64((uint64_t)s->maxComputeWorkgroupsPerDimension)
+    );
+    lean_array_set_core(
+        words,
+        31,
+        lean_box_uint64((uint64_t)s->maxImmediateSize)
+    );
+    return words;
 }

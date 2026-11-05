@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 3e49594 (clean)
-  Generated:        2026-11-05 12:23:21 UTC
+  Generator commit: 1eb4c97 (clean)
+  Generated:        2026-11-05 13:00:37 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -410,3 +410,10 @@ lean_obj_res lean_wgpu_texture_view_box_option(WGPUTextureView handle);
 // The `WGPUTextureView` a Lean `Option TextureView` holds, or NULL for `none`;
 // the Lean value keeps the reference.
 WGPUTextureView lean_wgpu_texture_view_unbox_option(b_lean_obj_arg option);
+
+// `WGPUInstanceLimits`'s members, in order, each a word: for Lean's
+// `InstanceLimits.ofWords`.
+lean_obj_res lean_wgpu_InstanceLimits_words(WGPUInstanceLimits const * s);
+
+// `WGPULimits`'s members, in order, each a word: for Lean's `Limits.ofWords`.
+lean_obj_res lean_wgpu_Limits_words(WGPULimits const * s);

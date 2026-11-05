@@ -194,6 +194,23 @@ def run (wgpu : Instance) (adapter : Adapter)
           along.modify (· ++ [line "setImmediates, which Dawn lacks, refused"
             (problemUnless (e.endsWith "not implemented by dawn")
               s!"raised {repr e}")])
+          -- What is supported, read, through Dawn, which implements what
+          -- wgpu-native leaves unimplemented.
+          let queried ← errorOf do
+            let ok (s : Except UInt32 Status) := s matches .ok .success
+            let (a, _) ← adapter.getInfo
+            let (b, _) ← d.getAdapterInfo
+            let (c, _) ← d.getLimits
+            let (e, _) ← getInstanceLimits
+            let (f, _) ← adapter.getLimits
+            let _ ← adapter.getFeatures
+            let _ ← d.getFeatures
+            let _ ← getInstanceFeatures
+            let _ ← wgpu.getWGSLLanguageFeatures
+            unless ok a && ok b && ok c && ok e && ok f do
+              throw (IO.userError "a status not a success")
+          along.modify (· ++ [line "limits, features and information read"
+            queried])
           -- A buffer not mapped: no range, which Dawn says.
           let unmapped ← errorOf do
             let some b ← d.createBuffer
