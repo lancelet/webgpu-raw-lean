@@ -39,14 +39,17 @@ def wgpuDir (dir : FilePath) : FilePath :=
   dir / "vendor" / "wgpu-native" / wgpuPlatform
 
 /--
-Where programs built here (in `.lake/build/bin/`) find wgpu-native at run time:
-an rpath relative to the program itself. (Windows has no rpath.)
+Where programs built here (in `.lake/build/bin/`) find wgpu-native, and
+SDL3, at run time: an rpath relative to the program itself. (Windows has no
+rpath.)
 -/
 def wgpuRpath : Array String :=
-  let lib := s!"../../../vendor/wgpu-native/{wgpuPlatform}/lib"
+  let libs := #[s!"../../../vendor/wgpu-native/{wgpuPlatform}/lib",
+    s!"../../../vendor/sdl3/{wgpuPlatform}/lib"]
   if System.Platform.isWindows then #[]
-  else if System.Platform.isOSX then #[s!"-Wl,-rpath,@executable_path/{lib}"]
-  else #[s!"-Wl,-rpath,$ORIGIN/{lib}"]
+  else if System.Platform.isOSX then
+    libs.map (s!"-Wl,-rpath,@executable_path/{·}")
+  else libs.map (s!"-Wl,-rpath,$ORIGIN/{·}")
 
 /-- The C compiler: `cc`, or the one `CC` names. -/
 def cCompiler : IO String := return (← IO.getEnv "CC").getD "cc"
@@ -205,3 +208,65 @@ which `web/build.sh` compiles to WebAssembly with the test helpers.
 -/
 lean_lib WebGPURawWebTest where
   moreLinkObjs := #[testHelpers]
+
+/-! ## The window library
+
+`WebGPUWindow`: a window, its events and a surface on it, natively on SDL3,
+which `vendor/sdl3/fetch.sh` fetches into `vendor/sdl3/<platform>/`. Not a
+default target: the bindings need no SDL. Programs built here find SDL3 at
+run time as they find wgpu-native (on Windows, `SDL3.dll` on `PATH`).
+-/
+
+/-- Where this platform's SDL3 is, in the package at `dir`. -/
+def sdlDir (dir : FilePath) : FilePath :=
+  dir / "vendor" / "sdl3" / wgpuPlatform
+
+/-- SDL3's shared library, from `fetch.sh`. -/
+target sdl3 pkg : Dynlib := do
+  let dir := sdlDir pkg.dir
+  let file := if System.Platform.isWindows then dir / "bin" / "SDL3.dll"
+    else dir / "lib" / nameToSharedLib "SDL3"
+  unless ← file.pathExists do
+    error s!"no SDL3 in {dir}: run vendor/sdl3/fetch.sh first"
+  return (← inputBinFile file).map fun path => { path, name := "SDL3" }
+
+/--
+The window library's C (`window/c/*.c`), compiled with the system C compiler
+against SDL3, the bindings' headers and wgpu-native's.
+-/
+target windowShim pkg : FilePath := do
+  let dir := pkg.dir / "window" / "c"
+  let srcs := ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
+    |>.filter (·.extension == some "c")
+  let includes := #[
+    "-I", (← getLeanIncludeDir).toString,
+    "-I", (wgpuDir pkg.dir / "include").toString,
+    "-I", (sdlDir pkg.dir / "include").toString,
+    "-I", (pkg.dir / "c").toString
+  ]
+  let headers ← [
+    pkg.dir / "c" / "generated" / "objects.h",
+    pkg.dir / "c" / "callback.h",
+    pkg.dir / "c" / "family.h"
+  ].mapM fun h => inputTextFile h
+  let cc ← cCompiler
+  let objs ← srcs.mapM fun src => do
+    let srcJob := (← inputTextFile src).zipWith (fun src _ => src)
+      (Job.mixArray headers.toArray "headers")
+    let stem := src.fileStem.getD "window"
+    buildO (pkg.buildDir / "c" / "window" / s!"{stem}.o") srcJob
+      includes (#["-O2"] ++ picArgs) cc getLeanTrace
+  buildStaticLib (pkg.staticLibDir / nameToStaticLib "webgpuwindow") objs
+
+/-- The window library (`WebGPUWindow.lean`). -/
+lean_lib WebGPUWindow where
+  moreLinkObjs := #[windowShim, wgpuShim]
+  moreLinkLibs := #[sdl3, wgpuNative]
+
+/--
+The window library's test: a window, a surface on it, a triangle drawn in
+it, read back where the surface allows. Run with
+`lake exe webgpu-window-test`; it needs a display, and an adapter.
+-/
+lean_exe «webgpu-window-test» where
+  root := `WebGPUWindowTest

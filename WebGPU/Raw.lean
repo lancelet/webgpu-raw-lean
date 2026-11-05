@@ -10,6 +10,7 @@ public import WebGPU.Raw.Functions
 public import WebGPU.Raw.Wait
 public import WebGPU.Raw.Mapped
 public import WebGPU.Raw.Queries
+public import WebGPU.Raw.Surface
 
 /-!
 # WebGPU, raw

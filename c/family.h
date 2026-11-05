@@ -25,6 +25,10 @@ typedef uintptr_t lean_wgpu_family;
 // How many closures a family can hold, each at its ordinal.
 #define LEAN_WGPU_FAMILY_CLOSURES 4
 
+// What a surface's family holds, at its ordinal: the window the surface is on
+// (the window library's, `window/c/`), till the surface is gone.
+#define LEAN_WGPU_SURFACE_WINDOW 0
+
 // A new family, its count 1, for the caller to release.
 lean_wgpu_family lean_wgpu_family_new(void);
 

@@ -142,6 +142,40 @@ jobs:
       - name: Run the benchmark briefly
         run: lake exe webgpu-raw-bench 10000
 
+      # The window library (WebGPUWindow), on SDL3, which only programs that
+      # use it need. On Linux, SDL is built from source, and needs the window
+      # systems' headers; its test draws in a window under a virtual display.
+      - name: Install SDL3's build dependencies, and a virtual display (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev \
+            libxcursor-dev libxi-dev libxss-dev libxkbcommon-dev \
+            libwayland-dev libegl-dev xvfb
+
+      # Fetch SDL3 into vendor/sdl3/<platform>/: built from source on Linux
+      # and macOS (with cmake), MinGW's prebuilt release on Windows, whose
+      # SDL3.dll programs find through PATH.
+      - name: Fetch SDL3
+        run: |
+          vendor/sdl3/fetch.sh
+          if [ "$RUNNER_OS" = Windows ]; then
+            echo "$GITHUB_WORKSPACE\\vendor\\sdl3\\windows-x86_64\\bin" \
+              >> "$GITHUB_PATH"
+          fi
+
+      # Build the window library and its test, and run it: on Linux under a
+      # virtual display, which it requires; elsewhere, it notes there is no
+      # display if the runner has none.
+      - name: Build and test the window library
+        run: |
+          lake build WebGPUWindow webgpu-window-test
+          if [ "$RUNNER_OS" = Linux ]; then
+            WEBGPU_RAW_REQUIRE_WINDOW=1 SDL_VIDEO_DRIVER=x11 \
+              xvfb-run -a .lake/build/bin/webgpu-window-test
+          else
+            .lake/build/bin/webgpu-window-test
+          fi
+
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
   # web/emscripten-version (and cmake and make), then run web/build.sh. The

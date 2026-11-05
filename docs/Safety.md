@@ -472,6 +472,32 @@ family (Families, above).
   (a descriptor of defaults encodes as C's with the handler; the uncaptured-
   error callback given its call's error, natively, with an adapter).
 
+## Surfaces and windows
+
+- **A surface is made from a window, in C, by the window library**
+  (`WebGPUWindow`, `window/c/`): from the handles the window system gives of
+  it (X11's or Wayland's display and window, a Metal layer, an HWND), which
+  never reach Lean. `Instance.createSurface` is not bound: its sources are
+  such handles, which a number in Lean could pass for, for C to dereference.
+  *Checked by:* review; test (a surface made on a window, under a virtual
+  display in CI on Linux).
+- **A surface never outlives its window**: it joins a family that holds the
+  Lean window (at `LEAN_WGPU_SURFACE_WINDOW`), which the family releases
+  once every Lean object of the surface is gone, after the surface itself
+  is released. *Checked by:* review.
+- **A surface's texture must be held till it is presented, and released
+  before its surface**: Lean releases it after its last use, and releasing
+  it destroys it, in wgpu-native, though the work drawing in it lives on, so
+  that its submission ends the program, or its present fails; and releasing
+  it after its surface ends the program. Memory-safe, but fatal: the raw
+  `Surface.getCurrentTexture` says so; the window library's
+  `Surface.presentFrame` holds it till presented and releases it before it
+  returns. *Checked by:* test (frames drawn by `presentFrame`, the first
+  read back); the raw function's misuse, not checked.
+- **SDL wants a window made, polled and destroyed on the main thread**,
+  natively: a program does so, but a window's finalizer runs where its last
+  reference goes, which may not be. *Checked by:* not checked.
+
 ## Functions an implementation does not implement
 
 wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one
