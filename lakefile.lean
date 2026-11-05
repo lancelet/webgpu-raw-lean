@@ -163,6 +163,7 @@ target testHelpers pkg : FilePath := do
     pkg.dir / "c" / "generated" / "objects.h",
     pkg.dir / "c" / "reloc.h",
     pkg.dir / "c" / "callback.h",
+    pkg.dir / "c" / "family.h",
     wgpuDir pkg.dir / "include" / "webgpu" / "webgpu.h"
   ].mapM fun h => inputTextFile h
   let cc ← cCompiler

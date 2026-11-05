@@ -40,6 +40,29 @@ def spontaneousError : IO Unit := do
   runOutside
   IO.println "FAIL: the program went on"
 
+/--
+Join a handle to a family when it is a member of another: the program stops,
+as over-releasing the first would free its closures while it is in use. Run by
+`main` as a process of its own.
+-/
+def joinTwice : IO Unit := do
+  let f ← WebGPURawTest.Internal.Family.new
+  let g ← WebGPURawTest.Internal.Family.new
+  WebGPURawTest.Internal.Family.join 0x6000 f
+  WebGPURawTest.Internal.Family.join 0x6000 g
+  IO.println "FAIL: the program went on"
+
+/-- Check that `joinTwice` stops its process, saying why. -/
+def checkJoinTwice : IO Unit := do
+  let out ← IO.Process.output {
+    cmd  := (← IO.appPath).toString
+    args := #["join-twice"]
+  }
+  let said := (out.stderr.splitOn "of another family").length > 1
+  unless out.exitCode != 0 && said && out.stdout.isEmpty do
+    throw (IO.userError s!"FAIL: a handle joined to two families: \
+      exit {out.exitCode}, {repr out.stderr}, {repr out.stdout}")
+
 /-- Check that `spontaneousError` ends its process, printing the error. -/
 def checkSpontaneousError : IO Unit := do
   let out ← IO.Process.output {
@@ -55,11 +78,18 @@ def checkSpontaneousError : IO Unit := do
 def main (args : List String) : IO Unit := do
   if args == ["spontaneous-error"] then
     return ← spontaneousError
+  if args == ["join-twice"] then
+    return ← joinTwice
   -- Lean closures run as callbacks: once, released, their errors raised.
   for (what, problem) in ← WebGPURawTest.Internal.Callback.checks do
     unless problem.isEmpty do
       throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
   checkSpontaneousError
+  -- The families that keep a device's callbacks.
+  for (what, problem) in ← WebGPURawTest.Internal.Family.checks do
+    unless problem.isEmpty do
+      throw (IO.userError s!"FAIL: families: {what}: {problem}")
+  checkJoinTwice
   let wgpu ← createInstance none
   -- And WebGPU's: `requestAdapter`, through its shim and trampoline.
   for (what, problem) in ← WebGPURawTest.Internal.Callback.webgpuChecks wgpu do

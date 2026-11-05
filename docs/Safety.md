@@ -292,6 +292,44 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   U+FFFD; sized, or NUL-terminated (`WGPU_STRLEN`); the null view `""`.
   *Checked by:* test.
 
+## Families
+
+A device's own callbacks (device lost, uncaptured error) can be called as
+long as anything made from it is alive, and after: in wgpu-native, every
+object made from a device reports its errors through the device's, even
+after the device's release; in Dawn, "lost" can come after the release. So
+their closures are kept by the device's family, the objects made from it,
+directly or not, until the last of them is gone (`c/family.c`). Nothing uses
+the families yet: they are tested on their own
+(`WebGPURawTest/Internal/Family.lean`), natively and on the web.
+
+- **A family keeps its closures while anything keeps it, and releases them
+  exactly once, when the last thing is gone**: its maker, and each Lean
+  object of it, each with a reference it gives back once. *Checked by:* test
+  (a closure holding a token, released only when the maker and every member
+  have gone; many families and members, each closure released once).
+- **A family is named by an ID, never a pointer**: an index and a
+  generation, so a callback that names a family already gone finds nothing,
+  rather than freed memory, even when its index is used again. So a mistake
+  in when a family is released drops a callback, rather than reading freed
+  memory. (Up to the generation's wrap: 32 bits on 64-bit targets, 16 on
+  wasm32, where an index used 65536 times names a family again.) *Checked
+  by:* test.
+- **A handle is of one family**: joining a handle of another stops the
+  program, as counting it into one but leaving the other would release that
+  one's closures while in use. *Checked by:* test, in a process of its own.
+- **No Lean code runs while the families' lock is held**: releasing a closure
+  can run finalizers that use the families, so closures are released once it
+  is let go. *Checked by:* test (releasing a closure that holds a member of
+  another family, whose finalizer leaves it), and review.
+- **A member leaves its family before its handle is released**, so that a new
+  object C makes at the same address never meets the old entry; its
+  reference to the family is given back after the release, so the family
+  outlives it. *Checked by:* review, for now: the finalizers that do so come
+  with the bindings' use of the families.
+- **The families are safe from any thread**, behind one lock. *Checked by:*
+  test (members joining and leaving from many tasks at once, natively).
+
 ## Functions an implementation does not implement
 
 wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one

@@ -1,6 +1,7 @@
 import WebGPU.Raw
 import WebGPURawTest.Internal.Bytes
 import WebGPURawTest.Internal.Callback
+import WebGPURawTest.Internal.Family
 import WebGPURawTest.Internal.Encode
 import WebGPURawTest.Internal.Reloc
 
@@ -127,6 +128,13 @@ def main : IO UInt32 := do
         if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
     catch e => pure [s!"FAIL callbacks: {e}"]
   callbacks.forM IO.println
+  -- The families that keep a device's callbacks.
+  let families ← try
+      let checks ← WebGPURawTest.Internal.Family.checks
+      pure (checks.map fun (what, problem) =>
+        if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
+    catch e => pure [s!"FAIL families: {e}"]
+  families.forM IO.println
   -- And WebGPU's, `requestAdapter`, where its callback runs by the next
   -- `processEvents`: under Node, which has no WebGPU. A browser runs it from
   -- its event loop, after this.
@@ -156,7 +164,7 @@ def main : IO UInt32 := do
   IO.println dawn
   let bindingsFailed :=
     (bindings :: descriptor :: dawn :: relocations ++ callbacks
-      ++ webgpuCallbacks).filter
+      ++ families ++ webgpuCallbacks).filter
       (!·.startsWith "ok") |>.length
   let failures := failed.length + bindingsFailed
   -- In a browser, an adapter is requested, and the program goes on in its
