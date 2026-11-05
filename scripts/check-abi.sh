@@ -5,7 +5,10 @@
 # with the C that defines them, so any disagreement is a "conflicting types"
 # error. It also checks that the two declare the same number of functions. It
 # checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c),
-# and the addresses of callbacks' trampolines (WebGPU.Raw.Callbacks).
+# the addresses of callbacks' trampolines (WebGPU.Raw.Callbacks), and the
+# shim written by hand (WebGPU.Raw.Wait, c/wait.c); each as built against
+# wgpu-native, and as against Dawn (-DWEBGPU_RAW_DAWN), whose branches call
+# what wgpu-native leaves unimplemented.
 # (The byte writers' C is pasted into Lean's own, so its compiler checks it.)
 set -eu
 cd "$(dirname "$0")/.."
@@ -71,11 +74,14 @@ check() {
     echo "#include \"$PWD/$source\""
   } > "$tmp/check.c"
   # -Wmissing-prototypes: every definition must have Lean's declaration of it.
-  ${CC:-cc} -fsyntax-only -std=c11 -Wall -Wextra -Wmissing-prototypes \
-    -Werror -I "$lean_include" -I "$wgpu_include" \
-    -I c/generated -I c "$tmp/check.c"
-  echo "OK: the $defined $what agree with how Lean calls them"
+  for dawn in "" -DWEBGPU_RAW_DAWN; do
+    ${CC:-cc} -fsyntax-only -std=c11 -Wall -Wextra -Wmissing-prototypes \
+      -Werror -I "$lean_include" -I "$wgpu_include" $dawn \
+      -I c/generated -I c "$tmp/check.c"
+  done
+  echo "OK: $what ($defined) agree with how Lean calls them"
 }
 
 check WebGPU.Raw.Functions c/generated/functions.c \
   'lean_wgpu[A-Z][A-Za-z0-9]*' shims
+check WebGPU.Raw.Wait c/wait.c 'lean_wgpuInstanceWaitAny' "hand-written shims"

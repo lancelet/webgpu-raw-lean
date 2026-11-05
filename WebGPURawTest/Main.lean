@@ -135,6 +135,8 @@ def main (args : List String) : IO Unit := do
     (hasInstanceFeature .timedWaitAny)
   expectNotImplemented "Instance.hasWGSLLanguageFeature"
     (wgpu.hasWGSLLanguageFeature .readonlyAndReadwriteStorageTextures)
+  -- And `waitAny`, whose shim is written by hand.
+  expectNotImplemented "Instance.waitAny" (wgpu.waitAny #[])
   -- The byte writers' C fast paths agree with their Lean definitions.
   let wrong := WebGPURawTest.Internal.Bytes.disagreements 1
   unless wrong.isEmpty do

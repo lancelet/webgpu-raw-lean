@@ -225,6 +225,19 @@ def inScope (wgpu : Instance) (adapter : Adapter) : IO String := do
     pure (problemUnless (done && got == #[(true, true)] && missed == 0)
       s!"popped {got}; uncaptured {missed}")
 
+/--
+A device's lost future, which wgpu-native leaves unimplemented: an IO error,
+not an abort.
+-/
+def lostFuture (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let e ← errorOf device.getLostFuture
+    pure (problemUnless
+      (e == "Device.getLostFuture: not implemented by wgpu-native")
+      s!"raised {repr e}")
+
 /-- A device requested with no descriptor, which is given one of defaults. -/
 def noDescriptor (wgpu : Instance) (adapter : Adapter) : IO String := do
   match ← device? wgpu adapter none with
@@ -252,7 +265,9 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
     ("an error a map callback raises, the error of the call that ran it",
       mapRaised wgpu adapter),
     ("a queue's work done, by processEvents", workDone wgpu adapter),
-    ("an error scope catching a validation error", inScope wgpu adapter)
+    ("an error scope catching a validation error", inScope wgpu adapter),
+    ("a device's lost future, unimplemented, an IO error",
+      lostFuture wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

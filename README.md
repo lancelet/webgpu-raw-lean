@@ -96,4 +96,4 @@ Every shim also brackets its call into WebGPU, so that an error a callback
 raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
 benchmark reports too.
 
-Status: WIP: approximately 88% complete.
+Status: WIP: approximately 90% complete.

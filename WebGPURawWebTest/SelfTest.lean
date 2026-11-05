@@ -74,6 +74,25 @@ def checks : List (String × Bool) :=
       WebGPU.Raw.Encode.Width.current == .bits32)
   ] ++ WebGPURawTest.Internal.Encode.checks
 
+/--
+Under Node, a request registered `CallbackMode.waitAnyOnly`: its callback run
+neither in the call nor by `processEvents`, but by `waitAny` on its future,
+in that call. With no WebGPU, emdawnwebgpu completes the request in the
+call, unavailable, so its future is ready, and only its callback waits.
+-/
+def waitAnyOnly (wgpu : Instance) : IO String := do
+  let calls ← IO.mkRef 0
+  let future ← wgpu.requestAdapter none .waitAnyOnly fun _ _ _ =>
+    calls.modify (· + 1)
+  wgpu.processEvents
+  let before ← calls.get
+  let (status, completed) ← wgpu.waitAny #[future]
+  let after ← calls.get
+  pure (WebGPURawTest.Internal.Callback.problemUnless
+    (before == 0 && after == 1
+      && status matches .ok .success && completed == #[true])
+    s!"calls {before}, {after}; {repr status |>.pretty}, {completed}")
+
 /-- Report how many checks failed: the program's exit code. -/
 def finish (failures : Nat) : IO UInt32 := do
   if failures == 0 then
@@ -143,7 +162,9 @@ def main : IO UInt32 := do
     try
       let wgpu ← WebGPU.Raw.createInstance none
       let checks ← WebGPURawTest.Internal.Callback.webgpuChecks wgpu
-      pure (checks.map fun (what, problem) =>
+      let waited := ("a request's callback run only by waitAny, in it",
+        ← WebGPURawWebTest.waitAnyOnly wgpu)
+      pure ((checks ++ [waited]).map fun (what, problem) =>
         if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
     catch e => pure [s!"FAIL WebGPU's callbacks: {e}"]
   webgpuCallbacks.forM IO.println

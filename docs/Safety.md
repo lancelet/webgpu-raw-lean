@@ -360,11 +360,14 @@ event loop, its loss by `destroy` once, and its family's release.
   kept callback with a mode (device lost) exactly once, even after the
   device's release, so its family keeps a reference for it until then:
   promptly with `allowSpontaneous`, the default; with `allowProcessEvents`,
-  at a `processEvents` after; with `waitAnyOnly`, only at the instance's
-  shutdown, as the device's lost future is not bound, so the family
-  outlives the device till then (a leak, never a use of freed memory).
-  *Checked by:* test, of the shims and trampolines printed; that a device's
-  objects join its family, at run time, comes with the device.
+  at a `processEvents` after; with `waitAnyOnly`, at a `waitAny` on the
+  device's lost future (`Device.getLostFuture`), or else only at the
+  instance's shutdown, the family outliving the device till then (a leak,
+  never a use of freed memory). *Checked by:* test, of the shims and
+  trampolines printed; that a device's objects join its family, at run
+  time, comes with the device; and in a browser, that a `waitAnyOnly`
+  request's callback runs only in a `waitAny`, and that the lost future is
+  completed once the device is lost, and not before.
 - **Every Lean object of a member's handle has joined its family**, as each
   leaves it when finalized: so a way of making an object that joins none
   must never give one of a handle another way joins. None does: the objects
@@ -409,16 +412,19 @@ family (Families, above).
 ## Functions an implementation does not implement
 
 wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one
-aborts the program (a Rust panic that cannot unwind into C). 27 of them are
+aborts the program (a Rust panic that cannot unwind into C). 29 of them are
 bound: every bound `setLabel` method (21), `hasInstanceFeature`,
 `Instance.hasWGSLLanguageFeature`, `Buffer.getMapState`,
-`Texture.getTextureBindingViewDimension`, and
+`Texture.getTextureBindingViewDimension`, `Device.getLostFuture`,
+`Instance.waitAny` (whose shim is written by hand, `c/wait.c`), and
 `Device.createComputePipelineAsync` and `createRenderPipelineAsync` (whose
 shims hold no closure when they raise the error). Dawn, used on the web,
 implements them. wgpu-native also aborts on values it does not support: a timed
 `waitAny` feature or limit in an instance descriptor (`createInstance`), which
 is not memory-unsafe, but ends the program; the bindings do not check for it
-yet. And it aborts on a descriptor without the chain it needs, which the
+yet. Dawn, in turn, refuses that feature without Asyncify or JSPI, which the
+web build lacks: so `waitAny` waits only with a timeout of 0 there, and a
+longer one gives the status `error`. And it aborts on a descriptor without the chain it needs, which the
 bindings refuse: a struct that describes nothing but by its chain
 (`Struct.chainRequired`, as a shader module descriptor), passed with an empty
 one, raises an `IO` error instead (`createShaderModule`: "nothing chained to
