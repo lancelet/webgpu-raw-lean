@@ -399,7 +399,7 @@ def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
   | .object _ nullable          => if nullable then some .null else none
   | .structPointer _ nullable   => if nullable then some .null else none
   | .struct _                   => some .nested
-  | .nullableFloat32 | .future | .lentObject _ => none
+  | .nullableFloat32 | .bytes | .future | .lentObject _ => none
   -- A callback's info: none, C's empty info.
   | .callbackInfo ..            => some .null
   | .enum _ => match p.type with
@@ -459,6 +459,36 @@ def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
 /-! ## Functions and objects -/
 
 /--
+Whether `p` and `q` are bytes an argument passes: a `c_void` behind an
+immutable pointer, then their size, a `usize` named as one (`size`,
+`data_size`).
+-/
+def isBytes (p q : Parameter Paragraph) : Bool :=
+  p.type == .primitive (.scalar .cVoid) && p.pointer == some .immutable
+    && !p.optional && p.passedWithOwnership.isNone
+    && q.type == .primitive (.scalar .usize) && q.pointer.isNone
+    && !q.optional && q.passedWithOwnership.isNone
+    && q.name.text.endsWith "size"
+
+/--
+A function's arguments, each as `argValue` says, but for bytes and their
+size, which are one, `Value.bytes`, named as the bytes.
+-/
+def lowerArgs (ctx : DocContext) (r : Resolved.Spec) :
+    List (Parameter Paragraph) → List Arg
+  | p :: q :: rest =>
+    if isBytes p q then arg p .bytes :: lowerArgs ctx r rest
+    else arg p (argValue r p) :: lowerArgs ctx r (q :: rest)
+  | [p] => [arg p (argValue r p)]
+  | []  => []
+where
+  arg (p : Parameter Paragraph) (value : Value) : Arg := {
+    names := bothNames memberName leanName p.name
+    doc   := translateDoc ctx p.doc.text
+    value := value
+  }
+
+/--
 A function, or a method of the object type `receiver`: named on both sides, with
 how each of its values crosses. A method is named after its object type on both
 sides: `wgpuDeviceCreateBuffer`, `Device.createBuffer`.
@@ -474,11 +504,7 @@ def lowerFunction (ctx : DocContext) (r : Resolved.Spec)
     | none   => bothNames functionName leanName f.name
   doc      := translateDoc ctx f.doc
   receiver := receiver.map fun o => bothNames typeName leanTypeName o.name
-  args     := f.args.map fun a => {
-    names := bothNames memberName leanName a.name
-    doc   := translateDoc ctx a.doc.text
-    value := argValue r a
-  }
+  args     := (lowerArgs ctx r f.args.toList).toArray
   -- A function that takes a callback returns a future, which the spec leaves
   -- implicit (the test driver checks `webgpu.h` declares it so).
   result   := match f.callback with

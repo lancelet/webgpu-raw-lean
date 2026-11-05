@@ -84,7 +84,7 @@ where
     | .callbackInfo _ hasMode _      => some (.struct ([.scalar .ptr]
       ++ (if hasMode then [.scalar .u32] else [])
       ++ [.scalar .size, .scalar .ptr, .scalar .size]))
-    | .array .. | .future | .lentObject _ | .unsupported _ => none
+    | .array .. | .bytes | .future | .lentObject _ | .unsupported _ => none
 
 /-- A struct's fields in C, among `structs`. -/
 def Struct.cFields (structs : List Struct) (s : Struct) :

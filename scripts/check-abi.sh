@@ -7,8 +7,8 @@
 # checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c),
 # the addresses of callbacks' trampolines (WebGPU.Raw.Callbacks), and the
 # shim written by hand (WebGPU.Raw.Wait, c/wait.c); each as built against
-# wgpu-native, and as against Dawn (-DWEBGPU_RAW_DAWN), whose branches call
-# what wgpu-native leaves unimplemented.
+# wgpu-native (-DWEBGPU_RAW_WGPU_NATIVE), against Dawn (-DWEBGPU_RAW_DAWN),
+# and against neither, as each calls what the other leaves unimplemented.
 # (The byte writers' C is pasted into Lean's own, so its compiler checks it.)
 set -eu
 cd "$(dirname "$0")/.."
@@ -74,9 +74,9 @@ check() {
     echo "#include \"$PWD/$source\""
   } > "$tmp/check.c"
   # -Wmissing-prototypes: every definition must have Lean's declaration of it.
-  for dawn in "" -DWEBGPU_RAW_DAWN; do
+  for build in "" -DWEBGPU_RAW_WGPU_NATIVE -DWEBGPU_RAW_DAWN; do
     ${CC:-cc} -fsyntax-only -std=c11 -Wall -Wextra -Wmissing-prototypes \
-      -Werror -I "$lean_include" -I "$wgpu_include" $dawn \
+      -Werror -I "$lean_include" -I "$wgpu_include" $build \
       -I c/generated -I c "$tmp/check.c"
   done
   echo "OK: $what ($defined) agree with how Lean calls them"

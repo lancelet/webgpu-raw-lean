@@ -128,7 +128,8 @@ target wgpuShim pkg : FilePath := do
     let out := if src.parent == some handWritten then pkg.buildDir / "c"
       else pkg.buildDir / "c" / "generated"
     buildO (out / s!"{stem}.o") srcJob
-      includes (#["-O2"] ++ picArgs ++ checkedArgs) cc getLeanTrace
+      includes (#["-O2", "-DWEBGPU_RAW_WGPU_NATIVE"] ++ picArgs ++ checkedArgs)
+      cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "wgpushim") objs
 
 /--

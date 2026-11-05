@@ -50,13 +50,16 @@ def specPath : IO System.FilePath := do
   return package / ".." / "vendor" / "webgpu-headers" / "webgpu.yml"
 
 /--
-The functions wgpu-native leaves unimplemented (`vendor/wgpu-native/stubs`), as
-the generator reads them.
+The functions wgpu-native leaves unimplemented (`vendor/wgpu-native/stubs`),
+and those emdawnwebgpu's header does not declare
+(`vendor/emdawnwebgpu/missing`), as the generator reads them.
 -/
 def stubs : IO (List (String × List String)) := do
   let path := (← specPath).parent.bind (·.parent) |>.getD "."
-  let text ← IO.FS.readFile (path / "wgpu-native" / "stubs")
-  return [("wgpu-native", WebGPUGen.parseStubs text)]
+  let native ← IO.FS.readFile (path / "wgpu-native" / "stubs")
+  let dawn ← IO.FS.readFile (path / "emdawnwebgpu" / "missing")
+  return [("wgpu-native", WebGPUGen.parseStubs native),
+    ("dawn", WebGPUGen.parseStubs dawn)]
 
 /-- The C header upstream generates from the vendored spec, next to it. -/
 def headerPath : IO System.FilePath := do
@@ -252,10 +255,12 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     let mut errors := ""
     if let some buffer := spec.objects.find? (·.names.c == "WGPUBuffer") then
       IO.FS.writeFile (dir / "probe.c") (probeSource buffer)
-    -- The shims both ways: built against Dawn, and not.
+    -- The shims every way: built against wgpu-native, against Dawn, and
+    -- against neither, which calls no function either leaves unimplemented.
     let builds := [
       ("objects", #[]),
       ("functions", #[]),
+      ("functions", #["-DWEBGPU_RAW_WGPU_NATIVE"]),
       ("functions", #["-DWEBGPU_RAW_DAWN"]),
       ("layouts", #[]),
       ("probe", #[])

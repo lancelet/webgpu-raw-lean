@@ -204,6 +204,13 @@ jobs:
       - name: Build for the web
         run: web/build.sh
 
+      # Not a build step: the list of functions emdawnwebgpu's header does
+      # not declare, which the generator reads, is what that header gives.
+      - name: Check the list of functions Dawn lacks
+        run: |
+          vendor/emdawnwebgpu/missing.sh
+          git diff --exit-code -- vendor/emdawnwebgpu/missing
+
       - name: Run the self-test under Node
         run: node .lake/web/site/webgpu-raw-web-test.js
 

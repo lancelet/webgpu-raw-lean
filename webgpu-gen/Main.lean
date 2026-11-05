@@ -69,12 +69,15 @@ def parseSpec (root : System.FilePath) : IO Parsed.Spec := do
   | .error e   => throw (IO.userError (toString e))
 
 /--
-The functions each implementation leaves unimplemented, from its list of stubs
-(`vendor/wgpu-native/stubs`, which `stubs.sh` writes).
+The functions each implementation leaves unimplemented: wgpu-native's stubs
+(`vendor/wgpu-native/stubs`, which `stubs.sh` writes), and those Dawn's
+header, emdawnwebgpu's, does not declare (`vendor/emdawnwebgpu/missing`,
+which `missing.sh` writes).
 -/
 def stubs (root : System.FilePath) : IO (List (String × List String)) := do
-  let text ← IO.FS.readFile (root / "vendor/wgpu-native/stubs")
-  return [("wgpu-native", parseStubs text)]
+  let native ← IO.FS.readFile (root / "vendor/wgpu-native/stubs")
+  let dawn ← IO.FS.readFile (root / "vendor/emdawnwebgpu/missing")
+  return [("wgpu-native", parseStubs native), ("dawn", parseStubs dawn)]
 
 /-- Decode, resolve and lower the vendored spec, or report every problem. -/
 def loadSpec (root : System.FilePath) : IO Lowered.Spec := do

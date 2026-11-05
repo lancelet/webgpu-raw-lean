@@ -108,6 +108,12 @@ inductive Value where
   -/
   | array   (element : Value) (count : String)
   /--
+  Bytes an argument passes: in C, a pointer to them (`void const *`) and,
+  the argument after it, their size (`size_t`); in Lean, one `ByteArray`,
+  whose own size C is given, so it can never read past them.
+  -/
+  | bytes
+  /--
   A future, which a function that takes a callback returns, as does
   `getLostFuture`: in C a `WGPUFuture`, the struct holding its ID; in Lean
   the `Future` structure.
@@ -150,6 +156,7 @@ def Value.leanType : Value → Option String
   | .struct names      => names.lean
   | .structPointer names b =>
     if b then s!"Option {names.lean}" else names.lean
+  | .bytes            => "ByteArray"
   | .array element _   => element.leanType.map fun t =>
     if t.contains ' ' then s!"Array ({t})" else s!"Array {t}"
   | .future            => "Future"
@@ -168,7 +175,10 @@ def Value.resultLeanType : Value → Option String
   | .enum names => s!"Except UInt32 {names.lean}"
   | v           => v.leanType
 
-/-- The value's type in C; none if the bindings cannot pass it. -/
+/--
+The value's type in C; none if the bindings cannot pass it. Bytes are two C
+parameters, of which this is the first, the pointer; their size follows.
+-/
 def Value.cType : Value → Option String
   | .bool              => "WGPUBool"
   | .uint16            => "uint16_t"
@@ -186,6 +196,7 @@ def Value.cType : Value → Option String
   | .string _          => "WGPUStringView"
   | .struct names      => names.c
   | .structPointer names _ => s!"{names.c} const *"
+  | .bytes            => "void const *"
   | .array element _   => element.cType.map (· ++ " const *")
   | .future            => "WGPUFuture"
   | .callbackInfo names .. => names.c ++ "Info"
@@ -207,7 +218,7 @@ as an argument, and owned as a result.
 -/
 def Value.isObject : Value → Bool
   | .object .. | .string _ | .nullableFloat32 | .struct _ | .structPointer ..
-  | .array ..   => true
+  | .array .. | .bytes => true
   | _           => false
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
@@ -253,7 +264,8 @@ def Value.abiCType : Value → Option String
   | .bitflag _       => "uint64_t"
   | .object ..       => "b_lean_obj_arg"
   | .string _        => "b_lean_obj_arg"
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .bytes
+  | .future
   | .callbackInfo .. | .lentObject _ => none
   | .unsupported _   => none
 

@@ -430,6 +430,42 @@ def resultValue? (methods : String) : Option (Option Value) :=
     .unsupported "array<uint64> (immutable pointer)"
   ]
 
+-- Bytes, a `c_void` behind an immutable pointer and the size after it, are
+-- one argument, as `Queue.writeBuffer`'s: a `ByteArray`, whose own size C
+-- is given. A `c_void` with no size after it is not passed, though a
+-- `usize` named otherwise follows it.
+#guard
+  let input := dedent "
+    - name: m
+      doc: x
+      args:
+        - name: offset
+          doc: x
+          type: uint32
+        - name: data
+          doc: x
+          type: c_void
+          pointer: immutable
+        - name: data_size
+          doc: x
+          type: usize
+        - name: lone
+          doc: x
+          type: c_void
+          pointer: immutable
+        - name: count
+          doc: x
+          type: usize
+    "
+  ((deviceMethods input).bind fun ms => ms[0]?.map fun f =>
+      f.args.toList.map fun a => (a.names.lean, a.value))
+    == some [
+      ("offset", .uint32),
+      ("data", .bytes),
+      ("lone", .unsupported "c_void (immutable pointer)"),
+      ("count", .usize)
+    ]
+
 -- A method that takes a callback whose arguments can all be passed can be
 -- bound.
 #guard

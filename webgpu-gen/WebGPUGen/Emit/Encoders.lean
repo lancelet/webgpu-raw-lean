@@ -190,7 +190,7 @@ where
         ++ [.int (narrow s!"keptAddress {q}"),
           .pointer (.closure names k q),
           .int (narrow s!"keptOrdinal {k} {q}")])
-    | .future | .lentObject _ | .unsupported _ => none
+    | .bytes | .future | .lentObject _ | .unsupported _ => none
 
 /--
 The checks that each `size_t` of a value of kind `v`, at `q`, fits the target:

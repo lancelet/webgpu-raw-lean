@@ -868,6 +868,20 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
       Internal.doIt buffers ⟨_, rfl⟩ offsets ⟨_, rfl⟩
     "
 
+-- Bytes: a `ByteArray`, borrowed by the raw declaration.
+#guard
+  let f := function "wgpuDoIt" "doIt" none #[arg "data" .bytes] none
+  render ((rawDecl f).getD .nil) == dedent "
+    /-- The shim behind `doIt`. -/
+    @[extern \"lean_wgpuDoIt\"]
+    opaque Internal.doIt (data : @& ByteArray) : IO Unit
+    "
+  && render ((wrapperDecl f).getD .nil) == dedent "
+    @[inline]
+    def doIt (data : ByteArray) : IO Unit :=
+      Internal.doIt data
+    "
+
 -- A struct that is of no use without its chain: the function refuses it with
 -- an empty chain, as an implementation may abort (wgpu-native does), before
 -- checking its `size_t`s.

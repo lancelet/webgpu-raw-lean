@@ -210,8 +210,17 @@ def shimText (f : Lowered.Function) : Option String :=
   (shimText input).any fun text =>
     !text.contains "#if" && text.contains "not implemented by wgpu-native, dawn"
 
--- The macro for an implementation is its name, in capitals.
+-- One Dawn lacks is called only when built against wgpu-native, which the
+-- native build says.
+#guard
+  let input := { function #[] none with notImplementedBy := ["dawn"] }
+  (shimText input).any fun text =>
+    text.contains "#ifdef WEBGPU_RAW_WGPU_NATIVE"
+      && text.contains "not implemented by dawn"
+
+-- The macro for an implementation is its name, in capitals, a symbol.
 #guard implementationMacro "dawn" == "WEBGPU_RAW_DAWN"
+#guard implementationMacro "wgpu-native" == "WEBGPU_RAW_WGPU_NATIVE"
 
 /-! ## Callbacks -/
 
@@ -594,6 +603,23 @@ def request (held : Bool) : Lowered.Function := {
         );
         lean_object * saved = lean_wgpu_callbacks_enter();
         wgpuDoIt(desc_struct);
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    }
+    ")
+
+-- Bytes cross as their `ByteArray`, which C passes as a pointer to them and
+-- their size: never more than they hold.
+#guard
+  let f := function #[arg "offset" .uint32, arg "data" .bytes] none
+  (functionShim [buffer] [] f).map (fun s => file [.function s])
+    == some (dedent "
+    // Lean's `doIt`: calls `wgpuDoIt`.
+    LEAN_EXPORT lean_obj_res lean_wgpuDoIt(
+        uint32_t       offset,
+        b_lean_obj_arg data
+    ) {
+        lean_object * saved = lean_wgpu_callbacks_enter();
+        wgpuDoIt(offset, lean_sarray_cptr(data), lean_sarray_size(data));
         return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
     }
     ")

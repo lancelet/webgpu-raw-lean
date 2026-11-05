@@ -196,7 +196,8 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
   -- several (`argCrossing`). Not passed to functions yet: a nullable float
   -- or a struct by value. A future is only ever a result, and a callback's
   -- info in a struct.
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .bytes
+  | .future
   | .callbackInfo .. | .lentObject _ => none
   | .unsupported _     => none
 
@@ -231,9 +232,10 @@ four: the Lean value, unused, which the proofs about the others are of; its
 bytes, as C lays it out (borrowed: Lean releases them after the call); what C
 fills in its pointers from; and its table's index. Before the call they are
 filled in, by the tables (the shim's `tables`), into a pointer to pass, as
-`void const *`, which C converts to the struct's pointer type. An array
-crosses as two: the Lean array, and its block (`arrayArgName`), whose pointer
-C passes after the array's size.
+`void const *`, which C converts to the struct's pointer type. Bytes cross
+as one, their `ByteArray`, passed as a pointer to them and their size. An
+array crosses as two: the Lean array, and its block (`arrayArgName`), whose
+pointer C passes after the array's size.
 -/
 def argCrossing (objects : List Lowered.Object) (x : String) (v : Value) :
     Option Crossing :=
@@ -250,6 +252,12 @@ def argCrossing (objects : List Lowered.Object) (x : String) (v : Value) :
           .call "lean_usize_of_nat" [.name (x ++ "_table")],
           .name (x ++ "_targets")]))]
       values := [.name filled]
+    }
+  | .bytes => some {
+      params := [⟨"b_lean_obj_arg", x⟩]
+      before := []
+      values := [.call "lean_sarray_cptr" [.name x],
+        .call "lean_sarray_size" [.name x]]
     }
   | .array element _ => do
     let fill ← arrayArgName element
@@ -310,7 +318,8 @@ def resultExpr (objects : List Lowered.Object) : Value → Option Expr
   | .bitflag _      => some (box "lean_box_uint64" (.cast "uint64_t" result))
   | .object names b => (objectNamed objects names.c).map fun o =>
     box (shimName o (if b then "box_option" else "box")) result
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .bytes =>
+    none
   -- A future as its ID.
   | .future         => some (box "lean_box_uint64" (.member result "id"))
   | .string _ | .callbackInfo .. | .lentObject _ => none
@@ -550,7 +559,7 @@ def familyAround (f : Lowered.Function) (receiver : Option Expr) :
 
 /--
 The macro a build defines to say it builds against the implementation `impl`:
-`WEBGPU_RAW_DAWN` for `dawn`.
+`WEBGPU_RAW_DAWN` for `dawn`, `WEBGPU_RAW_WGPU_NATIVE` for `wgpu-native`.
 -/
 def implementationMacro (impl : String) : String :=
   let symbol (c : Char) := if c.isAlphanum then c.toUpper else '_'
@@ -558,8 +567,8 @@ def implementationMacro (impl : String) : String :=
 
 /--
 The implementations a build can say it is against, each by defining its macro
-(`implementationMacro`): the web build defines `WEBGPU_RAW_DAWN`. The native
-build, against wgpu-native, defines none, so needs none.
+(`implementationMacro`): the web build defines `WEBGPU_RAW_DAWN`, and the
+native build, against wgpu-native, `WEBGPU_RAW_WGPU_NATIVE`.
 -/
 def implementations : List String := ["wgpu-native", "dawn"]
 
