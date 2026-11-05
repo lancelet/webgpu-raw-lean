@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 0348310 (clean)
-  Generated:        2026-11-05 04:04:48 UTC
+  Generator commit: e790a29 (clean)
+  Generated:        2026-11-05 05:04:23 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -18,9 +18,13 @@
 #include "reloc.h"
 #include "callback.h"
 
+// A function the shims use, which some builds may not.
+
+#define LEAN_WGPU_HELPER static inline __attribute__((unused))
+
 // A view of the bytes of the Lean string `s`, which stays alive while the
 // string is borrowed. Its length leaves out the terminating NUL.
-static inline WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
+LEAN_WGPU_HELPER WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
     WGPUStringView view = {
         .data   = lean_string_cstr(s),
         .length = lean_string_size(s) - 1,
@@ -30,31 +34,23 @@ static inline WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
 
 // A size from Lean as a `size_t`, checked to fit: the largest `UInt64` stands
 // for `SIZE_MAX`, which is 32 bits on the web.
-static inline size_t lean_wgpu_size(uint64_t size) {
+LEAN_WGPU_HELPER size_t lean_wgpu_size(uint64_t size) {
     if (size == UINT64_MAX) {
         return SIZE_MAX;
     }
     return (size_t)size;
 }
 
-// A `size_t` as a size in Lean: `SIZE_MAX` is the largest `UInt64`.
-static inline uint64_t lean_wgpu_size_to_lean(size_t size) {
-    if (size == SIZE_MAX) {
-        return UINT64_MAX;
-    }
-    return (uint64_t)size;
-}
-
 // An `IO` error saying `message`, for a check a shim makes, or a function an
 // implementation does not implement.
-static inline lean_obj_res lean_wgpu_io_error(char const * message) {
+LEAN_WGPU_HELPER lean_obj_res lean_wgpu_io_error(char const * message) {
     return lean_io_result_mk_error(
         lean_mk_io_user_error(lean_mk_string(message))
     );
 }
 
 // Calls the Lean closure `userdata1` as a `BufferMapCallback`, releasing it.
-static inline void lean_WGPUBufferMapCallback(
+LEAN_WGPU_HELPER void lean_WGPUBufferMapCallback(
     WGPUMapAsyncStatus status,
     WGPUStringView     message,
     void *             userdata1,
@@ -73,7 +69,7 @@ static inline void lean_WGPUBufferMapCallback(
 
 // Calls the Lean closure `userdata1` as a `CreateComputePipelineAsyncCallback`,
 // releasing it.
-static inline void lean_WGPUCreateComputePipelineAsyncCallback(
+LEAN_WGPU_HELPER void lean_WGPUCreateComputePipelineAsyncCallback(
     WGPUCreatePipelineAsyncStatus status,
     WGPUComputePipeline           pipeline,
     WGPUStringView                message,
@@ -94,7 +90,7 @@ static inline void lean_WGPUCreateComputePipelineAsyncCallback(
 
 // Calls the Lean closure `userdata1` as a `CreateRenderPipelineAsyncCallback`,
 // releasing it.
-static inline void lean_WGPUCreateRenderPipelineAsyncCallback(
+LEAN_WGPU_HELPER void lean_WGPUCreateRenderPipelineAsyncCallback(
     WGPUCreatePipelineAsyncStatus status,
     WGPURenderPipeline            pipeline,
     WGPUStringView                message,
@@ -115,7 +111,7 @@ static inline void lean_WGPUCreateRenderPipelineAsyncCallback(
 
 // Calls the Lean closure `userdata1` as a `PopErrorScopeCallback`, releasing
 // it.
-static inline void lean_WGPUPopErrorScopeCallback(
+LEAN_WGPU_HELPER void lean_WGPUPopErrorScopeCallback(
     WGPUPopErrorScopeStatus status,
     WGPUErrorType           type,
     WGPUStringView          message,
@@ -136,7 +132,7 @@ static inline void lean_WGPUPopErrorScopeCallback(
 
 // Calls the Lean closure `userdata1` as a `RequestAdapterCallback`, releasing
 // it.
-static inline void lean_WGPURequestAdapterCallback(
+LEAN_WGPU_HELPER void lean_WGPURequestAdapterCallback(
     WGPURequestAdapterStatus status,
     WGPUAdapter              adapter,
     WGPUStringView           message,
@@ -157,7 +153,7 @@ static inline void lean_WGPURequestAdapterCallback(
 
 // Calls the Lean closure `userdata1` as a `QueueWorkDoneCallback`, releasing
 // it.
-static inline void lean_WGPUQueueWorkDoneCallback(
+LEAN_WGPU_HELPER void lean_WGPUQueueWorkDoneCallback(
     WGPUQueueWorkDoneStatus status,
     WGPUStringView          message,
     void *                  userdata1,
