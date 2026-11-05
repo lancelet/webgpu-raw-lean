@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: cf062a5 (clean)
-  Generated:        2026-11-05 09:10:39 UTC
+  Generator commit: 14888c0 (clean)
+  Generated:        2026-11-05 11:34:27 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -8799,8 +8799,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : BindGroupEntry) : Array Target :=
-  #[.chain (d.chain.map BindGroupEntry.chainLink64)]
-  ++ targetsOfAll BindGroupEntry.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
   ++ #[
     .optObject (d.buffer.map Internal.Buffer.toObject),
     .optObject (d.sampler.map Internal.Sampler.toObject),
@@ -8942,8 +8941,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : BindGroupEntry) : Array Target :=
-  #[.chain (d.chain.map BindGroupEntry.chainLink32)]
-  ++ targetsOfAll BindGroupEntry.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
   ++ #[
     .optObject (d.buffer.map Internal.Buffer.toObject),
     .optObject (d.sampler.map Internal.Sampler.toObject),
@@ -9132,8 +9130,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : BindGroupLayoutEntry) : Array Target :=
-  #[.chain (d.chain.map BindGroupLayoutEntry.chainLink64)]
-  ++ targetsOfAll BindGroupLayoutEntry.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
 @[never_extract]
@@ -9302,8 +9299,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : BindGroupLayoutEntry) : Array Target :=
-  #[.chain (d.chain.map BindGroupLayoutEntry.chainLink32)]
-  ++ targetsOfAll BindGroupLayoutEntry.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
 @[never_extract]
@@ -10757,8 +10753,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : Limits) : Array Target :=
-  #[.chain (d.chain.map Limits.chainLink64)]
-  ++ targetsOfAll Limits.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
 @[never_extract]
@@ -10912,8 +10907,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : Limits) : Array Target :=
-  #[.chain (d.chain.map Limits.chainLink32)]
-  ++ targetsOfAll Limits.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
 @[never_extract]
@@ -11344,8 +11338,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : RequestAdapterOptions) : Array Target :=
-  #[.chain (d.chain.map RequestAdapterOptions.chainLink64)]
-  ++ targetsOfAll RequestAdapterOptions.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
   ++ #[.optObject (d.compatibleSurface.map Internal.Surface.toObject)]
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
@@ -11445,8 +11438,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : RequestAdapterOptions) : Array Target :=
-  #[.chain (d.chain.map RequestAdapterOptions.chainLink32)]
-  ++ targetsOfAll RequestAdapterOptions.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
   ++ #[.optObject (d.compatibleSurface.map Internal.Surface.toObject)]
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
@@ -11566,9 +11558,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : ShaderModuleDescriptor) : Array Target :=
-  #[.chain (d.chain.map ShaderModuleDescriptor.chainLink64)]
-  ++ targetsOfAll ShaderModuleDescriptor.chainTargets64 d.chain
-  ++ #[.string d.label]
+  chainTargetsOf chainLink64 chainTargets64 d.chain ++ #[.string d.label]
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
 @[never_extract]
@@ -11660,9 +11650,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : ShaderModuleDescriptor) : Array Target :=
-  #[.chain (d.chain.map ShaderModuleDescriptor.chainLink32)]
-  ++ targetsOfAll ShaderModuleDescriptor.chainTargets32 d.chain
-  ++ #[.string d.label]
+  chainTargetsOf chainLink32 chainTargets32 d.chain ++ #[.string d.label]
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
 @[never_extract]
@@ -12408,8 +12396,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : TextureDescriptor) : Array Target :=
-  #[.chain (d.chain.map TextureDescriptor.chainLink64)]
-  ++ targetsOfAll TextureDescriptor.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
   ++ #[.string d.label, .block (encodeU32s CEnum.toC d.viewFormats)]
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
@@ -12522,8 +12509,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : TextureDescriptor) : Array Target :=
-  #[.chain (d.chain.map TextureDescriptor.chainLink32)]
-  ++ targetsOfAll TextureDescriptor.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
   ++ #[.string d.label, .block (encodeU32s CEnum.toC d.viewFormats)]
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
@@ -14052,8 +14038,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : RenderPassDescriptor) : Array Target :=
-  #[.chain (d.chain.map RenderPassDescriptor.chainLink64)]
-  ++ targetsOfAll RenderPassDescriptor.chainTargets64 d.chain
+  chainTargetsOf chainLink64 chainTargets64 d.chain
   ++ #[.string d.label]
   ++ RenderPassColorAttachment.array64 d.colorAttachments
   ++ optBlock RenderPassDepthStencilAttachment.block64 d.depthStencilAttachment
@@ -14155,8 +14140,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : RenderPassDescriptor) : Array Target :=
-  #[.chain (d.chain.map RenderPassDescriptor.chainLink32)]
-  ++ targetsOfAll RenderPassDescriptor.chainTargets32 d.chain
+  chainTargetsOf chainLink32 chainTargets32 d.chain
   ++ #[.string d.label]
   ++ RenderPassColorAttachment.array32 d.colorAttachments
   ++ optBlock RenderPassDepthStencilAttachment.block32 d.depthStencilAttachment
@@ -14299,9 +14283,7 @@ theorem relocs64_fit : relocs64.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
 @[never_extract]
 def targets64 (d : TextureViewDescriptor) : Array Target :=
-  #[.chain (d.chain.map TextureViewDescriptor.chainLink64)]
-  ++ targetsOfAll TextureViewDescriptor.chainTargets64 d.chain
-  ++ #[.string d.label]
+  chainTargetsOf chainLink64 chainTargets64 d.chain ++ #[.string d.label]
 
 /-- `d` as the block a pointer to it points to on 64-bit targets. -/
 @[never_extract]
@@ -14412,9 +14394,7 @@ theorem relocs32_fit : relocs32.all Reloc.fits := by decide
 /-- What C fills in `d`'s pointers from on wasm32, in order. -/
 @[never_extract]
 def targets32 (d : TextureViewDescriptor) : Array Target :=
-  #[.chain (d.chain.map TextureViewDescriptor.chainLink32)]
-  ++ targetsOfAll TextureViewDescriptor.chainTargets32 d.chain
-  ++ #[.string d.label]
+  chainTargetsOf chainLink32 chainTargets32 d.chain ++ #[.string d.label]
 
 /-- `d` as the block a pointer to it points to on wasm32. -/
 @[never_extract]
@@ -19306,7 +19286,7 @@ theorem element_targets64 (d : BindGroupEntry) (ts : List Target) :
     element specs64 45 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     BindGroupEntry.walk_chain64 (table := 45) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -19377,7 +19357,7 @@ theorem element_targets32 (d : BindGroupEntry) (ts : List Target) :
     element specs32 45 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     BindGroupEntry.walk_chain32 (table := 45) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -19489,7 +19469,7 @@ theorem element_targets64 (d : BindGroupLayoutEntry) (ts : List Target) :
     element specs64 46 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     BindGroupLayoutEntry.walk_chain64 (table := 46) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -19560,7 +19540,7 @@ theorem element_targets32 (d : BindGroupLayoutEntry) (ts : List Target) :
     element specs32 46 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     BindGroupLayoutEntry.walk_chain32 (table := 46) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20229,7 +20209,7 @@ theorem element_targets64 (d : Limits) (ts : List Target) :
     element specs64 53 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     Limits.walk_chain64 (table := 53) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20289,7 +20269,7 @@ theorem element_targets32 (d : Limits) (ts : List Target) :
     element specs32 53 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     Limits.walk_chain32 (table := 53) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20504,7 +20484,7 @@ theorem element_targets64 (d : RequestAdapterOptions) (ts : List Target) :
     element specs64 55 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     RequestAdapterOptions.walk_chain64 (table := 55) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20566,7 +20546,7 @@ theorem element_targets32 (d : RequestAdapterOptions) (ts : List Target) :
     element specs32 55 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     RequestAdapterOptions.walk_chain32 (table := 55) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20667,7 +20647,7 @@ theorem element_targets64 (d : ShaderModuleDescriptor) (ts : List Target) :
     element specs64 56 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     ShaderModuleDescriptor.walk_chain64 (table := 56) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -20727,7 +20707,7 @@ theorem element_targets32 (d : ShaderModuleDescriptor) (ts : List Target) :
     element specs32 56 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     ShaderModuleDescriptor.walk_chain32 (table := 56) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -21105,7 +21085,7 @@ theorem element_targets64 (d : TextureDescriptor) (ts : List Target) :
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
     element, relocs64, targets64, step, walk_words getElem?_specs64_words,
-    TextureDescriptor.walk_chain64 (table := 60) (by decide)]
+    chainTargetsOf_eq, TextureDescriptor.walk_chain64 (table := 60) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : TextureDescriptor) (ts : List Target) :
@@ -21166,7 +21146,7 @@ theorem element_targets32 (d : TextureDescriptor) (ts : List Target) :
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
     element, relocs32, targets32, step, walk_words getElem?_specs32_words,
-    TextureDescriptor.walk_chain32 (table := 60) (by decide)]
+    chainTargetsOf_eq, TextureDescriptor.walk_chain32 (table := 60) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : TextureDescriptor) (ts : List Target) :
@@ -21887,7 +21867,7 @@ theorem element_targets64 (d : RenderPassDescriptor) (ts : List Target) :
       walk_empty RenderPassDepthStencilAttachment.getElem?_specs64 (by decide),
       walk_empty PassTimestampWrites.getElem?_specs64 (by decide),
       RenderPassColorAttachment.array64,
-      RenderPassColorAttachment.walk_encodeAll64,
+      RenderPassColorAttachment.walk_encodeAll64, chainTargetsOf_eq,
       RenderPassDescriptor.walk_chain64 (table := 67) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -21956,7 +21936,7 @@ theorem element_targets32 (d : RenderPassDescriptor) (ts : List Target) :
       walk_empty RenderPassDepthStencilAttachment.getElem?_specs32 (by decide),
       walk_empty PassTimestampWrites.getElem?_specs32 (by decide),
       RenderPassColorAttachment.array32,
-      RenderPassColorAttachment.walk_encodeAll32,
+      RenderPassColorAttachment.walk_encodeAll32, chainTargetsOf_eq,
       RenderPassDescriptor.walk_chain32 (table := 67) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -22058,7 +22038,7 @@ theorem element_targets64 (d : TextureViewDescriptor) (ts : List Target) :
     element specs64 68 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs64, targets64, step,
+    element, relocs64, targets64, step, chainTargetsOf_eq,
     TextureViewDescriptor.walk_chain64 (table := 68) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
@@ -22120,7 +22100,7 @@ theorem element_targets32 (d : TextureViewDescriptor) (ts : List Target) :
     element specs32 68 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
-    element, relocs32, targets32, step,
+    element, relocs32, targets32, step, chainTargetsOf_eq,
     TextureViewDescriptor.walk_chain32 (table := 68) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/

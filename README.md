@@ -76,9 +76,9 @@ AMD Ryzen AI 9 HX 370 (2026-11-05):
 
 | Struct              |   C | Lean: encoding | Lean: all a shim does |
 |---------------------|----:|---------------:|----------------------:|
-| Buffer descriptor   | 1.8 |           19.5 |                  23.8 |
-| Instance descriptor | 1.0 |           73.9 |                  78.6 |
-| Bind group layout   | 6.4 |           79.0 |                 107.6 |
+| Buffer descriptor   | 1.2 |           20.2 |                  24.0 |
+| Instance descriptor | 1.0 |           73.4 |                  79.5 |
+| Bind group layout   | 6.3 |          117.5 |                 132.5 |
 
 A buffer descriptor is a label and scalars; an instance descriptor, an array
 of enums and limits behind a pointer; a bind group layout, an array of four
@@ -89,7 +89,9 @@ points to among them, each a block of bytes of its own; all a shim does adds C
 filling in its pointers, but not calling WebGPU. Most of the cost is in
 allocating: a block for each array and each struct pointed to, a target for
 each pointer, and the arrays that hold them. An array of structs is one block,
-each element poked into it at its offset.
+each element poked into it at its offset. Each struct that can be extended
+has its chain as a target, even an empty one (a shared constant): the bind
+group layout's four entries each have one, which C walks too.
 Making the Lean value is not counted, as C's struct on the stack is free.
 
 Every shim also brackets its call into WebGPU, so that an error a callback
