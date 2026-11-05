@@ -25,6 +25,11 @@ page's canvas. Natively, fetch SDL3 first (`vendor/sdl3/fetch.sh`), then
 `lake build WebGPUWindow`; its test, `lake exe webgpu-window-test`, draws a
 triangle in a window. The bindings themselves need no SDL.
 
+The smallest program that draws, natively and in a browser alike, is
+`Examples/Triangle.lean`: `lake exe triangle`, or [in your browser][triangle].
+
+[triangle]: https://lancelet.github.io/webgpu-raw-lean/triangle.html
+
 ## Proofs
 
 The generator's are in [its README](webgpu-gen/README.md#proofs). The
@@ -105,4 +110,4 @@ Every shim also brackets its call into WebGPU, so that an error a callback
 raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
 benchmark reports too.
 
-Status: WIP: approximately 97% complete.
+Status: WIP: approximately 98% complete.

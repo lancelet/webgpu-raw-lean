@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A triangle</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    margin: 0;
+    padding: 16px;
+    font-family: system-ui, sans-serif;
+    background: Canvas;
+    color: CanvasText;
+  }
+  canvas { max-width: 100%; height: auto; display: block; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>A triangle</h1>
+  <p>
+    Drawn by Lean, compiled to WebAssembly, through the WebGPU bindings and
+    their window library (<code>Examples/Triangle.lean</code>).
+    <a href="index.html">The self-test</a>.
+  </p>
+  <canvas id="canvas" width="640" height="480"></canvas>
+  <pre id="out"></pre>
+<script>
+  // The program prints into the page; Emscripten's script declares `Module`.
+  var Module = (() => {
+    const out = document.getElementById("out");
+    const line = (text) => { out.textContent += text + "\n"; };
+    if (!navigator.gpu) line("This browser has no WebGPU.");
+    return { print: line, printErr: line };
+  })();
+</script>
+<script src="triangle.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 The bindings, compiled to WebAssembly, call WebGPU in the browser through
 [emdawnwebgpu], Dawn's implementation of `webgpu.h` for Emscripten. So far
 this builds a self-test, which CI runs under Node and publishes to
-[GitHub Pages][pages].
+[GitHub Pages][pages], and the examples, which it publishes too.
 
 ## Lean does not support WebAssembly
 
@@ -88,14 +88,19 @@ natively, where wgpu-native calls back during the request.
   does, by `emscripten_runtime_keepalive_push`).
 - **The window library's window is the page's canvas** (`#canvas`), and
   its frame loop (`WebGPU.Window.run`) the browser's animation frames, which
-  keep the program alive while they run. A program ends from a frame only
-  once the frames have ended (by a request's callback, after the frame that
-  ends them returns): an exit waits while they run. The browser presents a
-  frame at its end; `Surface.present` is refused (`Surface.presentFrame`
-  knows).
+  keep the program alive while they run. A frame must never call
+  `IO.Process.exit`: the exit waits for the frames to end, which it stops,
+  and the program hangs. A frame ends them by returning `false`; then the
+  program ends with `main`'s code, if nothing else is pending (as the
+  triangle does), or from a later request's callback (as the self-test
+  does). The browser presents a frame at its end; `Surface.present` is
+  refused (`Surface.presentFrame` knows).
 - **In headless Chrome, a device's uncaptured error reached its callback
   only while a request was pending** (observed, not documented): the
   self-test keeps one pending, the queue's `onSubmittedWorkDone`.
+
+The examples (`Examples/`) are written this way too, each linked into a
+page of its own (`triangle.html`).
 
 The self-test (`WebGPURawWebTest/SelfTest.lean`) is written this way: in a
 browser it goes on in `requestAdapter`'s callback, then, with an adapter,

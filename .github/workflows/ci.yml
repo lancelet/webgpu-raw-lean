@@ -178,6 +178,17 @@ jobs:
             .lake/build/bin/webgpu-window-test
           fi
 
+      # The examples: the triangle, three frames of it, where there is a
+      # display (not on macOS's runner).
+      - name: Build and run the examples
+        run: |
+          lake build triangle
+          if [ "$RUNNER_OS" = Linux ]; then
+            SDL_VIDEO_DRIVER=x11 xvfb-run -a .lake/build/bin/triangle 3
+          elif [ "$RUNNER_OS" = Windows ]; then
+            .lake/build/bin/triangle 3
+          fi
+
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
   # web/emscripten-version (and cmake and make), then run web/build.sh. The

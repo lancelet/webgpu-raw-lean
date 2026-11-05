@@ -9,6 +9,7 @@
 
 #ifdef __EMSCRIPTEN__
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <emscripten.h>
@@ -46,9 +47,13 @@ static double * lean_wgpu_events = NULL;
 static size_t lean_wgpu_event_count = 0;
 static size_t lean_wgpu_event_capacity = 0;
 
-// Queue an event; dropped if out of memory.
+// Queue an event; dropped if out of memory, or if 65536 wait (as SDL caps
+// its queue), as when nothing polls.
 static void lean_wgpu_queue(double a, double b, double c, double d,
         double e) {
+    if (lean_wgpu_event_count >= 65536) {
+        return;
+    }
     if (lean_wgpu_event_count == lean_wgpu_event_capacity) {
         size_t capacity =
             lean_wgpu_event_capacity == 0 ? 16 : 2 * lean_wgpu_event_capacity;
@@ -68,7 +73,11 @@ static void lean_wgpu_queue(double a, double b, double c, double d,
     v[4] = e;
 }
 
-static EM_BOOL lean_wgpu_on_mouse(int type, EmscriptenMouseEvent const * e,
+// The mouse's events over the canvas, in its CSS pixels (as a stylesheet
+// scales it, not the canvas's): handled, so the page does not scroll, nor
+// show its menu, over it. The wheel's are as the browser gives them (in
+// its `deltaMode`'s units). The keys' go on to the page.
+static bool lean_wgpu_on_mouse(int type, EmscriptenMouseEvent const * e,
         void * data) {
     (void)data;
     if (type == EMSCRIPTEN_EVENT_MOUSEMOVE) {
@@ -79,30 +88,51 @@ static EM_BOOL lean_wgpu_on_mouse(int type, EmscriptenMouseEvent const * e,
             type == EMSCRIPTEN_EVENT_MOUSEDOWN ? 1 : 0,
             e->targetX, e->targetY);
     }
-    return EM_TRUE;
+    return true;
 }
 
-static EM_BOOL lean_wgpu_on_wheel(int type, EmscriptenWheelEvent const * e,
+static bool lean_wgpu_on_wheel(int type, EmscriptenWheelEvent const * e,
         void * data) {
     (void)type;
     (void)data;
     // The DOM's down is positive, SDL's negative: as SDL, natively.
     lean_wgpu_queue(5, e->deltaX, -e->deltaY, 0, 0);
-    return EM_TRUE;
+    return true;
 }
 
-static EM_BOOL lean_wgpu_on_key(int type, EmscriptenKeyboardEvent const * e,
+static bool lean_wgpu_on_key(int type, EmscriptenKeyboardEvent const * e,
         void * data) {
     (void)data;
-    // A key's code: its character's, for one key a character names, as
-    // SDL's key codes are, else 0.
+    // A key's code, as SDL's: its character's code point, for a key one
+    // character names (`e->key`, in UTF-8); those of a few named keys; else
+    // 0 (arrows, function keys, modifiers and the like).
+    static struct { char const * name; uint32_t code; } const named[] = {
+        {"Enter", 13}, {"Escape", 27}, {"Backspace", 8}, {"Tab", 9},
+        {"Delete", 127}
+    };
     uint32_t code = 0;
-    if (strlen(e->key) == 1) {
-        code = (unsigned char)e->key[0];
+    unsigned char const * k = (unsigned char const *)e->key;
+    size_t length = strlen(e->key);
+    if (length == 1 && k[0] < 0x80) {
+        code = k[0];
+    } else if (length == 2 && (k[0] & 0xE0) == 0xC0) {
+        code = ((uint32_t)(k[0] & 0x1F) << 6) | (k[1] & 0x3F);
+    } else if (length == 3 && (k[0] & 0xF0) == 0xE0) {
+        code = ((uint32_t)(k[0] & 0x0F) << 12) | ((k[1] & 0x3F) << 6)
+            | (k[2] & 0x3F);
+    } else if (length == 4 && (k[0] & 0xF8) == 0xF0) {
+        code = ((uint32_t)(k[0] & 0x07) << 18) | ((k[1] & 0x3F) << 12)
+            | ((k[2] & 0x3F) << 6) | (k[3] & 0x3F);
+    } else {
+        for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
+            if (strcmp(e->key, named[i].name) == 0) {
+                code = named[i].code;
+            }
+        }
     }
     lean_wgpu_queue(6, code, type == EMSCRIPTEN_EVENT_KEYDOWN ? 1 : 0,
         e->repeat ? 1 : 0, 0);
-    return EM_FALSE;
+    return false;
 }
 
 // The canvas, `width` by `height` pixels, titled `title` (the page's title),
@@ -115,19 +145,21 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
         return lean_wgpu_window_error("Window.create: no canvas");
     }
     emscripten_set_window_title(lean_string_cstr(title));
-    emscripten_set_mousemove_callback(
-        lean_wgpu_canvas, NULL, EM_FALSE, lean_wgpu_on_mouse);
-    emscripten_set_mousedown_callback(
-        lean_wgpu_canvas, NULL, EM_FALSE, lean_wgpu_on_mouse);
-    emscripten_set_mouseup_callback(
-        lean_wgpu_canvas, NULL, EM_FALSE, lean_wgpu_on_mouse);
-    emscripten_set_wheel_callback(
-        lean_wgpu_canvas, NULL, EM_FALSE, lean_wgpu_on_wheel);
-    emscripten_set_keydown_callback(
-        EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_FALSE, lean_wgpu_on_key);
-    emscripten_set_keyup_callback(
-        EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EM_FALSE, lean_wgpu_on_key);
+    // The canvas's events, registered once: a second window is the same
+    // canvas, and registering again would queue each event twice.
     if (lean_wgpu_window_class == NULL) {
+        emscripten_set_mousemove_callback(
+            lean_wgpu_canvas, NULL, false, lean_wgpu_on_mouse);
+        emscripten_set_mousedown_callback(
+            lean_wgpu_canvas, NULL, false, lean_wgpu_on_mouse);
+        emscripten_set_mouseup_callback(
+            lean_wgpu_canvas, NULL, false, lean_wgpu_on_mouse);
+        emscripten_set_wheel_callback(
+            lean_wgpu_canvas, NULL, false, lean_wgpu_on_wheel);
+        emscripten_set_keydown_callback(
+            EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, lean_wgpu_on_key);
+        emscripten_set_keyup_callback(
+            EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, false, lean_wgpu_on_key);
         lean_wgpu_window_class = lean_register_external_class(
             lean_wgpu_window_finalize, lean_wgpu_window_visit);
     }
@@ -189,7 +221,7 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_surface(
 // event loop, outside every call, ends the program (`c/callback.c`).
 static double lean_wgpu_first_frame = -1;
 
-static EM_BOOL lean_wgpu_on_frame(double milliseconds, void * data) {
+static bool lean_wgpu_on_frame(double milliseconds, void * data) {
     lean_object * frame = data;
     if (lean_wgpu_first_frame < 0) {
         lean_wgpu_first_frame = milliseconds;
@@ -202,7 +234,7 @@ static EM_BOOL lean_wgpu_on_frame(double milliseconds, void * data) {
         lean_dec(frame);
         emscripten_runtime_keepalive_pop();
         lean_wgpu_callback_done(result);
-        return EM_FALSE;
+        return false;
     }
     uint8_t go_on = lean_unbox(lean_io_result_get_value(result));
     lean_dec(result);
@@ -210,7 +242,7 @@ static EM_BOOL lean_wgpu_on_frame(double milliseconds, void * data) {
         lean_dec(frame);
         emscripten_runtime_keepalive_pop();
     }
-    return go_on ? EM_TRUE : EM_FALSE;
+    return go_on ? true : false;
 }
 
 // Run `frame` (borrowed) once an animation frame, from the event loop, from
@@ -218,6 +250,7 @@ static EM_BOOL lean_wgpu_on_frame(double milliseconds, void * data) {
 // ends, as animation frames are not requests, which keep it so.
 LEAN_EXPORT lean_obj_res lean_wgpu_window_run(b_lean_obj_arg frame) {
     emscripten_runtime_keepalive_push();
+    lean_wgpu_first_frame = -1;
     emscripten_request_animation_frame_loop(
         lean_wgpu_on_frame, lean_wgpu_closure_hold(frame));
     return lean_io_result_mk_ok(lean_box(0));

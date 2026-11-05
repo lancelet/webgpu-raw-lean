@@ -51,6 +51,15 @@ def wgpuRpath : Array String :=
     libs.map (s!"-Wl,-rpath,@executable_path/{·}")
   else libs.map (s!"-Wl,-rpath,$ORIGIN/{·}")
 
+/--
+On Linux, let a shared library a program links refer to the C library's
+newer symbols: Lean links against its own, older, C library, but SDL3, built
+on the system, against the system's, which the program meets at run time.
+-/
+def sharedLibArgs : Array String :=
+  if System.Platform.isWindows || System.Platform.isOSX then #[]
+  else #["-Wl,--allow-shlib-undefined"]
+
 /-- The C compiler: `cc`, or the one `CC` names. -/
 def cCompiler : IO String := return (← IO.getEnv "CC").getD "cc"
 
@@ -84,7 +93,7 @@ def checkedArgs : Array String :=
 
 package WebGPURaw where
   leanOptions   := #[⟨`autoImplicit, false⟩]
-  moreLinkArgs  := wgpuRpath
+  moreLinkArgs  := wgpuRpath ++ sharedLibArgs
   moreLeancArgs := #[checkPoke]
 
 /--
@@ -270,3 +279,15 @@ it, read back where the surface allows. Run with
 -/
 lean_exe «webgpu-window-test» where
   root := `WebGPUWindowTest
+
+/--
+The examples (`Examples/`), each a program of its own: `Examples.Triangle`,
+a triangle in a window, natively (`lake exe triangle`) and on the web
+(`web/build.sh` builds `triangle.html`).
+-/
+lean_lib Examples where
+  globs := #[.submodules `Examples]
+
+/-- The triangle example: `lake exe triangle [frames]`. -/
+lean_exe triangle where
+  root := `Examples.Triangle

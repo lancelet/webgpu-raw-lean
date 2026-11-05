@@ -105,9 +105,12 @@ Run `frame` once a frame, given the seconds since the first, until it
 returns `false`, or raises an error. Natively, in a loop, as fast as `frame`
 returns (presenting a surface, configured `fifo`, waits for the display),
 then returns, with `frame`'s error, if any. In a browser, from its event
-loop, once a frame, after `main` has returned: this returns at once, and the
-program goes on in `frame`, which ends it (`IO.Process.exit`, as
-`web/README.md` says); an error `frame` raises ends it too.
+loop, once a frame, after `main` has returned: this returns at once, the
+program kept alive while the frames run. There, `frame` must never call
+`IO.Process.exit`, which would wait for the frames to end, which it stops:
+the program would hang. It ends the frames by returning `false`; the program
+then ends with `main`'s code, if nothing else is pending, or exits from a
+later request's callback (`web/README.md`). An error `frame` raises ends it.
 -/
 def run (frame : Float → IO Bool) : IO Unit :=
   Internal.run frame

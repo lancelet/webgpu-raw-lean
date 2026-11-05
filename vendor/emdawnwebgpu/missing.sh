@@ -29,22 +29,24 @@ names() {
 names vendor/webgpu-headers/webgpu.h > "$tmp/upstream"
 names "$dawn" > "$tmp/dawn"
 # Those the port declares, but whose JavaScript aborts, ending the program,
-# as its first statements: a function `wgpuX: (...) => {` whose next few
-# lines call `abort(`.
+# as one of its first statements: a function `wgpuX: (...) => {` one of whose
+# next few lines is `abort(...)`, or `wgpuX: (...) => abort(...)` on one.
 awk '
   /^  wgpu[A-Za-z0-9]+: \(/ {
     match($0, /wgpu[A-Za-z0-9]+/); name = substr($0, RSTART, RLENGTH); n = 0
+    if ($0 ~ /=> *abort\(/) { print name; name = "" }
     next
   }
   name != "" && n < 3 {
     n++
-    if ($0 ~ /abort\(/) { print name; name = "" }
+    if ($0 ~ /^[ \t]*abort\(/) { print name; name = "" }
   }
 ' "$js" | LC_ALL=C sort -u > "$tmp/aborting"
 {
   echo "# The webgpu.h functions the emdawnwebgpu port of Emscripten" \
     "$(cat web/emscripten-version) does"
-  echo "# not declare, or aborts in. Written by missing.sh; do not edit by hand."
+  echo "# not declare, or aborts in. Written by missing.sh; do not edit by" \
+    "hand."
   LC_ALL=C comm -23 "$tmp/upstream" "$tmp/dawn"
   LC_ALL=C comm -12 "$tmp/upstream" "$tmp/aborting"
 } > vendor/emdawnwebgpu/missing

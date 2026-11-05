@@ -182,7 +182,7 @@ fi
 
 # --- The bindings and the self-test -------------------------------------------
 echo "== the bindings and the self-test"
-lake build WebGPURawWebTest >/dev/null
+lake build WebGPURawWebTest Examples >/dev/null
 rm -rf "$app"
 mkdir -p "$app" "$site"
 
@@ -262,4 +262,31 @@ if grep "function signature mismatch" "$app/link.log" \
   exit 1
 fi
 cp web/index.html "$site/index.html"
+
+# The examples, each a program of its own: its module, linked with the
+# bindings, the window library and their C (not the tests', nor the
+# self-test's `main`), and its page.
+echo "== the examples"
+mkdir -p "$app/examples"
+# shellcheck disable=SC2043 # one example, so far
+for example in Examples/Triangle; do
+  name=$(basename "$example" | tr '[:upper:]' '[:lower:]')
+  read_flags
+  emcc "${flags[@]}" -w "$check_poke" -c ".lake/build/ir/$example.c" \
+    -o "$app/examples/${example//\//_}.o"
+  objects=("$app"/WebGPU_*.o "$app"/WebGPUWindow.o "$app"/shim_c_*.o
+    "$app"/shim_window_*.o)
+  em++ -o "$site/$name.js" "${objects[@]}" "$app/examples/${example//\//_}.o" \
+    "$cache/lib/libInit.a" "$cache/lib/libleanrt.a" "$cache/lib/libuv.a" \
+    -O2 -fwasm-exceptions "$port" -sENVIRONMENT=web -sEXIT_RUNTIME=1 \
+    -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608 2> "$app/examples/link.log" \
+    || { cat "$app/examples/link.log" >&2; exit 1; }
+  # As the self-test's: a function called with the wrong C type traps.
+  if grep "function signature mismatch" "$app/examples/link.log" \
+      | grep -v -e lean_io_create_tempfile -e lean_io_create_tempdir; then
+    echo "web/build.sh: a function is called with the wrong C type" >&2
+    exit 1
+  fi
+  cp "web/$name.html" "$site/$name.html"
+done
 echo "Built $site"
