@@ -172,7 +172,9 @@ it could call unimplemented.)
   a reference of its own until the family is gone (Families, below). A block
   C writes into must never be a constant Lean computes once (an empty one,
   which C does not write into, may: an optional struct that is none is
-  the one `ByteArray.empty`), so what makes one is `@[never_extract]`:
+  the one `ByteArray.empty`; and an empty chain's targets are the one
+  `emptyChainTargets`, of no link, which C neither walks nor writes), so
+  what makes one is `@[never_extract]`:
   the encoders, and what makes the targets and a chain's links. *Checked
   by:* proof, of every generated table, that its relocations are exactly
   its struct's pointers, each within the struct, and that its bytes are
@@ -424,12 +426,13 @@ implements them. wgpu-native also aborts on values it does not support: a timed
 is not memory-unsafe, but ends the program; the bindings do not check for it
 yet. Dawn, in turn, refuses that feature without Asyncify or JSPI, which the
 web build lacks: so `waitAny` waits only with a timeout of 0 there, and a
-longer one gives the status `error`. And it aborts on a descriptor without the chain it needs, which the
-bindings refuse: a struct that describes nothing but by its chain
-(`Struct.chainRequired`, as a shader module descriptor), passed with an empty
-one, raises an `IO` error instead (`createShaderModule`: "nothing chained to
-descriptor"); and a function taking one whose extensions cannot be passed yet
-is not bound (`createSurface`, whose surface sources hold OS handles).
+longer one gives the status `error`. And wgpu-native aborts on a descriptor
+without the chain it needs, which the bindings refuse: a struct that
+describes nothing but by its chain (`Struct.chainRequired`, as a shader
+module descriptor), passed with an empty one, raises an `IO` error instead
+(`createShaderModule`: "nothing chained to descriptor"); and a function
+taking one whose extensions cannot be passed yet is not bound
+(`createSurface`, whose surface sources hold OS handles).
 *Checked by:* test (of the generated check, and that `createSurface` is not
 bound).
 
