@@ -5,6 +5,7 @@
 // tests are in CI.
 
 #include <string.h>
+#include "family.h"
 #include "reloc.h"
 
 #ifdef LEAN_WGPU_CHECKED
@@ -22,7 +23,8 @@ enum {
     LEAN_WGPU_OPT_OBJECT = 3,
     LEAN_WGPU_BLOCK      = 4,
     LEAN_WGPU_CHAIN      = 5,
-    LEAN_WGPU_NULL       = 6,
+    LEAN_WGPU_CLOSURE    = 6,
+    LEAN_WGPU_NULL       = 7,
 };
 
 // The little-endian u32 at `p`. Every target is little-endian.
@@ -88,6 +90,20 @@ void lean_wgpu_fill(
                 value = lean_wgpu_some(value);
                 if (value != NULL) {
                     pointer = lean_get_external_data(value);
+                }
+                break;
+            case LEAN_WGPU_CLOSURE:
+                // Held by the family being filled, at the ordinal the table
+                // gives, and the pointer that family's ID; null for none.
+                value = lean_wgpu_some(value);
+                if (value != NULL) {
+                    lean_wgpu_family family = lean_wgpu_family_filling();
+                    size_t ordinal = lean_wgpu_u32(reloc + 8);
+                    LEAN_WGPU_CHECK(family != 0
+                        && ordinal < LEAN_WGPU_FAMILY_CLOSURES,
+                        "a closure with no family, or out of range");
+                    lean_wgpu_family_hold(family, ordinal, value);
+                    pointer = (void *)family;
                 }
                 break;
             case LEAN_WGPU_BLOCK: {

@@ -101,3 +101,9 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_family_touch(b_lean_obj_arg m) {
     (void)m;
     return lean_wgpu_test_unit();
 }
+
+// How many closures a family holds: which `Reloc.closures` must equal.
+LEAN_EXPORT size_t lean_wgpu_test_family_closures(b_lean_obj_arg unit) {
+    (void)unit;
+    return LEAN_WGPU_FAMILY_CLOSURES;
+}

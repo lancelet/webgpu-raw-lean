@@ -395,7 +395,7 @@ array's elements of another kind, not yet filled in, or a struct with no table.
 An array of numbers is a block of table 0, of objects of table 1.
 -/
 def kind (index : Names → Option Nat) : Pointer → Option (String × Nat × Nat)
-  | .next                      => some (".null", 6, 0)
+  | .next                      => some (".null", 7, 0)
   | .chain ..                  => some (".chain", 5, 0)
   | .string _                  => some (".string", 0, 0)
   | .optString _               => some (".optString", 1, 0)

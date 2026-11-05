@@ -147,42 +147,46 @@ it could call unimplemented.)
   bounds), and test: CI runs the tests in a build where every poke also checks
   its block is unshared and its store fits (`-K checkPokes=true`, and on the web
   `WEBGPU_RAW_CHECK_POKES=1`), stopping the program if not.
-- **C fills in a struct's pointers only where its table says, from targets of
-  the kinds it says.** One C function (`lean_wgpu_fill`, `c/reloc.c`) walks a
-  struct's table of relocations over its encoded bytes, writing each pointer
-  from the next target: a string's bytes, an object's handle, or a block of
-  bytes it fills in first, a struct pointed to or an array's elements (of
-  structs, each by its table; of enums, numbers with no pointers; of objects,
-  handles, each from an object target), or a chain: blocks it fills in first,
-  each by its own table, then links, each element's first pointer, its
-  `next`, to the next element, the last's left null. Each element is one of
-  its table's structs, whose first pointer is that `next`, so the link is
-  written within it; and it is an extension's bytes, which its encoder starts
-  with its `sType`, a constant of the extension, as the chain's type, a sum of
-  the struct's extensions, offers only those. It trusts the table, the targets
-  and the bytes to agree: offsets within the struct, targets of the kinds the
-  table says, as many as it needs, blocks of whole elements, held by nothing
-  else and aligned; and an array's count, a field of its struct, to be its
-  block's length in elements, as the generator writes both from the same
-  array. Whatever a pointer points into is a target, held by the call's
-  targets, so borrowed for the call (see above: C keeps no input after it). A
-  block C writes into must never be a constant Lean computes once (an empty
-  one, which C does not write into, may: an optional struct that is none is
-  the one `ByteArray.empty`), so what makes one is `@[never_extract]`: the
-  encoders, and what makes the targets and a chain's links. *Checked by:*
-  proof, of every generated table, that its relocations are exactly its
-  struct's pointers, each within the struct, and that its bytes are their
-  serialization; a check, as the tests build, that every encoder and maker of
-  targets is `@[never_extract]`; test, natively and on the web, of every kind
-  of pointer, none and some, blocks two deep, empty and of two elements,
-  chains empty and of two elements, and of generated tables against C; and CI
-  runs the tests in the checked build, where the walker checks every one of
-  the above, stopping the program if not. And proof, of every generated
-  struct, that the walker's Lean specification (`walk`), walking its table
-  over its bytes, takes exactly its targets, each of the kind its relocation
-  needs, and each chain's element one of its table's structs, its `next`
-  first: the agreement the checked build checks. That C implements the
-  specification is by review and test.
+- **C fills in a struct's pointers only where its table says, from targets
+  of the kinds it says.** One C function (`lean_wgpu_fill`, `c/reloc.c`)
+  walks a struct's table of relocations over its encoded bytes, writing
+  each pointer from the next target: a string's bytes, an object's handle,
+  or a block of bytes it fills in first, a struct pointed to or an array's
+  elements (of structs, each by its table; of enums, numbers with no pointers;
+  of objects, handles, each from an object target), or a chain: blocks it fills
+  in first, each by its own table, then links, each element's first pointer,
+  its `next`, to the next element, the last's left null. Each element is one
+  of its table's structs, whose first pointer is that `next`, so the link
+  is written within it; and it is an extension's bytes, which its encoder
+  starts with its `sType`, a constant of the extension, as the chain's type,
+  a sum of the struct's extensions, offers only those. Or a callback's closure:
+  held by the family the shim filling the struct set, at the ordinal the table
+  gives, the pointer that family's ID (`c/family.c`). It trusts the table,
+  the targets and the bytes to agree: offsets within the struct, targets of
+  the kinds the table says, as many as it needs, blocks of whole elements,
+  held by nothing else and aligned; and an array's count, a field of its
+  struct, to be its block's length in elements, as the generator writes
+  both from the same array. Whatever a pointer points into is a target,
+  held by the call's targets, so borrowed for the call (see above: C keeps
+  no input after it); but a callback's closure, which its family holds with
+  a reference of its own until the family is gone (Families, below). A block
+  C writes into must never be a constant Lean computes once (an empty one,
+  which C does not write into, may: an optional struct that is none is
+  the one `ByteArray.empty`), so what makes one is `@[never_extract]`:
+  the encoders, and what makes the targets and a chain's links. *Checked
+  by:* proof, of every generated table, that its relocations are exactly
+  its struct's pointers, each within the struct, and that its bytes are
+  their serialization; a check, as the tests build, that every encoder and
+  maker of targets is `@[never_extract]`; test, natively and on the web,
+  of every kind of pointer, none and some, blocks two deep, empty and of
+  two elements, chains empty and of two elements, and of generated tables
+  against C; and CI runs the tests in the checked build, where the walker
+  checks every one of the above, stopping the program if not. And proof,
+  of every generated struct, that the walker's Lean specification (`walk`),
+  walking its table over its bytes, takes exactly its targets, each of the
+  kind its relocation needs, and each chain's element one of its table's
+  structs, its `next` first: the agreement the checked build checks. That
+  C implements the specification is by review and test.
 
 ## Threads
 
@@ -299,9 +303,11 @@ long as anything made from it is alive, and after: in wgpu-native, every
 object made from a device reports its errors through the device's, even
 after the device's release; in Dawn, "lost" can come after the release. So
 their closures are kept by the device's family, the objects made from it,
-directly or not, until the last of them is gone (`c/family.c`). Nothing uses
-the families yet: they are tested on their own
-(`WebGPURawTest/Internal/Family.lean`), natively and on the web.
+directly or not, until the last of them is gone (`c/family.c`). The walker
+holds a callback's closure in the family the shim filling the struct sets;
+no shim does yet. The families are tested on their own
+(`WebGPURawTest/Internal/Family.lean`), natively and on the web, a closure
+filled in among them.
 
 - **A family keeps its closures while anything keeps it, and releases them
   exactly once, when the last thing is gone**: its maker, and each Lean

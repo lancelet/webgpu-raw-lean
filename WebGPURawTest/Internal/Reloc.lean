@@ -31,9 +31,22 @@ open WebGPU.Raw WebGPU.Raw.Reloc
 
 -- Each kind's code.
 #guard
-  let kinds :=
-    [Kind.string, .optString, .object, .optObject, .block 0, .chain, .null]
-  kinds.map Kind.code == [0, 1, 2, 3, 4, 5, 6]
+  let kinds := [Kind.string, .optString, .object, .optObject, .block 0, .chain,
+    .optClosure 0, .null]
+  kinds.map Kind.code == [0, 1, 2, 3, 4, 5, 6, 7]
+
+-- And each target's constructor's index is its kind's code, which C reads
+-- as the target's tag: `null`, which takes none, after them.
+#guard
+  let targets := [Target.string "", .optString none, .optObject none,
+    .block .empty, .chain #[], .optClosure none]
+  targets.map Target.ctorIdx == [0, 1, 3, 4, 5, 6]
+
+-- A closure's relocation: its ordinal where a block's table is.
+#guard (serialize 16 [⟨8, .optClosure 3⟩]).data.toList == [
+  16, 0, 0, 0, 1, 0, 0, 0,
+  8, 0, 0, 0, 6, 0, 0, 0, 3, 0, 0, 0
+]
 
 /-! ## The walk
 
@@ -130,6 +143,20 @@ example :
     walk linkSpecs 2 8 [.chain #[(zerosOf 8, 1)], .string "a"] = none := by
   rw [walk]
   simp [linkSpecs, step, walkLinks, Spec.isLink, size_zerosOf]
+
+-- A closure takes a closure target, some or none, and nothing else.
+example :
+    walk #[(16, [⟨0, .optClosure 0⟩, ⟨8, .null⟩])] 0 16 [.optClosure none]
+      = some [] := by
+  simp [walk, step, closures]
+example :
+    walk #[(16, [⟨0, .optClosure 0⟩])] 0 16 [.optObject none] = none := by
+  simp [walk, step]
+
+-- Nor one whose ordinal a family has no place for.
+example :
+    walk #[(16, [⟨0, .optClosure 4⟩])] 0 16 [.optClosure none] = none := by
+  simp [walk, step, closures]
 
 /-! ## Filling in -/
 

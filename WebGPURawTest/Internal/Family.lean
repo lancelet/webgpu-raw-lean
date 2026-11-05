@@ -1,4 +1,5 @@
 import WebGPURawTest.Internal.Callback
+import WebGPURawTest.Internal.Reloc
 
 /-!
 # Tests for families
@@ -11,7 +12,9 @@ is used again; a member's handle can have several Lean objects; releasing a
 closure that holds a member of another family, whose finalizer leaves it,
 does not deadlock; and members join and leave from many tasks at once. A
 closure's release is seen by a token it holds (`Callback.token`). These run
-natively and on the web.
+natively and on the web. And a closure the walker fills in
+(`WebGPURawTest/c/fill.c`) is held by the family being filled, at its
+ordinal, of which a family holds as many as the walk says.
 -/
 
 namespace WebGPURawTest.Internal.Family
@@ -50,6 +53,10 @@ opaque setFilling (f : USize) : IO USize
 
 @[extern "lean_wgpu_test_family_filling"]
 opaque filling : IO USize
+
+/-- How many closures a family holds, in C. -/
+@[extern "lean_wgpu_test_family_closures"]
+opaque closuresInC : Unit → USize
 
 /-- The type of handles behind `Member`. -/
 opaque MemberHandle : NonemptyType
@@ -256,6 +263,57 @@ def fillingFamily : IO String := do
       && restored == 42)
     s!"{none}, then {outer}, {inner}, {restored}")
 
+/-! ## Closures filled in -/
+
+/-- A closure, as a `Closure`: the same Lean value. -/
+@[extern c inline "#1"]
+opaque closureOf : (Unit → IO Unit) → WebGPU.Raw.Reloc.Closure
+
+/--
+A struct of two pointers, each a callback's closure, at ordinals 1 and 2.
+-/
+def closureTables : Array ByteArray :=
+  #[WebGPU.Raw.Reloc.serialize 16 [⟨0, .optClosure 1⟩, ⟨8, .optClosure 2⟩]]
+
+/--
+Fill `bytes` by `closureTables`, in the family `f`: what is wrong with the
+pointers C writes, or "".
+-/
+@[extern "lean_wgpu_test_fill_closures"]
+opaque fillClosures (bytes : ByteArray) (tables : @& Array ByteArray)
+  (targets : @& Array WebGPU.Raw.Reloc.Target) (f : USize) : String
+
+/-- Fill in a closure that holds a new token, and none, in `f`. -/
+@[noinline]
+def fillToken (f : USize) : IO String := do
+  let t ← token
+  let bytes := WebGPURawTest.Internal.Reloc.fresh 16 "closures"
+  pure (fillClosures bytes closureTables
+    #[.optClosure (some (closureOf fun _ => touch t)), .optClosure none] f)
+
+/--
+A closure filled in is held by the family being filled, at its ordinal, and
+the pointer is the family's ID; none is null, and holds nothing.
+-/
+def filled : IO String := do
+  let before ← tokensReleased
+  let f ← new
+  let problem ← fillToken f
+  let held ← tokensReleased
+  let ran ← call f 1
+  let other ← call f 2
+  release f
+  let after ← tokensReleased
+  pure (if !problem.isEmpty then problem else problemUnless
+    (held == before && ran && !other && after == before + 1)
+    s!"tokens {before}, {held}, {after}; ran {ran}, {other}")
+
+/-- A family holds as many closures in C as the walk says, in Lean. -/
+def closuresAgree : IO String := do
+  let c := closuresInC ()
+  pure (problemUnless (c.toNat == WebGPU.Raw.Reloc.closures)
+    s!"{c} in C, {WebGPU.Raw.Reloc.closures} in Lean")
+
 /-- Each check: what it checks, and the problem, or "" if none. -/
 def checks : IO (List (String × String)) := do
   let named := [
@@ -269,7 +327,9 @@ def checks : IO (List (String × String)) := do
       releaseRunsFinalizers),
     ("many families and members, each closure released once", many),
     ("members joining and leaving from many tasks", tasks),
-    ("the family a fill joins to, set per thread", fillingFamily)
+    ("the family a fill joins to, set per thread", fillingFamily),
+    ("a closure filled in, held by the family being filled", filled),
+    ("as many closures held in C as the walk says", closuresAgree)
   ]
   named.mapM fun (what, check) => do pure (what, ← check)
 

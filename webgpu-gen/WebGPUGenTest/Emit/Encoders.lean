@@ -191,7 +191,7 @@ def member (name : String) (value : Value) : Member :=
     .chain inner "d.chain"
   ]
   pointers.map (kind index) == [
-    some (".null", 6, 0),
+    some (".null", 7, 0),
     some (".string", 0, 0),
     some (".optString", 1, 0),
     some (".object", 2, 0),

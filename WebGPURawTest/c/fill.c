@@ -5,6 +5,7 @@
 #include <string.h>
 #include <lean/lean.h>
 #include <webgpu/webgpu.h>
+#include "family.h"
 #include "reloc.h"
 
 // The pointer at `offset` in `data`.
@@ -361,6 +362,28 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_shader_module(
         problem = "the second source, linked from the first";
     } else if (first->chain.next->next != NULL) {
         problem = "the end of the chain, not null";
+    }
+    lean_dec(bytes);
+    return lean_mk_string(problem);
+}
+
+// Fill `bytes` by table 0 of `WebGPURawTest.Internal.Reloc.closureTables`, in
+// the family `family`, which the fill holds its closures in: two pointers, a
+// closure's (some) and a closure's (none). What is wrong: the first not the
+// family's ID, the second not null; or "".
+LEAN_EXPORT lean_obj_res lean_wgpu_test_fill_closures(
+        lean_obj_arg bytes, b_lean_obj_arg tables, b_lean_obj_arg targets,
+        size_t family) {
+    uint8_t * data = lean_sarray_cptr(bytes);
+    lean_wgpu_family previous = lean_wgpu_family_set_filling(family);
+    // Every target, so the checked build checks both are taken.
+    lean_wgpu_fill_struct(data, lean_sarray_size(bytes), tables, 0, targets);
+    lean_wgpu_family_set_filling(previous);
+    char const * problem = "";
+    if (lean_wgpu_test_pointer(data, 0) != (void *)family) {
+        problem = "the closure, not the family's ID";
+    } else if (lean_wgpu_test_pointer(data, 8) != NULL) {
+        problem = "no closure, not null";
     }
     lean_dec(bytes);
     return lean_mk_string(problem);

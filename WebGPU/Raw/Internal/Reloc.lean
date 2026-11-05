@@ -18,20 +18,22 @@ one for each relocation but a null one, in order: a string, an object, a
 block of bytes, another encoded struct, or an array's elements, whose own
 relocations follow from its own table, its targets next in order; or a chain
 of extensions, each element's bytes with the index of its own table, all of
-their targets next, element by element.
+their targets next, element by element; or a callback's closure.
 
 One C function, `lean_wgpu_fill` (`c/reloc.c`), walks a table over the bytes,
 and each element of a block, taking each target in turn. A table's header is
 the size of the struct it is for, and the number of its relocations; each
 relocation, 12 bytes, is its offset, its kind's code, and, for a block, the
-index of the block's table:
+index of the block's table, or, for a closure, its ordinal:
 
     u32 size, u32 count, then count × (u32 offset, u8 kind, u8[3] 0, u32 table)
 
 all little-endian. A block's elements are the size of its table's struct, and
 an empty block is a null pointer: an optional struct that is none, or an empty
 array. A chain's elements are filled in first, then each linked to the next by
-its first pointer, its `next`; an empty chain is a null pointer.
+its first pointer, its `next`; an empty chain is a null pointer. A closure is
+held by the family the shim filling the struct set (`c/family.c`), at its
+ordinal, and the pointer is the family's ID; none is a null pointer.
 -/
 
 @[expose] public section
@@ -53,6 +55,25 @@ instance : Nonempty Object := Subtype.property ObjectHandle
 
 -- (As `c_object Object` would declare it, without importing the command.)
 
+/-- The type of the closures behind `Closure`. -/
+opaque ClosureHandle : NonemptyType
+
+/--
+Any Lean closure a callback runs, of any callback type: C holds it, and the
+callback's trampoline knows its type. A closure is to become one by a
+conversion that is the same Lean value, `#1` in C, as an object becomes an
+`Object`, one for each callback type.
+-/
+def Closure : Type := NonemptyType.type ClosureHandle
+
+instance : Nonempty Closure := Subtype.property ClosureHandle
+
+/--
+How many closures a family holds, each at an ordinal below it
+(`LEAN_WGPU_FAMILY_CLOSURES` in `c/family.h`; a test checks they agree).
+-/
+def closures : Nat := 4
+
 /-- What a pointer of a struct points to, as C fills it in. -/
 inductive Kind where
   /-- A string's bytes. -/
@@ -71,6 +92,12 @@ inductive Kind where
   -/
   | chain
   /--
+  A callback's userdata: an optional closure, which C holds in the family
+  being filled (`c/family.c`) at `ordinal`, and the family's ID; null for
+  none.
+  -/
+  | optClosure (ordinal : Nat)
+  /--
   A pointer left null, taking no target: an extension's `next`, which its
   chain links, or the chain of a struct no extension can join.
   -/
@@ -82,13 +109,14 @@ A kind's code, in C: the same as its target's constructor's index, and
 `null`'s, which takes no target, after them.
 -/
 def Kind.code : Kind → UInt8
-  | .string    => 0
-  | .optString => 1
-  | .object    => 2
-  | .optObject => 3
-  | .block _   => 4
-  | .chain     => 5
-  | .null      => 6
+  | .string       => 0
+  | .optString    => 1
+  | .object       => 2
+  | .optObject    => 3
+  | .block _      => 4
+  | .chain        => 5
+  | .optClosure _ => 6
+  | .null         => 7
 
 /-- A pointer of a struct: its offset, and what it points to. -/
 structure Reloc where
@@ -102,8 +130,9 @@ the table says what it is.
 -/
 def Reloc.fits (r : Reloc) : Bool :=
   r.offset < 2 ^ 32 && match r.kind with
-    | .block t => t < 2 ^ 32
-    | _        => true
+    | .block t      => t < 2 ^ 32
+    | .optClosure k => k < 2 ^ 32
+    | _             => true
 
 /-- What a pointer is filled from: one for each kind but `null`. -/
 inductive Target where
@@ -114,6 +143,8 @@ inductive Target where
   | block     (bytes : ByteArray)
   /-- A chain: each element's bytes, and its table's index. -/
   | chain     (links : Array (ByteArray × Nat))
+  /-- A callback's closure, or none. -/
+  | optClosure (c : Option Closure)
 
 /-- The number `n` in 4 bytes, little-endian. -/
 def le32 (n : Nat) : List UInt8 :=
@@ -122,8 +153,9 @@ def le32 (n : Nat) : List UInt8 :=
 /-- A relocation's 12 bytes. -/
 def Reloc.bytes (r : Reloc) : List UInt8 :=
   let table := match r.kind with
-    | .block t => t
-    | _        => 0
+    | .block t      => t
+    | .optClosure k => k
+    | _             => 0
   le32 r.offset ++ [r.kind.code, 0, 0, 0] ++ le32 table
 
 /-- The table of a struct of `size` bytes, with these relocations. -/
@@ -156,16 +188,17 @@ be of its kind, and a block's own targets come next, by its own table, as a
 chain's links' do, each by its own. The walk is none if a target is missing
 or of the wrong kind, if the bytes are not whole elements, if a link is not
 one element of its table whose first pointer is a null `next` at 0, where C
-writes the link (`Spec.isLink`), or if a block's or link's table does not
+writes the link (`Spec.isLink`), if a closure's ordinal is not below
+`closures`, where a family holds it, or if a block's or link's table does not
 come before its own, as every generated one does: so it ends.
 
 It says nothing of where C writes each pointer (each struct's pointers are
 proved within it, `pointers64_within`), of alignment, or of a block being
 held by nothing else (both checked in the checked build); nor that C reads
-the table `serialize` lays out, or that a kind's code is its target's
-constructor's index (both by review and test); nor that an array's count, a
-field of its struct, is its block's length in elements (by construction: the
-generator writes both from the same array).
+the table `serialize` lays out (by review and test), or that a kind's code
+is its target's constructor's index (by test, of both); nor that an array's
+count, a field of its struct, is its block's length in elements (by
+construction: the generator writes both from the same array).
 -/
 
 /-- A table as the walk reads it: its struct's size, and its relocations. -/
@@ -201,14 +234,16 @@ def step (specs : Array Spec)
     (walk : Nat → Nat → List Target → Option (List Target)) (r : Reloc)
     (ts : List Target) : Option (List Target) :=
   match r.kind, ts with
-  | .null,      ts                 => some ts
-  | .string,    .string _ :: ts    => some ts
-  | .optString, .optString _ :: ts => some ts
-  | .object,    .object _ :: ts    => some ts
-  | .optObject, .optObject _ :: ts => some ts
-  | .block j,   .block bytes :: ts => walk j bytes.size ts
-  | .chain,     .chain links :: ts => walkLinks specs walk links ts
-  | _,          _                  => none
+  | .null,         ts                  => some ts
+  | .string,       .string _ :: ts     => some ts
+  | .optString,    .optString _ :: ts  => some ts
+  | .object,       .object _ :: ts     => some ts
+  | .optObject,    .optObject _ :: ts  => some ts
+  | .block j,      .block bytes :: ts  => walk j bytes.size ts
+  | .chain,        .chain links :: ts  => walkLinks specs walk links ts
+  | .optClosure k, .optClosure _ :: ts =>
+    if k < closures then some ts else none
+  | _,             _                   => none
 
 /--
 The targets left after filling in `size` bytes by table `table` of `specs`,

@@ -44,27 +44,27 @@ bindings prove, in Lean:
   their bounds are proved, and that their block is unshared is checked in CI
   (see `docs/Safety.md`). Encoded structs of every kind of field are tested to
   be byte for byte ones C fills in, natively and on the web.
-- **Filling in pointers.** Each struct's pointers are a table of relocations,
-  each an offset and what C fills it in from, for one C walker
-  (`WebGPU/Raw/Internal/Reloc.lean`, `c/reloc.c`). For every struct with a
-  table, both widths, it is proved that its relocations are exactly its
-  pointers, each within the struct, that the bytes C reads are their
+- **Filling in pointers.** Each struct's pointers are a table of
+  relocations, each an offset and what C fills it in from, for one C walker
+  (`WebGPU/Raw/Internal/Reloc.lean`, `c/reloc.c`). For every struct with
+  a table, both widths, it is proved that its relocations are exactly
+  its pointers, each within the struct, that the bytes C reads are their
   serialization, and that its index finds its table. And the walker is
-  specified in Lean (`walk`), which C implements (by review and test): for
-  every such struct, both widths, it is proved that walking its table over its
-  bytes takes exactly its targets, each of the kind its relocation needs, a
-  nested struct's by its own table, an array's element by element, a chain's
-  extension by extension, each by its own table and exactly one of its
-  structs, its `next` first, where C links it: so C never meets a target of
-  the wrong kind, nor runs out of them, nor links outside an element. Every
-  bound struct
-  has a table: arrays of enums, of objects and of structs included. And each
-  is a `CStruct`, its bytes, targets, table and those proofs together, for the
-  target the program runs on: its bytes proved one struct, the size its table
-  is for, and the tables C reads proved to be those the walk reads. A
-  function that takes a struct passes it to its shim as its bytes, targets
-  and table's index, each typed as exactly its own: so the walk the proofs
-  are of is the one C makes.
+  specified in Lean (`walk`), which C implements (by review and test):
+  for every such struct, both widths, it is proved that walking its table
+  over its bytes takes exactly its targets, each of the kind its relocation
+  needs, a nested struct's by its own table, an array's element by element,
+  a chain's extension by extension, each by its own table and exactly one
+  of its structs, its `next` first, where C links it: so C never meets
+  a target of the wrong kind, nor runs out of them, nor links outside an
+  element. A callback's closure is a target of its own kind, as an object
+  is. Every bound struct has a table: arrays of enums, of objects and of
+  structs included. And each is a `CStruct`, its bytes, targets, table and
+  those proofs together, for the target the program runs on: its bytes proved
+  one struct, the size its table is for, and the tables C reads proved to be
+  those the walk reads. A function that takes a struct passes it to its shim
+  as its bytes, targets and table's index, each typed as exactly its own:
+  so the walk the proofs are of is the one C makes.
 
 ## Performance
 
