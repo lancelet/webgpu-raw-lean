@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: e790a29 (clean)
-  Generated:        2026-11-05 05:04:23 UTC
+  Generator commit: 867cec4 (clean)
+  Generated:        2026-11-05 07:02:40 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -393,7 +393,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -478,7 +478,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -592,7 +592,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -680,7 +680,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -983,7 +983,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -1064,7 +1064,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -1172,7 +1172,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -1253,7 +1253,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -1369,7 +1369,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -1457,7 +1457,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -1567,7 +1567,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -1688,7 +1688,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -2024,7 +2024,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 2,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 2,
   0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -2105,7 +2105,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -2215,7 +2215,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -2297,7 +2297,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -2587,7 +2587,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -2667,7 +2667,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -2782,7 +2782,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -2866,7 +2866,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -3166,7 +3166,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -3249,7 +3249,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -3362,7 +3362,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  48, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  48, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0
 ]⟩
 
@@ -3448,7 +3448,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4, 0, 0, 0, 1, 0, 0, 0
 ]⟩
 
@@ -3565,7 +3565,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -3653,7 +3653,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -3765,7 +3765,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -3850,7 +3850,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -3958,7 +3958,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4039,7 +4039,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4147,7 +4147,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4228,7 +4228,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4347,7 +4347,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  56, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  56, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4438,7 +4438,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  36, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  36, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4560,7 +4560,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  48, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4655,7 +4655,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -4766,7 +4766,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -4849,7 +4849,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -4958,7 +4958,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -5040,7 +5040,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -5147,7 +5147,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -5227,7 +5227,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -5355,7 +5355,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  64, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  64, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -5457,7 +5457,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  52, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  52, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -5568,7 +5568,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0,
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -5651,7 +5651,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  16, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -5958,7 +5958,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -6042,7 +6042,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -6716,7 +6716,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  64, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 4,
+  64, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 4,
   0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 4, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
@@ -6809,7 +6809,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  40, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4,
+  40, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4,
   0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 4, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
@@ -6926,7 +6926,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -7010,7 +7010,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -7130,7 +7130,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  64, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  64, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7227,7 +7227,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  48, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  48, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 36, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7338,7 +7338,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7419,7 +7419,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7527,7 +7527,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7608,7 +7608,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -7913,7 +7913,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -7997,7 +7997,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -8106,7 +8106,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -8188,7 +8188,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  12, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -8495,7 +8495,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -8618,7 +8618,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -9113,9 +9113,9 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  120, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 6,
-  0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 6, 0,
-  0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  120, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 7,
+  0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 7, 0,
+  0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -9283,9 +9283,9 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  88, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 6,
-  0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 6, 0,
-  0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  88, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 7,
+  0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 7, 0,
+  0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -9646,7 +9646,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 4, 0, 0, 0, 17, 0, 0, 0
 ]⟩
 
@@ -9727,7 +9727,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  16, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 4, 0, 0, 0, 17, 0, 0, 0
 ]⟩
 
@@ -9837,7 +9837,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  48, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  48, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0, 0,
   0, 9, 0, 0, 0
 ]⟩
@@ -9922,7 +9922,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  24, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0, 0,
   9, 0, 0, 0
 ]⟩
@@ -10063,7 +10063,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  72, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  72, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -10174,7 +10174,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  68, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  68, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -10470,7 +10470,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4,
+  32, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4,
   0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 4, 0, 0, 0, 14, 0, 0, 0
 ]⟩
 
@@ -10552,7 +10552,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  16, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0,
+  16, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0,
   0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 4, 0, 0, 0, 14, 0, 0, 0
 ]⟩
 
@@ -11016,7 +11016,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  72, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 3, 0,
+  72, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 3, 0,
   0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -11155,7 +11155,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  56, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 3, 0,
+  56, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 3, 0,
   0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
@@ -12162,7 +12162,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  32, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -12252,7 +12252,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0
+  24, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -12619,7 +12619,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4,
+  40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4,
   0, 0, 0, 44, 0, 0, 0
 ]⟩
 
@@ -12743,7 +12743,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4,
   0, 0, 0, 44, 0, 0, 0
 ]⟩
 
@@ -12891,7 +12891,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  48, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  48, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0, 0,
   0, 45, 0, 0, 0
 ]⟩
@@ -12976,7 +12976,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  24, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0,
   0, 45, 0, 0, 0
 ]⟩
@@ -13088,7 +13088,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  40, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  40, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4, 0, 0, 0, 46, 0, 0, 0
 ]⟩
 
@@ -13171,7 +13171,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  20, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  20, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4, 0, 0, 0, 46, 0, 0, 0
 ]⟩
 
@@ -13282,7 +13282,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4,
+  32, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4,
   0, 0, 0, 47, 0, 0, 0
 ]⟩
 
@@ -13403,7 +13403,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0,
+  24, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 4, 0,
   0, 0, 47, 0, 0, 0
 ]⟩
 
@@ -13553,8 +13553,8 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  80, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 6, 0, 0,
+  80, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 7, 0, 0,
   0, 0, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 1, 0, 0, 0,
   0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0
 ]⟩
@@ -13647,8 +13647,8 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  40, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 6, 0, 0,
+  40, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 7, 0, 0,
   0, 0, 0, 0, 0, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 1, 0, 0, 0,
   0, 0, 0, 0, 36, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0
 ]⟩
@@ -14253,7 +14253,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  64, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  64, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0, 0,
   0, 9, 0, 0, 0, 56, 0, 0, 0, 4, 0, 0, 0, 61, 0, 0, 0
 ]⟩
@@ -14341,7 +14341,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  32, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  32, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0, 0,
   9, 0, 0, 0, 28, 0, 0, 0, 4, 0, 0, 0, 61, 0, 0, 0
 ]⟩
@@ -14456,7 +14456,7 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  64, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
+  64, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0, 0,
   0, 9, 0, 0, 0, 56, 0, 0, 0, 4, 0, 0, 0, 64, 0, 0, 0
 ]⟩
@@ -14544,7 +14544,7 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  32, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
+  32, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 2, 0,
   0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0, 0,
   9, 0, 0, 0, 28, 0, 0, 0, 4, 0, 0, 0, 64, 0, 0, 0
 ]⟩
@@ -14682,12 +14682,12 @@ noncomputable def relocs64 : List Reloc := [
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
 def table64 : ByteArray := ⟨#[
-  168, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 6, 0,
+  168, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 7, 0,
   0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 1, 0, 0,
   0, 0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0, 88, 0, 0, 0, 4, 0, 0, 0,
-  61, 0, 0, 0, 96, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 4, 0, 0, 0,
-  50, 0, 0, 0, 136, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 4, 0, 0, 0,
+  61, 0, 0, 0, 96, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 4, 0, 0, 0,
+  50, 0, 0, 0, 136, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 4, 0, 0, 0,
   69, 0, 0, 0
 ]⟩
 
@@ -14803,12 +14803,12 @@ noncomputable def relocs32 : List Reloc := [
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
 def table32 : ByteArray := ⟨#[
-  96, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 6, 0,
+  96, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 7, 0,
   0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 1, 0, 0,
   0, 0, 0, 0, 0, 36, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0, 44, 0, 0, 0, 4, 0, 0, 0,
-  61, 0, 0, 0, 48, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 50,
-  0, 0, 0, 76, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 4, 0, 0, 0, 69, 0,
+  61, 0, 0, 0, 48, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 50,
+  0, 0, 0, 76, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 4, 0, 0, 0, 69, 0,
   0, 0
 ]⟩
 
