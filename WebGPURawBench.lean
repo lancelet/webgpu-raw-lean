@@ -42,6 +42,11 @@ opaque cInstance (n : USize) : IO UInt64
 @[extern "lean_wgpu_bench_c_layout"]
 opaque cLayout (n : USize) : IO UInt64
 
+/-- `n` calls' brackets, as every shim makes around its call, with nothing in
+them. -/
+@[extern "lean_wgpu_bench_bracket"]
+opaque cBracket (n : USize) : IO UInt64
+
 /-- How many times each loop runs: the fastest run is the figure. -/
 def runs : Nat := 5
 
@@ -158,3 +163,5 @@ def main (args : List String) : IO Unit := do
   report "buffer descriptor" (← timeC cBuffer n) (← measure n buffer)
   report "instance descriptor" (← timeC cInstance n) (← measure n instance')
   report "bind group layout" (← timeC cLayout n) (← measure n layout)
+  IO.println s!"bracketing a call, as every shim does: \
+    {perStruct n (← timeC cBracket n)} ns, the loop's cost included"

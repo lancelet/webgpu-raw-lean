@@ -297,12 +297,12 @@ where
 /--
 A check of the result `result` of `f`, after the call: an object that is not
 optional must not be NULL, or the shim returns an `IO` error rather than make a
-Lean value of nothing.
+Lean value of nothing, by `ret`, through the call's bracket.
 -/
-def resultCheck (f : Lowered.Function) : Value → List Stmt
+def resultCheck (f : Lowered.Function) (ret : Expr → Stmt) : Value → List Stmt
   | .object _ false => [
     .ifElse (.binary "==" (.name "result") (.lit "NULL"))
-      [.ret (some (.call ioErrorName [.lit message]))]
+      [ret (.call ioErrorName [.lit message])]
       []
   ]
   | _ => []
@@ -446,30 +446,11 @@ def addressFunction (c : Lowered.Callback) : Function := {
 /--
 The callback types for which the bindings install a handler of their own when
 a struct keeps none, as wgpu-native's default would end the program at once:
-an uncaptured error raises an `IO` error of the call that made it instead, if
-that call is bracketed, as every shim is to be (`c/callback.c`). Its address
-is `lean_X_default_address` (0 on the web, where Dawn's default logs).
+an uncaptured error raises an `IO` error of the call that made it instead, as
+every shim brackets its call (`c/callback.c`). Its address is
+`lean_X_default_address` (0 on the web, where Dawn's default logs).
 -/
 def defaultHandled : List String := ["WGPUUncapturedErrorCallback"]
-
-/--
-The functions that can run callbacks other calls took: those that process
-events or wait on futures; and, in wgpu-native, those that end a buffer's
-pending `mapAsync`, calling back aborted (`unmap`, `destroy`), and
-`Queue.submit`, which calls back what it completes.
--/
-def runsOthersCallbacks : List String := [
-  "wgpuInstanceProcessEvents", "wgpuInstanceWaitAny", "wgpuBufferUnmap",
-  "wgpuBufferDestroy", "wgpuQueueSubmit"
-]
-
-/--
-Whether a call of `f` can run callbacks: if it takes one, or runs others'
-(`runsOthersCallbacks`). Its shim brackets the call (`lean_wgpu_callbacks_enter`
-and `_leave`), so that the first error a callback in it raised is its result.
--/
-def runsCallbacks (f : Lowered.Function) : Bool :=
-  f.callback.isSome || runsOthersCallbacks.contains f.names.c
 
 /--
 The shim's parameters for a callback of type `c`: its mode's code, if it is
@@ -617,9 +598,6 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
   -- must take; and the closures it holds are each at an ordinal of their own.
   guard (f.heldInfos.isEmpty || f.callback.isSome)
   guard ((f.heldInfos.map (·.ordinal)).eraseDups.length == f.heldInfos.length)
-  -- A shim that brackets its call returns only through `callbacks_leave`:
-  -- no check of its result returns before.
-  guard (!runsCallbacks f || f.result.all (!Value.checked ·))
   -- Every argument is borrowed, so a check that fails returns before any
   -- reference is taken, and nothing needs releasing.
   let receiver ← receiverArg objects f.receiver
@@ -628,16 +606,18 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
     f.args.toList.flatMap fun a => argCheck f.names.lean a.names.c a.value
   let call := Expr.call f.names.c (receiver.map (·.2) ++ args.map (·.value)
     ++ (if f.callback.isSome then [.name "callbackInfo"] else []))
-  -- A call that can run callbacks is bracketed: the first error a callback in
-  -- it raised is its result.
   let (familyBefore, familyAfter) :=
     familyAround f ((receiver.head?).map (·.2))
+  -- Every call is bracketed, so that the first error a callback in it raised
+  -- is its result: any call can run callbacks, those it takes, those of
+  -- others it completes (`processEvents`, `Buffer.unmap`), and a device's
+  -- own (wgpu-native calls the uncaptured-error callback in the call that
+  -- made the error). It costs about 2 ns (`lake exe webgpu-raw-bench`).
   let enter := Stmt.decl "lean_object *" "saved"
     (some (.call "lean_wgpu_callbacks_enter" []))
-  let callbacks := (f.callback.map callbackInfo).toList
-    ++ (if runsCallbacks f then [enter] else [])
-  let ret (ok : Expr) : Stmt := .ret (some (if runsCallbacks f
-    then .call "lean_wgpu_callbacks_leave" [.name "saved", ok] else ok))
+  let callbacks := (f.callback.map callbackInfo).toList ++ [enter]
+  let ret (ok : Expr) : Stmt :=
+    .ret (some (.call "lean_wgpu_callbacks_leave" [.name "saved", ok]))
   let body ← match f.result with
     | none => pure [
       .expr call,
@@ -652,7 +632,7 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
         | .object .., (_, handle) :: _ => [.expr (.call "lean_wgpu_family_join"
           [.name "result", .call "lean_wgpu_family_of" [handle]])]
         | _, _ => []
-      pure ([.decl cType "result" (some call)] ++ resultCheck f v ++ join
+      pure ([.decl cType "result" (some call)] ++ resultCheck f ret v ++ join
         ++ [ret (.call "lean_io_result_mk_ok" [boxed])])
   let params := receiver.map (·.1) ++ args.flatMap (·.params)
     ++ (f.callback.map callbackParams).getD [] ++ tablesParams f
@@ -722,8 +702,8 @@ def functionsSource (spec : Lowered.Spec) : List Decl :=
   let held := heldCallbacks spec
   [.include "stdint.h", .includeLocal "objects.h"]
     ++ (if bound.any (takesStruct ·.1) then [.includeLocal "reloc.h"] else [])
-    ++ (if bound.any (runsCallbacks ·.1) || !held.isEmpty
-      then [.includeLocal "callback.h"] else [])
+    ++ (if bound.isEmpty && held.isEmpty then []
+      else [.includeLocal "callback.h"])
     -- Families, for an object made from another, and for any callback.
     ++ (if held.isEmpty && !bound.any (fun (f, _) => f.callback.isSome
         || f.receiver.isSome && f.result.any (· matches .object ..))

@@ -15,7 +15,8 @@ web self-test requests its own.
 
 namespace WebGPURawTest.Internal.Device
 open WebGPU.Raw
-open WebGPURawTest.Internal.Callback (token touch tokensReleased problemUnless)
+open WebGPURawTest.Internal.Callback
+  (token touch tokensReleased problemUnless errorOf)
 
 /-- An adapter of `wgpu`, if it has one, waiting for it by `processEvents`. -/
 def adapter? (wgpu : Instance) : IO (Option Adapter) := do
@@ -106,6 +107,34 @@ def family (wgpu : Instance) (adapter : Adapter) : IO String := do
     pure (problemUnless (made && kept == before && after == before + 1)
       s!"buffer {made}; tokens {before}, {kept}, {after}")
 
+/--
+An error a device's uncaptured-error closure raises is the error of the call
+that made it, as every call is bracketed (wgpu-native calls it in that call).
+-/
+def raised (wgpu : Instance) (adapter : Adapter) : IO String := do
+  let device ← device? wgpu adapter (some {
+    uncapturedErrorCallbackInfo := some {
+      callback := fun _ message => throw (IO.userError s!"refused: {message}")
+    }
+  })
+  match device with
+  | .error e => pure e
+  | .ok device =>
+    let e ← errorOf (device.createBuffer badBuffer)
+    pure (problemUnless (e.startsWith "refused: ") s!"raised {repr e}")
+
+/--
+A device with no uncaptured-error callback has the bindings' own handler: the
+call that made an error raises it, where wgpu-native's would end the program.
+-/
+def defaulted (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let e ← errorOf (device.createBuffer badBuffer)
+    pure (problemUnless (e.startsWith "WebGPU validation error: ")
+      s!"raised {repr e}")
+
 /-- A device requested with no descriptor, which is given one of defaults. -/
 def noDescriptor (wgpu : Instance) (adapter : Adapter) : IO String := do
   match ← device? wgpu adapter none with
@@ -124,7 +153,11 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
       uncaptured wgpu adapter),
     ("a device's callbacks kept by its family till its objects are gone",
       family wgpu adapter),
-    ("a device requested with no descriptor", noDescriptor wgpu adapter)
+    ("a device requested with no descriptor", noDescriptor wgpu adapter),
+    ("an error its uncaptured-error closure raises, the call's",
+      raised wgpu adapter),
+    ("with no such closure, the bindings' own handler raising it",
+      defaulted wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

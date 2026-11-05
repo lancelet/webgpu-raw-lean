@@ -99,6 +99,7 @@ def shimText (f : Lowered.Function) : Option String :=
                 \"Buffer.doAll: size is too large for a size_t\"
             );
         }
+        lean_object * saved = lean_wgpu_callbacks_enter();
         WGPUBuffer result = wgpuBufferDoAll(
             lean_wgpu_buffer_unbox(self),
             (WGPUBool)flag,
@@ -113,7 +114,10 @@ def shimText (f : Lowered.Function) : Option String :=
             result,
             lean_wgpu_family_of(lean_wgpu_buffer_unbox(self))
         );
-        return lean_io_result_mk_ok(lean_wgpu_buffer_box_option(result));
+        return lean_wgpu_callbacks_leave(
+            saved,
+            lean_io_result_mk_ok(lean_wgpu_buffer_box_option(result))
+        );
     }
     "
   shimText input == some expected
@@ -125,8 +129,9 @@ def shimText (f : Lowered.Function) : Option String :=
   let expected := dedent "
     // Lean's `doIt`: calls `wgpuDoIt`.
     LEAN_EXPORT lean_obj_res lean_wgpuDoIt(b_lean_obj_arg label) {
+        lean_object * saved = lean_wgpu_callbacks_enter();
         wgpuDoIt(lean_wgpu_string_view(label));
-        return lean_io_result_mk_ok(lean_box(0));
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
     }
     "
   shimText input == some expected
@@ -160,11 +165,18 @@ def shimText (f : Lowered.Function) : Option String :=
   let expected := dedent "
     // Lean's `doIt`: calls `wgpuDoIt`.
     LEAN_EXPORT lean_obj_res lean_wgpuDoIt(void) {
+        lean_object * saved = lean_wgpu_callbacks_enter();
         WGPUBuffer result = wgpuDoIt();
         if (result == NULL) {
-            return lean_wgpu_io_error(\"doIt returned NULL\");
+            return lean_wgpu_callbacks_leave(
+                saved,
+                lean_wgpu_io_error(\"doIt returned NULL\")
+            );
         }
-        return lean_io_result_mk_ok(lean_wgpu_buffer_box(result));
+        return lean_wgpu_callbacks_leave(
+            saved,
+            lean_io_result_mk_ok(lean_wgpu_buffer_box(result))
+        );
     }
     "
   shimText input == some expected
@@ -180,8 +192,9 @@ def shimText (f : Lowered.Function) : Option String :=
     // Lean's `doIt`: calls `wgpuDoIt`.
     LEAN_EXPORT lean_obj_res lean_wgpuDoIt(uint32_t count) {
         #ifdef WEBGPU_RAW_DAWN
+        lean_object * saved = lean_wgpu_callbacks_enter();
         wgpuDoIt(count);
-        return lean_io_result_mk_ok(lean_box(0));
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
         #else
         (void)count;
         return lean_wgpu_io_error(\"doIt: not implemented by wgpu-native\");
@@ -335,8 +348,7 @@ def found : Lowered.Callback := {
   }
   [("wgpuBufferUnmap", "Buffer.unmap"), ("wgpuBufferDestroy", "Buffer.destroy"),
     ("wgpuQueueSubmit", "Queue.submit")].all fun (c, lean) =>
-      runsCallbacks (method c lean)
-        && (shimText (method c lean)).map
+      (shimText (method c lean)).map
           (·.splitOn "lean_wgpu_callbacks_enter()" |>.length) == some 2
 
 /-- A device's lost callback: an object C lends it, a reason and a message. -/
@@ -506,6 +518,20 @@ def request (held : Bool) : Lowered.Function := {
   (functionShim [buffer] structs twice).isNone
     && (functionShim [buffer] structs uncalled).isNone
 
+-- Every shim brackets its call, as any call on a device can run its
+-- uncaptured-error callback (wgpu-native calls it in the call that made the
+-- error): so that callback's error is the call's. A check of the result
+-- returns through the bracket too.
+#guard
+  let input := function #[] (some (.object buffer.names false))
+  let has (text part : String) := (text.splitOn part).length == 2
+  (shimText input).any fun text =>
+    has text "lean_object * saved = lean_wgpu_callbacks_enter();"
+      && has text ("return lean_wgpu_callbacks_leave(\n" ++
+        "            saved,\n" ++
+        "            lean_wgpu_io_error(\"doIt returned NULL\")\n" ++
+        "        );")
+
 /-! ## Not bound -/
 
 -- A function the bindings cannot pass every value of has no shim.
@@ -566,8 +592,9 @@ def request (held : Bool) : Lowered.Function := {
             lean_usize_of_nat(desc_table),
             desc_targets
         );
+        lean_object * saved = lean_wgpu_callbacks_enter();
         wgpuDoIt(desc_struct);
-        return lean_io_result_mk_ok(lean_box(0));
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
     }
     ")
 

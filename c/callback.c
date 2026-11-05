@@ -27,8 +27,10 @@ lean_object * lean_wgpu_callbacks_enter(void) {
 lean_obj_res lean_wgpu_callbacks_leave(lean_object * saved, lean_obj_arg ok) {
     lean_object * result = ok;
     if (lean_wgpu_pending != NULL) {
-        lean_dec(ok);
+        // Taken before `ok` is released, which can run finalizers, and so
+        // callbacks, at this depth: their errors come after the first.
         result = lean_wgpu_pending;
+        lean_dec(ok);
     }
     lean_wgpu_pending = saved;
     lean_wgpu_depth--;
@@ -68,9 +70,9 @@ lean_obj_res lean_wgpu_string_of_view(WGPUStringView view) {
 // The bindings' own handler of an uncaptured error, for a device whose
 // descriptor gives none, as wgpu-native's default ends the program at once:
 // an IO error, saying the error's type and message, of the call that made it,
-// if that call is bracketed (`lean_wgpu_callbacks_enter`), as every shim is
-// to be; otherwise, as for any callback outside every call, it is printed and
-// the program ends.
+// as every shim brackets its call (`lean_wgpu_callbacks_enter`); outside
+// every call (in a finalizer run outside every call), as for any callback, it
+// is printed and the program ends.
 static void lean_wgpu_uncaptured_error_default(
         WGPUDevice const * device, WGPUErrorType type, WGPUStringView message,
         void * userdata1, void * userdata2) {

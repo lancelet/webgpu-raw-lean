@@ -7,6 +7,7 @@
 
 #include <lean/lean.h>
 #include <webgpu/webgpu.h>
+#include "callback.h"
 #include "reloc.h"
 
 // Where each filled struct goes: nowhere, but the compiler cannot know it.
@@ -83,4 +84,18 @@ LEAN_EXPORT uint64_t lean_wgpu_bench_fill(
     void const * p = lean_wgpu_fill_arg(bytes, tables, table, targets);
     lean_wgpu_bench_sink(p);
     return p == NULL ? 0 : *(uintptr_t const *)p;
+}
+
+// `n` calls' brackets (`lean_wgpu_callbacks_enter` and `_leave`), as every
+// shim makes around its call, with nothing in them: what bracketing adds to a
+// call. The result each passes through is made once.
+LEAN_EXPORT lean_obj_res lean_wgpu_bench_bracket(size_t n) {
+    lean_object * ok = lean_io_result_mk_ok(lean_box(0));
+    for (size_t i = 0; i < n; i++) {
+        lean_object * saved = lean_wgpu_callbacks_enter();
+        lean_wgpu_bench_sink(&saved);
+        ok = lean_wgpu_callbacks_leave(saved, ok);
+    }
+    lean_dec(ok);
+    return lean_io_result_mk_ok(lean_box_uint64(n));
 }

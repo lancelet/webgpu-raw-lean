@@ -92,4 +92,8 @@ each pointer, and the arrays that hold them. An array of structs is one block,
 each element poked into it at its offset.
 Making the Lean value is not counted, as C's struct on the stack is free.
 
-Status: WIP: approximately 84% complete.
+Every shim also brackets its call into WebGPU, so that an error a callback
+raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
+benchmark reports too.
+
+Status: WIP: approximately 85% complete.

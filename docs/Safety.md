@@ -261,20 +261,26 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   call is its own: wgpu-native holds a device's error lock while it runs
   `popErrorScope`'s callback, so a callback that calls a function of that
   device that can report an error deadlocks). *Checked by:* test. So every
-  shim of a call that can run callbacks brackets the call
-  (`lean_wgpu_callbacks_enter` and `_leave`): each that takes one;
-  `processEvents` and `waitAny`, which run others'; and, in wgpu-native,
-  `Buffer.unmap` and `destroy`, which call back a pending `mapAsync`,
-  aborted, and `Queue.submit`, which calls back what it completes
-  (`runsCallbacks`). A release, which can run waiting callbacks, cancelled,
-  is not bracketed: it runs in a finalizer, with no caller to raise an error
-  to, so one ends the program. *Checked by:* test, of the shims printed, and
-  under Node, where `requestAdapter`'s callback runs in `processEvents`. (A
-  regression test: it ran outside every call, ending the program; and
-  `unmap` and `destroy` were not bracketed, found by review.) That `unmap`
-  and `destroy` raise an aborted callback's error is not tested yet, as no
-  buffer can be made without a device; nor is the list known complete: it
-  is from wgpu-native's source, read.
+  shim brackets its call (`lean_wgpu_callbacks_enter` and `_leave`), as any
+  call can run callbacks: those it takes; those of others it completes
+  (`processEvents`, `waitAny`, and in wgpu-native `Buffer.unmap` and
+  `destroy`, which call back a pending `mapAsync`, aborted, and
+  `Queue.submit`); and a device's own (wgpu-native calls the
+  uncaptured-error callback in the call that made the error, almost any
+  call on a device). A check of a call's result returns through the bracket
+  too; a result a call made, when a callback in it raised an error, is
+  released with the result the error replaces. A bracket costs under 2 ns
+  (`lake exe webgpu-raw-bench`). On the web, Dawn calls the uncaptured-error
+  callback from the browser's event loop, outside every call (below). A
+  release, which can run waiting callbacks, cancelled, is not bracketed: it
+  runs in a finalizer, and a callback's error there is the call's the
+  finalizer runs in, if any (as a trampoline's, or `_leave`'s, release of
+  what it is done with), after any first error; outside every call, it ends
+  the program. *Checked by:* test,
+  of the shims printed; under Node, where `requestAdapter`'s callback runs
+  in `processEvents` (a regression test: it ran outside every call, ending
+  the program); and natively, with an adapter, where an uncaptured-error
+  closure's error, and the bindings' own handler's, are `createBuffer`'s.
 - **An error a callback raises outside every call ends the program**, printed,
   as an error `main` raises does: a callback the browser's event loop runs,
   or one a finalizer runs outside every call, has no caller to raise it to.
@@ -384,11 +390,10 @@ family (Families, above).
 - **With no uncaptured-error callback, the bindings install their own**:
   wgpu-native's default ends the program at once; theirs raises an `IO`
   error of the call that made the error, if that call is bracketed (every
-  shim is to be; until then, the program ends, the error printed). A device
-  requested with no descriptor is given one of defaults, the same to
-  WebGPU, so that it gets the handler too. On the web, Dawn's default logs
-  the error, and the bindings install nothing. *Checked by:* test (a
-  descriptor of defaults encodes as C's with the handler; the uncaptured-
+  shim is). A device requested with no descriptor is given one of defaults,
+  the same to WebGPU, so that it gets the handler too. On the web, Dawn's
+  default logs the error, and the bindings install nothing. *Checked by:* test
+  (a descriptor of defaults encodes as C's with the handler; the uncaptured-
   error callback given its call's error, natively, with an adapter).
 
 ## Functions an implementation does not implement
