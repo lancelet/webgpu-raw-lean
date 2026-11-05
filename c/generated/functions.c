@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 3b0f78f (clean)
-  Generated:        2026-11-05 07:27:52 UTC
+  Generator commit: f8e434c (clean)
+  Generated:        2026-11-05 07:48:20 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -17,6 +17,7 @@
 #include "objects.h"
 #include "reloc.h"
 #include "callback.h"
+#include "family.h"
 
 // A function the shims use, which some builds may not.
 
@@ -49,14 +50,17 @@ LEAN_WGPU_HELPER lean_obj_res lean_wgpu_io_error(char const * message) {
     );
 }
 
-// Calls the Lean closure `userdata1` as a `BufferMapCallback`, releasing it.
+// Calls the Lean closure `userdata1` as a `BufferMapCallback`, releasing it;
+// each object it gives Lean joins the family `userdata2` names, whose reference
+// it gives back.
 LEAN_WGPU_HELPER void lean_WGPUBufferMapCallback(
     WGPUMapAsyncStatus status,
     WGPUStringView     message,
     void *             userdata1,
     void *             userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_3(
             (lean_object *)userdata1,
@@ -68,7 +72,8 @@ LEAN_WGPU_HELPER void lean_WGPUBufferMapCallback(
 }
 
 // Calls the Lean closure `userdata1` as a `CreateComputePipelineAsyncCallback`,
-// releasing it.
+// releasing it; each object it gives Lean joins the family `userdata2` names,
+// whose reference it gives back.
 LEAN_WGPU_HELPER void lean_WGPUCreateComputePipelineAsyncCallback(
     WGPUCreatePipelineAsyncStatus status,
     WGPUComputePipeline           pipeline,
@@ -76,7 +81,9 @@ LEAN_WGPU_HELPER void lean_WGPUCreateComputePipelineAsyncCallback(
     void *                        userdata1,
     void *                        userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_join(pipeline, family);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_4(
             (lean_object *)userdata1,
@@ -89,7 +96,8 @@ LEAN_WGPU_HELPER void lean_WGPUCreateComputePipelineAsyncCallback(
 }
 
 // Calls the Lean closure `userdata1` as a `CreateRenderPipelineAsyncCallback`,
-// releasing it.
+// releasing it; each object it gives Lean joins the family `userdata2` names,
+// whose reference it gives back.
 LEAN_WGPU_HELPER void lean_WGPUCreateRenderPipelineAsyncCallback(
     WGPUCreatePipelineAsyncStatus status,
     WGPURenderPipeline            pipeline,
@@ -97,7 +105,9 @@ LEAN_WGPU_HELPER void lean_WGPUCreateRenderPipelineAsyncCallback(
     void *                        userdata1,
     void *                        userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_join(pipeline, family);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_4(
             (lean_object *)userdata1,
@@ -110,7 +120,8 @@ LEAN_WGPU_HELPER void lean_WGPUCreateRenderPipelineAsyncCallback(
 }
 
 // Calls the Lean closure `userdata1` as a `PopErrorScopeCallback`, releasing
-// it.
+// it; each object it gives Lean joins the family `userdata2` names, whose
+// reference it gives back.
 LEAN_WGPU_HELPER void lean_WGPUPopErrorScopeCallback(
     WGPUPopErrorScopeStatus status,
     WGPUErrorType           type,
@@ -118,7 +129,8 @@ LEAN_WGPU_HELPER void lean_WGPUPopErrorScopeCallback(
     void *                  userdata1,
     void *                  userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_4(
             (lean_object *)userdata1,
@@ -131,7 +143,8 @@ LEAN_WGPU_HELPER void lean_WGPUPopErrorScopeCallback(
 }
 
 // Calls the Lean closure `userdata1` as a `RequestAdapterCallback`, releasing
-// it.
+// it; each object it gives Lean joins the family `userdata2` names, whose
+// reference it gives back.
 LEAN_WGPU_HELPER void lean_WGPURequestAdapterCallback(
     WGPURequestAdapterStatus status,
     WGPUAdapter              adapter,
@@ -139,7 +152,9 @@ LEAN_WGPU_HELPER void lean_WGPURequestAdapterCallback(
     void *                   userdata1,
     void *                   userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_join(adapter, family);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_4(
             (lean_object *)userdata1,
@@ -152,14 +167,16 @@ LEAN_WGPU_HELPER void lean_WGPURequestAdapterCallback(
 }
 
 // Calls the Lean closure `userdata1` as a `QueueWorkDoneCallback`, releasing
-// it.
+// it; each object it gives Lean joins the family `userdata2` names, whose
+// reference it gives back.
 LEAN_WGPU_HELPER void lean_WGPUQueueWorkDoneCallback(
     WGPUQueueWorkDoneStatus status,
     WGPUStringView          message,
     void *                  userdata1,
     void *                  userdata2
 ) {
-    (void)userdata2;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_release(family);
     lean_wgpu_callback_done(
         lean_apply_3(
             (lean_object *)userdata1,
@@ -276,12 +293,14 @@ LEAN_EXPORT lean_obj_res lean_wgpuBufferMapAsync(
             "Buffer.mapAsync: size is too large for a size_t"
         );
     }
+    lean_wgpu_family family = lean_wgpu_family_of(lean_wgpu_buffer_unbox(self));
+    lean_wgpu_family_retain(family);
     WGPUBufferMapCallbackInfo callbackInfo = {
         .nextInChain = NULL,
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPUBufferMapCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuBufferMapAsync(
@@ -401,6 +420,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderFinish(
     if (result == NULL) {
         return lean_wgpu_io_error("CommandEncoder.finish returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_command_encoder_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_command_buffer_box(result));
 }
 
@@ -430,6 +453,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderBeginComputePass(
             "CommandEncoder.beginComputePass returned NULL"
         );
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_command_encoder_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_compute_pass_encoder_box(result));
 }
 
@@ -459,6 +486,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuCommandEncoderBeginRenderPass(
             "CommandEncoder.beginRenderPass returned NULL"
         );
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_command_encoder_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_render_pass_encoder_box(result));
 }
 
@@ -857,6 +888,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePipelineGetBindGroupLayout(
             "ComputePipeline.getBindGroupLayout returned NULL"
         );
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_compute_pipeline_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_bind_group_layout_box(result));
 }
 
@@ -903,6 +938,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBindGroup(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createBindGroup returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_bind_group_box(result));
 }
 
@@ -930,6 +969,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBindGroupLayout(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createBindGroupLayout returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_bind_group_layout_box(result));
 }
 
@@ -952,6 +995,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateBuffer(
     WGPUBuffer result = wgpuDeviceCreateBuffer(
         lean_wgpu_device_unbox(self),
         descriptor_struct
+    );
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
     );
     return lean_io_result_mk_ok(lean_wgpu_buffer_box_option(result));
 }
@@ -979,6 +1026,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateCommandEncoder(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createCommandEncoder returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_command_encoder_box(result));
 }
 
@@ -1006,6 +1057,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipeline(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createComputePipeline returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_compute_pipeline_box(result));
 }
 
@@ -1022,6 +1077,8 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipelineAsync(
     b_lean_obj_arg tables
 ) {
     #ifdef WEBGPU_RAW_DAWN
+    lean_wgpu_family family = lean_wgpu_family_of(lean_wgpu_device_unbox(self));
+    lean_wgpu_family_retain(family);
     (void)descriptor;
     void const * descriptor_struct = lean_wgpu_fill_arg(
         descriptor_bytes,
@@ -1034,7 +1091,7 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipelineAsync(
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPUCreateComputePipelineAsyncCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuDeviceCreateComputePipelineAsync(
@@ -1084,6 +1141,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreatePipelineLayout(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createPipelineLayout returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_pipeline_layout_box(result));
 }
 
@@ -1110,6 +1171,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateQuerySet(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createQuerySet returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_query_set_box(result));
 }
 
@@ -1126,6 +1191,8 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderPipelineAsync(
     b_lean_obj_arg tables
 ) {
     #ifdef WEBGPU_RAW_DAWN
+    lean_wgpu_family family = lean_wgpu_family_of(lean_wgpu_device_unbox(self));
+    lean_wgpu_family_retain(family);
     (void)descriptor;
     void const * descriptor_struct = lean_wgpu_fill_arg(
         descriptor_bytes,
@@ -1138,7 +1205,7 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderPipelineAsync(
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPUCreateRenderPipelineAsyncCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuDeviceCreateRenderPipelineAsync(
@@ -1191,6 +1258,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderBundleEncoder(
             "Device.createRenderBundleEncoder returned NULL"
         );
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_render_bundle_encoder_box(result));
 }
 
@@ -1217,6 +1288,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderPipeline(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createRenderPipeline returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_render_pipeline_box(result));
 }
 
@@ -1243,6 +1318,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateSampler(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createSampler returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_sampler_box(result));
 }
 
@@ -1269,6 +1348,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateShaderModule(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createShaderModule returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_shader_module_box(result));
 }
 
@@ -1295,6 +1378,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateTexture(
     if (result == NULL) {
         return lean_wgpu_io_error("Device.createTexture returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_texture_box(result));
 }
 
@@ -1322,6 +1409,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceGetQueue(b_lean_obj_arg self) {
     if (result == NULL) {
         return lean_wgpu_io_error("Device.getQueue returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_device_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_queue_box(result));
 }
 
@@ -1343,12 +1434,14 @@ LEAN_EXPORT lean_obj_res lean_wgpuDevicePopErrorScope(
     uint32_t       callbackMode,
     b_lean_obj_arg callback
 ) {
+    lean_wgpu_family family = lean_wgpu_family_of(lean_wgpu_device_unbox(self));
+    lean_wgpu_family_retain(family);
     WGPUPopErrorScopeCallbackInfo callbackInfo = {
         .nextInChain = NULL,
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPUPopErrorScopeCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuDevicePopErrorScope(
@@ -1440,6 +1533,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuInstanceRequestAdapter(
     b_lean_obj_arg callback,
     b_lean_obj_arg tables
 ) {
+    lean_wgpu_family family = lean_wgpu_family_of(
+        lean_wgpu_instance_unbox(self)
+    );
+    lean_wgpu_family_retain(family);
     (void)options;
     void const * options_struct = lean_wgpu_fill_arg(
         options_bytes,
@@ -1452,7 +1549,7 @@ LEAN_EXPORT lean_obj_res lean_wgpuInstanceRequestAdapter(
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPURequestAdapterCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuInstanceRequestAdapter(
@@ -1530,12 +1627,14 @@ LEAN_EXPORT lean_obj_res lean_wgpuQueueOnSubmittedWorkDone(
     uint32_t       callbackMode,
     b_lean_obj_arg callback
 ) {
+    lean_wgpu_family family = lean_wgpu_family_of(lean_wgpu_queue_unbox(self));
+    lean_wgpu_family_retain(family);
     WGPUQueueWorkDoneCallbackInfo callbackInfo = {
         .nextInChain = NULL,
         .mode        = (WGPUCallbackMode)callbackMode,
         .callback    = lean_WGPUQueueWorkDoneCallback,
         .userdata1   = lean_wgpu_closure_hold(callback),
-        .userdata2   = NULL,
+        .userdata2   = (void *)family,
     };
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUFuture result = wgpuQueueOnSubmittedWorkDone(
@@ -1766,6 +1865,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderFinish(
     if (result == NULL) {
         return lean_wgpu_io_error("RenderBundleEncoder.finish returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_render_bundle_encoder_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_render_bundle_box(result));
 }
 
@@ -2091,6 +2194,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPipelineGetBindGroupLayout(
             "RenderPipeline.getBindGroupLayout returned NULL"
         );
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_render_pipeline_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_bind_group_layout_box(result));
 }
 
@@ -2229,6 +2336,10 @@ LEAN_EXPORT lean_obj_res lean_wgpuTextureCreateView(
     if (result == NULL) {
         return lean_wgpu_io_error("Texture.createView returned NULL");
     }
+    lean_wgpu_family_join(
+        result,
+        lean_wgpu_family_of(lean_wgpu_texture_unbox(self))
+    );
     return lean_io_result_mk_ok(lean_wgpu_texture_view_box(result));
 }
 

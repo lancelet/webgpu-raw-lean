@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 3b0f78f (clean)
-  Generated:        2026-11-05 07:27:52 UTC
+  Generator commit: f8e434c (clean)
+  Generated:        2026-11-05 07:48:20 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -13,6 +13,7 @@
 ================================================================================
 */
 
+#include "family.h"
 #include "objects.h"
 
 // An object holds no Lean values, so there are none to visit.
@@ -48,119 +49,188 @@ static lean_external_class * lean_wgpu_surface_class               = NULL;
 static lean_external_class * lean_wgpu_texture_class               = NULL;
 static lean_external_class * lean_wgpu_texture_view_class          = NULL;
 
-// Release the reference a Lean `Adapter` owned, when Lean frees it.
+// Release the reference a Lean `Adapter` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_adapter_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuAdapterRelease((WGPUAdapter)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `BindGroup` owned, when Lean frees it.
+// Release the reference a Lean `BindGroup` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_bind_group_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuBindGroupRelease((WGPUBindGroup)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `BindGroupLayout` owned, when Lean frees it.
+// Release the reference a Lean `BindGroupLayout` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_bind_group_layout_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuBindGroupLayoutRelease((WGPUBindGroupLayout)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Buffer` owned, when Lean frees it.
+// Release the reference a Lean `Buffer` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_buffer_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuBufferRelease((WGPUBuffer)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `CommandBuffer` owned, when Lean frees it.
+// Release the reference a Lean `CommandBuffer` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_command_buffer_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuCommandBufferRelease((WGPUCommandBuffer)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `CommandEncoder` owned, when Lean frees it.
+// Release the reference a Lean `CommandEncoder` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_command_encoder_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuCommandEncoderRelease((WGPUCommandEncoder)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `ComputePassEncoder` owned, when Lean frees it.
+// Release the reference a Lean `ComputePassEncoder` owned, when Lean frees it:
+// it leaves its family first, and gives back its reference after.
 static void lean_wgpu_compute_pass_encoder_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuComputePassEncoderRelease((WGPUComputePassEncoder)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `ComputePipeline` owned, when Lean frees it.
+// Release the reference a Lean `ComputePipeline` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_compute_pipeline_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuComputePipelineRelease((WGPUComputePipeline)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Device` owned, when Lean frees it.
+// Release the reference a Lean `Device` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_device_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuDeviceRelease((WGPUDevice)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `ExternalTexture` owned, when Lean frees it.
+// Release the reference a Lean `ExternalTexture` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_external_texture_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuExternalTextureRelease((WGPUExternalTexture)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Instance` owned, when Lean frees it.
+// Release the reference a Lean `Instance` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_instance_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuInstanceRelease((WGPUInstance)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `PipelineLayout` owned, when Lean frees it.
+// Release the reference a Lean `PipelineLayout` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_pipeline_layout_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuPipelineLayoutRelease((WGPUPipelineLayout)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `QuerySet` owned, when Lean frees it.
+// Release the reference a Lean `QuerySet` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_query_set_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuQuerySetRelease((WGPUQuerySet)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Queue` owned, when Lean frees it.
+// Release the reference a Lean `Queue` owned, when Lean frees it: it leaves its
+// family first, and gives back its reference after.
 static void lean_wgpu_queue_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuQueueRelease((WGPUQueue)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `RenderBundle` owned, when Lean frees it.
+// Release the reference a Lean `RenderBundle` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_render_bundle_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuRenderBundleRelease((WGPURenderBundle)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `RenderBundleEncoder` owned, when Lean frees it.
+// Release the reference a Lean `RenderBundleEncoder` owned, when Lean frees it:
+// it leaves its family first, and gives back its reference after.
 static void lean_wgpu_render_bundle_encoder_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuRenderBundleEncoderRelease((WGPURenderBundleEncoder)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `RenderPassEncoder` owned, when Lean frees it.
+// Release the reference a Lean `RenderPassEncoder` owned, when Lean frees it:
+// it leaves its family first, and gives back its reference after.
 static void lean_wgpu_render_pass_encoder_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuRenderPassEncoderRelease((WGPURenderPassEncoder)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `RenderPipeline` owned, when Lean frees it.
+// Release the reference a Lean `RenderPipeline` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_render_pipeline_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuRenderPipelineRelease((WGPURenderPipeline)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Sampler` owned, when Lean frees it.
+// Release the reference a Lean `Sampler` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_sampler_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuSamplerRelease((WGPUSampler)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `ShaderModule` owned, when Lean frees it.
+// Release the reference a Lean `ShaderModule` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_shader_module_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuShaderModuleRelease((WGPUShaderModule)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Surface` owned, when Lean frees it.
+// Release the reference a Lean `Surface` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_surface_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuSurfaceRelease((WGPUSurface)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `Texture` owned, when Lean frees it.
+// Release the reference a Lean `Texture` owned, when Lean frees it: it leaves
+// its family first, and gives back its reference after.
 static void lean_wgpu_texture_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuTextureRelease((WGPUTexture)data);
+    lean_wgpu_family_release(family);
 }
 
-// Release the reference a Lean `TextureView` owned, when Lean frees it.
+// Release the reference a Lean `TextureView` owned, when Lean frees it: it
+// leaves its family first, and gives back its reference after.
 static void lean_wgpu_texture_view_finalize(void * data) {
+    lean_wgpu_family family = lean_wgpu_family_leave(data);
     wgpuTextureViewRelease((WGPUTextureView)data);
+    lean_wgpu_family_release(family);
 }
 
 // The bindings' start-up, run by Lean when a program using them starts:
