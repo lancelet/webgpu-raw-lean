@@ -166,6 +166,11 @@ def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
   | .named (.bitflag id) =>
     if ret.optional || ret.passedWithOwnership.isSome then unsupported
     else named r (.bitflag id) .bitflag
+  -- A future by value (`getLostFuture`'s): its ID, as a callback's future.
+  | .named (.struct id) =>
+    if ret.optional || ret.passedWithOwnership.isSome then unsupported
+    else structNamed r id fun names =>
+      if names.c == "WGPUFuture" then .future else unsupported
   | _ => unsupported
 
 /-! ## Constants -/

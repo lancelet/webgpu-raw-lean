@@ -351,6 +351,35 @@ def resultValue? (methods : String) : Option (Option Value) :=
     "
   resultValue? input == some (some (.unsupported "string_with_default_empty"))
 
+-- A future returned by value (`getLostFuture`'s) is a future, as a callback's
+-- is; another struct by value is not passed yet.
+#guard
+  let structs := dedent "
+    - name: future
+      doc: x
+      type: standalone
+    - name: other
+      doc: x
+      type: standalone
+    "
+  let methods := dedent "
+    - name: get_future
+      doc: x
+      returns:
+        doc: x
+        type: struct.future
+    - name: get_other
+      doc: x
+      returns:
+        doc: x
+        type: struct.other
+    "
+  let results := (lowerText (spec
+    (structs := structs)
+    (objects := deviceWith methods)))
+    |>.bind (·.objects[0]?.map (·.methods.toList.map (·.result)))
+  results == some [some .future, some (.unsupported "struct")]
+
 -- A nullable float is not passed to or from a function yet: its conversions
 -- come with the structs'.
 #guard

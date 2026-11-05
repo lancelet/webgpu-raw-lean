@@ -108,9 +108,9 @@ inductive Value where
   -/
   | array   (element : Value) (count : String)
   /--
-  A future, which a function that takes a callback returns: in C a
-  `WGPUFuture`, the struct holding its ID; in Lean the `Future` structure.
-  (`getLostFuture`'s, a result of struct type, is not one yet.)
+  A future, which a function that takes a callback returns, as does
+  `getLostFuture`: in C a `WGPUFuture`, the struct holding its ID; in Lean
+  the `Future` structure.
   -/
   | future
   /--
