@@ -70,6 +70,10 @@ def relocHeaderPath : IO System.FilePath := do
   let headers := ((← specPath).parent.getD ".")
   return (headers.parent.bind (·.parent)).getD "." / "c" / "reloc.h"
 
+/-- The callback runtime's header the shims include, beside `reloc.h`. -/
+def callbackHeaderPath : IO System.FilePath := do
+  return ((← relocHeaderPath).parent.getD ".") / "callback.h"
+
 open WebGPUGen.Lowered in
 /--
 The C names of members or arguments, with the count that goes with each array.
@@ -231,6 +235,8 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     IO.FS.createDirAll (dir / "webgpu")
     IO.FS.writeFile (dir / "webgpu" / "webgpu.h") (← IO.FS.readFile header)
     IO.FS.writeFile (dir / "reloc.h") (← IO.FS.readFile (← relocHeaderPath))
+    IO.FS.writeFile (dir / "callback.h")
+      (← IO.FS.readFile (← callbackHeaderPath))
     let files :=
       WebGPUGen.Emit.C.objectsFiles testProvenance spec
         ++ WebGPUGen.Emit.C.functionsFiles testProvenance spec
@@ -622,8 +628,17 @@ def main : IO Unit := do
     | .structPointer names _ => structs.any fun s =>
       s.names == names && s.needsChain structs
     | _ => false
+  -- Nor those that take a struct that is not bound, each named here: the
+  -- device descriptor holds callbacks C keeps for the device's lifetime.
+  let waiting := ["wgpuAdapterRequestDevice"]
+  let bound := (WebGPUGen.Lowered.boundStructs structs).map (·.names)
+  let takesUnbound (f : WebGPUGen.Lowered.Function) := f.args.any fun a =>
+    match a.value with
+    | .structPointer names _ => !bound.contains names
+    | _ => false
   let lost := (WebGPUGen.Emit.C.allFunctions lowered).filter fun f =>
     f.unsupported.isEmpty && !shimmed.contains f.names.c && !needsChain f
+      && !(takesUnbound f && waiting.contains f.names.c)
   unless lost.isEmpty do
     failWith s!"bindable functions with no shim: {lost.map (·.names.c)}"
 

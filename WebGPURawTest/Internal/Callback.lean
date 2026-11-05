@@ -1,3 +1,5 @@
+import WebGPU.Raw
+
 /-!
 # Tests for callbacks
 
@@ -216,6 +218,77 @@ def checks : IO (List (String × String)) := do
     ("a callback's closure released once it has run", released),
     ("a callback run outside every call", outside),
     ("a callback a finalizer runs, once, its closure released", finalized)
+  ]
+  named.mapM fun (what, check) => do pure (what, ← check)
+
+/-! ## WebGPU's callbacks
+
+A WebGPU function that takes a callback, `requestAdapter`, through its shim
+and trampoline. The callback must have run once by the next `processEvents`
+(wgpu-native runs it during the call; under Node, emdawnwebgpu finds no
+WebGPU at once and runs it in `processEvents`; a browser runs it later, from
+its event loop, which the web self-test does not wait for). Whether an adapter
+is found depends on the machine: the status says, and the adapter is given
+exactly when it is a success.
+-/
+
+/-- The error `action` raises, or "" if none, after the events it waits on. -/
+def errorAfterEvents (wgpu : WebGPU.Raw.Instance) (action : IO Unit) :
+    IO String :=
+  errorOf (action *> wgpu.processEvents)
+
+/-- `requestAdapter`'s callback runs once, the adapter given on success. -/
+def requested (wgpu : WebGPU.Raw.Instance) : IO String := do
+  let calls ← IO.mkRef #[]
+  let _ ← wgpu.requestAdapter none .allowProcessEvents fun status adapter _ =>
+    calls.modify (·.push (status matches .ok .success, adapter.isSome))
+  wgpu.processEvents
+  let got ← calls.get
+  pure (problemUnless (got.size == 1 && got.all fun (ok, given) => ok == given)
+    s!"called back {got.size} times: (success, adapter given) {got}")
+
+/-- An error `requestAdapter`'s callback raises is raised by the call. -/
+def requestRaised (wgpu : WebGPU.Raw.Instance) : IO String := do
+  let e ← errorAfterEvents wgpu do
+    let _ ← wgpu.requestAdapter none .allowProcessEvents fun _ _ _ =>
+      throw (IO.userError "from the callback")
+  pure (problemUnless (e == "from the callback") s!"raised {repr e}")
+
+/--
+Request an adapter with a callback that holds a new token, and says in `ran`
+that it ran.
+-/
+@[noinline]
+def requestHolding (wgpu : WebGPU.Raw.Instance) (ran : IO.Ref Bool) :
+    IO Unit := do
+  let t ← token
+  let _ ← wgpu.requestAdapter none .allowProcessEvents fun _ _ _ => do
+    touch t
+    ran.set true
+
+/--
+`requestAdapter`'s closure is released once it has run, and, if it has not
+run by the time the call returns (under Node), not before.
+-/
+def requestReleased (wgpu : WebGPU.Raw.Instance) : IO String := do
+  let ran ← IO.mkRef false
+  let before ← tokensReleased
+  requestHolding wgpu ran
+  let early := !(← ran.get) && (← tokensReleased) != before
+  wgpu.processEvents
+  let after ← tokensReleased
+  pure (problemUnless (!early && after == before + 1)
+    s!"tokens released: {before}, then {after}; before it ran: {early}")
+
+/-- Each check of WebGPU's callbacks, on `wgpu`, as `checks`. -/
+def webgpuChecks (wgpu : WebGPU.Raw.Instance) :
+    IO (List (String × String)) := do
+  let named := [
+    ("requestAdapter calling back once, an adapter given on success",
+      requested wgpu),
+    ("an error requestAdapter's callback raises, raised", requestRaised wgpu),
+    ("requestAdapter's closure released once it has run",
+      requestReleased wgpu)
   ]
   named.mapM fun (what, check) => do pure (what, ← check)
 

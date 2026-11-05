@@ -177,8 +177,8 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
     .call (shimName o (if b then "unbox_option" else "unbox")) [.name x]
   | .string b          =>
     some (.call (if b then optionStringViewName else stringViewName) [.name x])
-  -- Not passed to functions yet: their conversions come with descriptors,
-  -- and a future with callbacks.
+  -- Not passed to functions yet: their conversions come with descriptors. A
+  -- future is only ever a result.
   | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
     none
   | .unsupported _     => none
@@ -271,8 +271,9 @@ def resultExpr (objects : List Lowered.Object) : Value → Option Expr
   | .object names b => (objectNamed objects names.c).map fun o =>
     box (shimName o (if b then "box_option" else "box")) result
   | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
-  -- A future is boxed with callbacks.
-  | .string _ | .future => none
+  -- A future as its ID.
+  | .future         => some (box "lean_box_uint64" (.member result "id"))
+  | .string _       => none
   | .unsupported _  => none
 where
   result : Expr := .name "result"
@@ -292,6 +293,118 @@ def resultCheck (f : Lowered.Function) : Value → List Stmt
   | _ => []
 where
   message := s!"\"{f.names.lean} returned NULL\""
+
+/-! ## Callbacks
+
+A callback's closure is its C userdata (`userdata1`), held until it is called
+(`c/callback.c`). Its trampoline, one for each callback type, boxes each
+argument as the closure takes it and applies the closure, which releases it:
+
+    static inline void lean_WGPUQueueWorkDoneCallback(
+        WGPUQueueWorkDoneStatus status,
+        WGPUStringView          message,
+        void *                  userdata1,
+        void *                  userdata2
+    ) {
+        (void)userdata2;
+        lean_wgpu_callback_done(lean_apply_3(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        ));
+    }
+-/
+
+/--
+The trampoline for callbacks of type `c`: `lean_WGPUQueueWorkDoneCallback`.
+-/
+def trampolineName (c : Lowered.Callback) : String := "lean_" ++ c.names.c
+
+/--
+A callback's argument `x`, of the value `v`, as the Lean value its closure
+takes (`Value.callbackRawType`): an enum as its code, an object boxed with the
+reference C gives it, as an `Option`, and a string copied. None if it cannot
+be.
+-/
+def callbackArgExpr (objects : List Lowered.Object) (x : String) :
+    Value → Option Expr
+  | .enum _            =>
+    some (.call "lean_box_uint32" [.cast "uint32_t" (.name x)])
+  | .object names true => (objectNamed objects names.c).map fun o =>
+    .call (shimName o "box_option") [.name x]
+  | .string false      => some (.call "lean_wgpu_string_of_view" [.name x])
+  | _                  => none
+
+/--
+The trampoline for callbacks of type `c`, if the bindings can pass each of its
+arguments: it takes them as C passes them, then the two userdata pointers.
+-/
+def trampoline (objects : List Lowered.Object) (c : Lowered.Callback) :
+    Option Function := do
+  -- An argument named like a userdata pointer would hide it.
+  guard (c.args.all fun a => !["userdata1", "userdata2"].contains a.names.c)
+  let params ← c.args.toList.mapM fun a =>
+    a.value.cType.map fun type => (⟨type, a.names.c⟩ : Param)
+  let boxed ← c.args.toList.mapM fun a =>
+    callbackArgExpr objects a.names.c a.value
+  -- `lean.h` applies a closure to at most 16 arguments, its world among them.
+  guard (boxed.length < 16)
+  let closure := Expr.cast "lean_object *" (.name "userdata1")
+  let world := Expr.call "lean_io_mk_world" []
+  pure {
+    doc    := s!"Calls the Lean closure `userdata1` as a `{c.names.lean}`, \
+      releasing it."
+    attrs  := ["static", "inline"]
+    result := "void"
+    name   := trampolineName c
+    params := params ++ [⟨"void *", "userdata1"⟩, ⟨"void *", "userdata2"⟩]
+    body   := [
+      .expr (.cast "void" (.name "userdata2")),
+      .expr (.call "lean_wgpu_callback_done" [
+        .call s!"lean_apply_{boxed.length + 1}" (closure :: boxed ++ [world])])
+    ]
+  }
+
+/--
+The functions that can run callbacks other calls took: those that process
+events or wait on futures; and, in wgpu-native, those that end a buffer's
+pending `mapAsync`, calling back aborted (`unmap`, `destroy`), and
+`Queue.submit`, which calls back what it completes.
+-/
+def runsOthersCallbacks : List String := [
+  "wgpuInstanceProcessEvents", "wgpuInstanceWaitAny", "wgpuBufferUnmap",
+  "wgpuBufferDestroy", "wgpuQueueSubmit"
+]
+
+/--
+Whether a call of `f` can run callbacks: if it takes one, or runs others'
+(`runsOthersCallbacks`). Its shim brackets the call (`lean_wgpu_callbacks_enter`
+and `_leave`), so that the first error a callback in it raised is its result.
+-/
+def runsCallbacks (f : Lowered.Function) : Bool :=
+  f.callback.isSome || runsOthersCallbacks.contains f.names.c
+
+/--
+The shim's parameters for a callback of type `c`: its mode's code, if it is
+registered with one, and its closure, borrowed, which the shim holds.
+-/
+def callbackParams (c : Lowered.Callback) : List Param :=
+  (if c.style == .callbackMode then [⟨"uint32_t", "callbackMode"⟩] else [])
+    ++ [⟨"b_lean_obj_arg", "callback"⟩]
+
+/--
+The callback info the shim passes for a callback of type `c`, `callbackInfo`:
+its trampoline, and the closure, held, as its userdata.
+-/
+def callbackInfo (c : Lowered.Callback) : Stmt :=
+  .decl (c.names.c ++ "Info") "callbackInfo" (some (.init (
+    [("nextInChain", .lit "NULL")]
+      ++ (if c.style == .callbackMode then
+        [("mode", .cast "WGPUCallbackMode" (.name "callbackMode"))] else [])
+      ++ [("callback", .name (trampolineName c)),
+        ("userdata1", .call "lean_wgpu_closure_hold" [.name "callback"]),
+        ("userdata2", .lit "NULL")])))
 
 /-! ## Shims -/
 
@@ -355,31 +468,48 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
   -- An argument named like a shim's own variable, or like the parameters a
   -- struct crosses as, on either side, would hide it.
   guard (f.args.all fun a =>
-    !["self", "result", "tables"].contains a.names.c
+    !["self", "result", "tables", "callbackMode", "callback", "callbackInfo",
+        "saved"].contains a.names.c
+      && !["callbackMode", "callback"].contains a.names.lean
       && !(["_struct", "_bytes", "_targets", "_table"].any
         (a.names.c.endsWith ·))
       && !(["Bytes", "Targets", "Table"].any (a.names.lean.endsWith ·)))
   let shim := functionShimName f
+  -- Its callback's trampoline, if it takes one. The function its closure
+  -- calls back takes each of its arguments, by its Lean name (`wrapperDecl`).
+  let _ ← f.callback.mapM (trampoline objects)
+  guard (f.callback.all fun c => c.args.all (·.names.lean != "callback"))
+  -- A shim that brackets its call returns only through `callbacks_leave`:
+  -- no check of its result returns before.
+  guard (!runsCallbacks f || f.result.all (!Value.checked ·))
   -- Every argument is borrowed, so a check that fails returns before any
   -- reference is taken, and nothing needs releasing.
   let receiver ← receiverArg objects f.receiver
   let args ← f.args.toList.mapM fun a => argCrossing objects a.names.c a.value
   let checks :=
     f.args.toList.flatMap fun a => argCheck f.names.lean a.names.c a.value
-  let call := Expr.call f.names.c
-    (receiver.map (·.2) ++ args.map (·.value))
+  let call := Expr.call f.names.c (receiver.map (·.2) ++ args.map (·.value)
+    ++ (if f.callback.isSome then [.name "callbackInfo"] else []))
+  -- A call that can run callbacks is bracketed: the first error a callback in
+  -- it raised is its result.
+  let enter := Stmt.decl "lean_object *" "saved"
+    (some (.call "lean_wgpu_callbacks_enter" []))
+  let callbacks := (f.callback.map callbackInfo).toList
+    ++ (if runsCallbacks f then [enter] else [])
+  let ret (ok : Expr) : Stmt := .ret (some (if runsCallbacks f
+    then .call "lean_wgpu_callbacks_leave" [.name "saved", ok] else ok))
   let body ← match f.result with
     | none => pure [
       .expr call,
-      .ret (some (.call "lean_io_result_mk_ok" [.call "lean_box" [.lit "0"]]))
+      ret (.call "lean_io_result_mk_ok" [.call "lean_box" [.lit "0"]])
     ]
     | some v => do
       let cType ← v.cType
       let boxed ← resultExpr objects v
       pure ([.decl cType "result" (some call)] ++ resultCheck f v
-        ++ [.ret (some (.call "lean_io_result_mk_ok" [boxed]))])
+        ++ [ret (.call "lean_io_result_mk_ok" [boxed])])
   let params := receiver.map (·.1) ++ args.flatMap (·.params)
-    ++ tablesParams f
+    ++ (f.callback.map callbackParams).getD [] ++ tablesParams f
   pure {
     doc    := s!"Lean's `{f.names.lean}`: calls `{f.names.c}`."
     attrs  := ["LEAN_EXPORT"]
@@ -387,7 +517,7 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
     name   := shim
     params := params
     body   := guardStubs f params
-      (checks ++ args.flatMap (·.before) ++ body)
+      (checks ++ args.flatMap (·.before) ++ callbacks ++ body)
   }
 
 /-- Every function and method of the spec, in its order. -/
@@ -406,13 +536,28 @@ def boundFunctions (spec : Lowered.Spec) : List (Lowered.Function × Function) :
   (allFunctions spec).filterMap fun f =>
     (functionShim spec.objects.toList structs f).map (f, ·)
 
-/-- The source: the helpers the shims use, then the shims. -/
+/--
+The callback types the bound functions take, each once, in the order the
+functions first take them.
+-/
+def boundCallbacks (spec : Lowered.Spec) : List Lowered.Callback :=
+  ((boundFunctions spec).filterMap (·.1.callback)).eraseDups
+
+/--
+The source: the helpers the shims use, the trampolines of the callbacks they
+take, then the shims.
+-/
 def functionsSource (spec : Lowered.Spec) : List Decl :=
   let bound := boundFunctions spec
+  let callbacks := boundCallbacks spec
   [.include "stdint.h", .includeLocal "objects.h"]
     ++ (if bound.any (takesStruct ·.1) then [.includeLocal "reloc.h"] else [])
+    ++ (if bound.any (runsCallbacks ·.1) then [.includeLocal "callback.h"]
+      else [])
     ++ helpers.filterMap (fun (needs, d) =>
       if bound.any (needs ·.1) then some d else none)
+    ++ callbacks.filterMap (fun c =>
+      (trampoline spec.objects.toList c).map .function)
     ++ bound.map fun (_, shim) => .function shim
 
 /-- The function shims' source, `functions.c`. -/

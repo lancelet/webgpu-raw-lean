@@ -195,22 +195,144 @@ def shimText (f : Lowered.Function) : Option String :=
 -- The macro for an implementation is its name, in capitals.
 #guard implementationMacro "dawn" == "WEBGPU_RAW_DAWN"
 
+/-! ## Callbacks -/
+
+/-- A callback of every kind of argument a callback can pass. -/
+def found : Lowered.Callback := {
+  names := {
+    c    := "WGPUFoundCallback"
+    lean := "FoundCallback"
+  }
+  doc   := ""
+  style := .callbackMode
+  args  := #[
+    arg "status" (.enum ⟨"WGPUMode", "Mode"⟩),
+    arg "buffer" (.object buffer.names true),
+    arg "message" (.string false)
+  ]
+}
+
+-- A callback's trampoline: each argument boxed as the closure takes it, an
+-- enum as its code, an object with the reference C gives it, as an `Option`,
+-- a string copied; then the closure applied, releasing it, its result given
+-- to the call running it.
+#guard
+  let expected := dedent "
+    // Calls the Lean closure `userdata1` as a `FoundCallback`, releasing it.
+    static inline void lean_WGPUFoundCallback(
+        WGPUMode       status,
+        WGPUBuffer     buffer,
+        WGPUStringView message,
+        void *         userdata1,
+        void *         userdata2
+    ) {
+        (void)userdata2;
+        lean_wgpu_callback_done(
+            lean_apply_4(
+                (lean_object *)userdata1,
+                lean_box_uint32((uint32_t)status),
+                lean_wgpu_buffer_box_option(buffer),
+                lean_wgpu_string_of_view(message),
+                lean_io_mk_world()
+            )
+        );
+    }
+    "
+  (trampoline [buffer] found).map (file [.function ·]) == some expected
+
+-- A function that takes a callback: its mode's code and its closure, which
+-- the shim holds as the callback's userdata, passing its trampoline; the call
+-- bracketed, so that the first error a callback in it raised is its result;
+-- and its future returned as its ID.
+#guard
+  let input :=
+    { function #[arg "name" (.string false)] (some .future) with
+      callback := some found }
+  let expected := dedent "
+    // Lean's `doIt`: calls `wgpuDoIt`.
+    LEAN_EXPORT lean_obj_res lean_wgpuDoIt(
+        b_lean_obj_arg name,
+        uint32_t       callbackMode,
+        b_lean_obj_arg callback
+    ) {
+        WGPUFoundCallbackInfo callbackInfo = {
+            .nextInChain = NULL,
+            .mode        = (WGPUCallbackMode)callbackMode,
+            .callback    = lean_WGPUFoundCallback,
+            .userdata1   = lean_wgpu_closure_hold(callback),
+            .userdata2   = NULL,
+        };
+        lean_object * saved = lean_wgpu_callbacks_enter();
+        WGPUFuture result = wgpuDoIt(lean_wgpu_string_view(name), callbackInfo);
+        return lean_wgpu_callbacks_leave(
+            saved,
+            lean_io_result_mk_ok(lean_box_uint64(result.id))
+        );
+    }
+    "
+  shimText input == some expected
+
+-- Not one with an argument named like the shim's own variables for its
+-- callback, nor a callback argument named like its closure.
+#guard
+  let named (x : String) :=
+    { function #[arg x .uint32] (some .future) with callback := some found }
+  let calledCallback :=
+    { found with args := #[arg "callback" (.string false)] }
+  ["callbackMode", "callback", "callbackInfo", "saved"].all
+      (fun x => shimText (named x) == none)
+    && shimText { function #[] (some .future) with
+      callback := some calledCallback } == none
+
+-- A function that runs other calls' callbacks, as `processEvents` does, is
+-- bracketed too, so that the first error one raised is its result, not the
+-- end of the program. (A regression test: under Node, `requestAdapter`'s
+-- callback ran in `processEvents`, outside every call.)
+#guard
+  let input : Lowered.Function := {
+    names    := {
+      c    := "wgpuInstanceProcessEvents"
+      lean := "Instance.processEvents"
+    }
+    doc      := ""
+    receiver := none
+    args     := #[]
+    result   := none
+    callback := none
+  }
+  let expected := dedent "
+    // Lean's `Instance.processEvents`: calls `wgpuInstanceProcessEvents`.
+    LEAN_EXPORT lean_obj_res lean_wgpuInstanceProcessEvents(void) {
+        lean_object * saved = lean_wgpu_callbacks_enter();
+        wgpuInstanceProcessEvents();
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    }
+    "
+  shimText input == some expected
+
+-- So is one that can run a callback another call took, as unmapping a buffer
+-- runs its `mapAsync`'s, aborted. (A regression test: the shims of
+-- `Buffer.unmap` and `Buffer.destroy` were not bracketed.)
+#guard
+  let method (c lean : String) : Lowered.Function := {
+    names    := ⟨c, lean⟩
+    doc      := ""
+    receiver := some buffer.names
+    args     := #[]
+    result   := none
+    callback := none
+  }
+  [("wgpuBufferUnmap", "Buffer.unmap"), ("wgpuBufferDestroy", "Buffer.destroy"),
+    ("wgpuQueueSubmit", "Queue.submit")].all fun (c, lean) =>
+      runsCallbacks (method c lean)
+        && (shimText (method c lean)).map
+          (·.splitOn "lean_wgpu_callbacks_enter()" |>.length) == some 2
+
 /-! ## Not bound -/
 
 -- A function the bindings cannot pass every value of has no shim.
 #guard
   let input := function #[arg "descriptor" (.unsupported "struct")] none
-  shimText input == none
-
--- Nor does a function that takes a callback.
-#guard
-  let done : Lowered.Callback := {
-    names := ⟨"WGPUDoneCallback", "DoneCallback"⟩
-    doc   := ""
-    style := .immediate
-    args  := #[]
-  }
-  let input := { function #[] none with callback := some done }
   shimText input == none
 
 -- Nor a function with an argument named like a shim's own variable, which

@@ -118,6 +118,17 @@ def main : IO UInt32 := do
         if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
     catch e => pure [s!"FAIL callbacks: {e}"]
   callbacks.forM IO.println
+  -- And WebGPU's, `requestAdapter`, where its callback runs by the next
+  -- `processEvents`: under Node, which has no WebGPU. A browser runs it from
+  -- its event loop, after this.
+  let webgpuCallbacks ← if WebGPURawWebTest.hasWebGPU () then pure [] else
+    try
+      let wgpu ← WebGPU.Raw.createInstance none
+      let checks ← WebGPURawTest.Internal.Callback.webgpuChecks wgpu
+      pure (checks.map fun (what, problem) =>
+        if problem.isEmpty then s!"ok   {what}" else s!"FAIL {what}: {problem}")
+    catch e => pure [s!"FAIL WebGPU's callbacks: {e}"]
+  webgpuCallbacks.forM IO.println
   -- A function and a method wgpu-native leaves unimplemented, which Dawn
   -- implements: on the web their shims call them.
   -- (The method needs WebGPU, which Node lacks: there, emdawnwebgpu throws a
@@ -135,7 +146,8 @@ def main : IO UInt32 := do
     catch e => pure s!"FAIL calling what wgpu-native does not implement: {e}"
   IO.println dawn
   let bindingsFailed :=
-    (bindings :: descriptor :: dawn :: relocations ++ callbacks).filter
+    (bindings :: descriptor :: dawn :: relocations ++ callbacks
+      ++ webgpuCallbacks).filter
       (!·.startsWith "ok") |>.length
   if failed.isEmpty && bindingsFailed == 0 then
     IO.println "All checks passed."

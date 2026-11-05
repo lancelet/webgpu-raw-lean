@@ -368,7 +368,8 @@ def resultValue? (methods : String) : Option (Option Value) :=
   argValues input == some [.unsupported "nullable_float32"]
     && resultValue? input == some (some (.unsupported "nullable_float32"))
 
--- A method that takes a callback is not bound yet, whatever its arguments.
+-- A method that takes a callback whose arguments can all be passed can be
+-- bound.
 #guard
   let methods := dedent "
     - name: m
@@ -379,7 +380,7 @@ def resultValue? (methods : String) : Option (Option Value) :=
     (callbacks := "- name: done\n  doc: x\n  style: callback_mode\n")
     (objects := deviceWith methods)
   ((lowerText input).bind (·.objects[0]?.bind (·.methods[0]?)))
-    |>.map (·.unsupported) == some ["takes a callback"]
+    |>.map (·.unsupported) == some []
 
 /-! ## Callbacks -/
 
@@ -461,7 +462,6 @@ def methodCallback (callbacks : String) : Option Lowered.Callback :=
   let method := (lowerText (callbackSpec input)).bind fun l =>
     l.objects[0]?.bind (·.methods[0]?)
   method.map (·.unsupported) == some [
-    "takes a callback",
     "callback device: object (immutable pointer)",
     "callback info: struct (immutable pointer)"
   ]

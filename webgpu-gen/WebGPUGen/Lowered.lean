@@ -196,13 +196,24 @@ def Value.isObject : Value → Bool
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
-  -- Not passed to functions yet: their shims come with descriptors, and a
-  -- future with callbacks.
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
-    none
+  -- Not passed to functions yet: their shims come with descriptors.
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
   | .enum _    => "UInt32"
   | .bitflag _ => "UInt64"
+  -- A future as its ID, which the function makes a `Future` of.
+  | .future    => "UInt64"
   | v          => v.leanType
+
+/--
+A callback's argument's type in the raw declaration's closure, as its
+trampoline boxes it: an enum as its code, an object as an `Option`, a string
+copied. None if a callback cannot pass it.
+-/
+def Value.callbackRawType : Value → Option String
+  | .enum _            => "UInt32"
+  | .object names true => s!"Option {names.lean}"
+  | .string false      => "String"
+  | _                  => none
 
 /--
 The C type a shim takes the value as, matching `rawLeanType` by Lean's ABI. (A
@@ -287,7 +298,7 @@ structure Function where
   /--
   The callback it takes, if any. Every such function in the spec is
   asynchronous, calling back when its operation completes, and returns a
-  future (`Value.future`); none is bound yet.
+  future (`Value.future`).
   -/
   callback : Option Callback
   /--
@@ -305,13 +316,10 @@ structure Function where
 
 /--
 Why the bindings cannot bind the function yet: one reason for each value they
-cannot pass, and one if it takes a callback, with each its callback cannot.
-None if they can.
+cannot pass, its callback's arguments among them. None if they can.
 -/
 def Function.unsupported (f : Function) : List String :=
-  (match f.callback with
-    | some c => "takes a callback" :: c.unsupported
-    | none   => [])
+  (f.callback.map (·.unsupported)).getD []
     ++ f.args.toList.filterMap (·.value.unsupported?)
     ++ (f.result.bind (·.unsupported?)).toList
 

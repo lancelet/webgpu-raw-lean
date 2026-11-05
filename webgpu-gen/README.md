@@ -133,10 +133,14 @@ The main proofs we have (not a complete list) are:
 - **Agreeing on Functions.** The C shims and the Lean declarations are both
   printed from one list of bound functions; each side prints a value only if
   it has a type for it. Wherever C has a shim, Lean has its `@[extern]`
-  declaration and the function that calls it (`Emit/Agreement.lean`). That
-  the two types of each value agree by Lean's ABI is *not* proved: it is
-  checked by compiling them together (the repository's
-  `scripts/check-abi.sh`).
+  declaration and the function that calls it; and, for a callback, wherever
+  C has its trampoline, Lean declares its closure's types, both as the
+  function takes it and as the raw declaration does (`Emit/Agreement.lean`).
+  That the two types of each value agree by Lean's ABI is *not* proved: it
+  is checked by compiling them together (the repository's
+  `scripts/check-abi.sh`); nor that a trampoline applies its closure to as
+  many arguments as its type takes: both come from the callback's arguments,
+  one each, and one trampoline, `requestAdapter`'s, is tested.
 
 Lowering's other results are tested rather than proved, most against
 `webgpu.h` itself: every C name, value and default it computes is checked

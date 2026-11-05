@@ -82,8 +82,10 @@ it could call unimplemented.)
   that can be NULL `WGPU_NULLABLE`, and each agrees with the spec's `optional`.
 - **An object C passes to a callback can be NULL** even where the spec does not
   say `optional` (the adapter in a failed `requestAdapter`), so it is always an
-  `Option`. *Checked by:* proof of lowering (`nullable_of_callbackArgValue`);
-  that the trampolines box it as an `Option` comes with them.
+  `Option`. *Checked by:* proof of lowering (`nullable_of_callbackArgValue`),
+  and of agreement: the trampoline boxes only an `Option` object, and the
+  closure's type in Lean is the one its arguments are lowered to
+  (`decls_of_functionShim`).
 
 ## Values
 
@@ -211,9 +213,13 @@ encoded structs between tasks would stop the checked build without cause.
 ## Callbacks
 
 A callback is a Lean closure, run by C through a trampoline and the callback
-runtime (`c/callback.c`). No WebGPU function takes one yet: the runtime is
-tested with a fake library that runs callbacks as WebGPU does
-(`WebGPURawTest/Internal/Callback.lean`), natively and on the web.
+runtime (`c/callback.c`). Six functions take one: `requestAdapter`,
+`mapAsync`, `onSubmittedWorkDone`, `popErrorScope`, and the two
+`create…PipelineAsync` (`requestDevice` waits on its descriptor, whose
+callbacks live as long as the device). Each is generated with its trampoline
+(`Emit/C/Functions.lean`). The runtime is tested with a fake library that
+runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
+`requestAdapter` through its shim and trampoline, natively and under Node.
 
 - **A callback's closure is held by C until it runs, then released, exactly
   once.** C takes its own reference to the closure (`lean_wgpu_closure_hold`)
@@ -223,9 +229,10 @@ tested with a fake library that runs callbacks as WebGPU does
   not before).
 - **Every callback is called exactly once**, with a cancelled status if it
   cannot complete, so every closure is released, whatever the status:
-  upstream's contract (`webgpu.h`), assumed. *Checked by:* not yet: a test
-  of each implementation comes with the first WebGPU function bound that
-  takes a callback.
+  upstream's contract (`webgpu.h`), assumed. *Checked by:* test, of
+  `requestAdapter`, on wgpu-native and on emdawnwebgpu under Node (called
+  back once by the next `processEvents`, its closure released); not of the
+  others, nor in a browser, yet.
 - **A callback can run inside a finalizer**, as releasing an instance runs
   its waiting callbacks, cancelled: the Lean runtime allows Lean code in an
   external object's finalizer (`lean_dec_ref_cold` frees each object after
@@ -242,11 +249,23 @@ tested with a fake library that runs callbacks as WebGPU does
   and raises it once WebGPU returns; the rest still run, their errors
   dropped. If a callback calls into WebGPU in turn, that call keeps its own,
   and its caller's are kept apart (whether an implementation allows such a
-  call is its own: wgpu-native may hold locks while it runs callbacks).
-  *Checked by:* test. So every shim of a call that can run callbacks must
-  bracket the call (`lean_wgpu_callbacks_enter` and `_leave`), releases
-  included, which run cancelled callbacks: a callback run in one that does
-  not is outside every call. *Checked by:* not yet: no shim runs callbacks.
+  call is its own: wgpu-native holds a device's error lock while it runs
+  `popErrorScope`'s callback, so a callback that calls a function of that
+  device that can report an error deadlocks). *Checked by:* test. So every
+  shim of a call that can run callbacks brackets the call
+  (`lean_wgpu_callbacks_enter` and `_leave`): each that takes one;
+  `processEvents` and `waitAny`, which run others'; and, in wgpu-native,
+  `Buffer.unmap` and `destroy`, which call back a pending `mapAsync`,
+  aborted, and `Queue.submit`, which calls back what it completes
+  (`runsCallbacks`). A release, which can run waiting callbacks, cancelled,
+  is not bracketed: it runs in a finalizer, with no caller to raise an error
+  to, so one ends the program. *Checked by:* test, of the shims printed, and
+  under Node, where `requestAdapter`'s callback runs in `processEvents`. (A
+  regression test: it ran outside every call, ending the program; and
+  `unmap` and `destroy` were not bracketed, found by review.) That `unmap`
+  and `destroy` raise an aborted callback's error is not tested yet, as no
+  buffer can be made without a device; nor is the list known complete: it
+  is from wgpu-native's source, read.
 - **An error a callback raises outside every call ends the program**, printed,
   as an error `main` raises does: a callback the browser's event loop runs,
   or one a finalizer runs outside every call, has no caller to raise it to.
@@ -260,11 +279,13 @@ tested with a fake library that runs callbacks as WebGPU does
 ## Functions an implementation does not implement
 
 wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one
-aborts the program (a Rust panic that cannot unwind into C). 25 of them are
+aborts the program (a Rust panic that cannot unwind into C). 27 of them are
 bound: every bound `setLabel` method (21), `hasInstanceFeature`,
-`Instance.hasWGSLLanguageFeature`, `Buffer.getMapState` and
-`Texture.getTextureBindingViewDimension`. Dawn, used on the web, implements
-them. wgpu-native also aborts on values it does not support: a timed
+`Instance.hasWGSLLanguageFeature`, `Buffer.getMapState`,
+`Texture.getTextureBindingViewDimension`, and
+`Device.createComputePipelineAsync` and `createRenderPipelineAsync` (whose
+shims hold no closure when they raise the error). Dawn, used on the web,
+implements them. wgpu-native also aborts on values it does not support: a timed
 `waitAny` feature or limit in an instance descriptor (`createInstance`), which
 is not memory-unsafe, but ends the program; the bindings do not check for it
 yet. And it aborts on a descriptor without the chain it needs, which the
@@ -303,8 +324,17 @@ web build, every time.
 
 wgpu-native also aborts on some inputs that WebGPU treats as validation errors,
 such as a `bytesPerRow` of 0 in a texture copy; an enum code it does not know
-is another, which the bindings never pass. *Checked by:* not checked; a later
-layer can validate such inputs.
+is another, which the bindings never pass. So are `popErrorScope` with no
+scope pushed (upstream calls back with `emptyStack`), and `mapAsync` with a
+mode other than exactly `read` or exactly `write`. *Checked by:* not
+checked; a later layer can validate such inputs.
+
+wgpu-native also ignores a callback's mode: it calls `requestAdapter`'s and
+`popErrorScope`'s back during the call, and `mapAsync`'s and
+`onSubmittedWorkDone`'s only from `processEvents`, `Queue.submit`,
+`Buffer.unmap` or `destroy`, or a queue's release, never spontaneously. And
+every `Future` it returns has the ID 0, so a future means nothing there yet:
+nor can one be waited on, as `waitAny` is unimplemented.
 
 ## Not yet bound
 

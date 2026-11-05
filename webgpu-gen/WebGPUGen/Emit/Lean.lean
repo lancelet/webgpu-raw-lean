@@ -223,6 +223,89 @@ reaches the GPU or its driver.
       Internal.Adapter.hasFeature self (CEnum.toC feature)
 -/
 
+/-! ### Callbacks
+
+A function that takes a callback takes its mode, if it is registered with one,
+and a Lean closure, which C runs as the callback (`c/callback.c`), given each
+argument as C passes it:
+
+    abbrev QueueWorkDoneCallback :=
+      Except UInt32 QueueWorkDoneStatus → String → IO Unit
+
+The raw declaration's closure, of the type `Internal.QueueWorkDoneCallback`,
+takes an enum as its code, which the function decodes; the closure is
+borrowed, and the shim takes its own reference.
+-/
+
+/-- `xs` as English lists them: `a`, `a and b`, `a, b and c`. -/
+def listing : List String → String
+  | []      => ""
+  | [x]     => x
+  | [x, y]  => s!"{x} and {y}"
+  | x :: xs => s!"{x}, {listing xs}"
+
+/--
+A callback type, as an `abbrev` of the closure's type; and, under
+`Internal`, the type of the closure its raw declaration takes. Its doc says
+what the closure is given, if the spec's says nothing, as each says `TODO`.
+-/
+def callbackDecl (c : Lowered.Callback) : Option Doc := do
+  let types ← c.args.toList.mapM (·.value.resultLeanType)
+  let rawTypes ← c.args.toList.mapM (·.value.callbackRawType)
+  let given := listing (c.args.toList.map (s!"`{·.names.lean}`"))
+  let doc := if !(docLines 0 c.doc).isEmpty then c.doc else
+    s!"A closure C runs once, as a callback, given {given}."
+  let alias (name : String) (types : List String) : Doc :=
+    text s!"abbrev {name} :=" ++ indented 2 (group (nest 2
+      (join (text " →" ++ space) ((types ++ ["IO Unit"]).map text))))
+  pure <| docBefore 0 doc ++ alias c.names.lean types ++ hardline
+    ++ hardline
+    ++ text s!"/-- A `{c.names.lean}`, as its raw declaration takes it. -/"
+    ++ hardline ++ alias s!"Internal.{c.names.lean}" rawTypes
+
+/--
+The raw declaration's parameters for `f`'s callback, as its shim takes them
+(`Emit.C.callbackParams`): its mode's code, if it is registered with one, and
+its closure, borrowed, taking each argument as the trampoline boxes it. None
+if one cannot be.
+-/
+def callbackBinders (f : Lowered.Function) : Option (List Binder) :=
+  match f.callback with
+  | none   => some []
+  | some c => do
+    -- Each argument's type, which `callbackDecl` declares the closure's of.
+    let _ ← c.args.toList.mapM (·.value.callbackRawType)
+    pure ((if c.style == .callbackMode then [⟨"callbackMode", "UInt32"⟩]
+      else []) ++ [⟨"callback", s!"@& Internal.{c.names.lean}"⟩])
+
+/--
+`f`'s parameters for its callback: its mode, if it is registered with one,
+and the closure.
+-/
+def callbackWrapperBinders (f : Lowered.Function) : List Binder :=
+  f.callback.toList.flatMap fun c =>
+    (if c.style == .callbackMode then [⟨"callbackMode", "CallbackMode"⟩]
+      else []) ++ [⟨"callback", c.names.lean⟩]
+
+/--
+`f`'s callback, converted for its raw declaration: its mode as its code, and
+the closure, which decodes each enum argument before calling `callback`: broken
+after its `=>` if it does not fit.
+-/
+def callbackRawArgs (f : Lowered.Function) : List Doc :=
+  f.callback.toList.flatMap fun c =>
+    let mode := if c.style == .callbackMode
+      then [text "(CEnum.toC callbackMode)"] else []
+    let closure := if c.args.any (·.value matches .enum _) then
+      let xs := c.args.toList.map (·.names.lean)
+      let given := c.args.toList.map fun a => match a.value with
+        | .enum _ => s!"(CEnum.decode {a.names.lean})"
+        | _       => a.names.lean
+      group (text s!"(fun {" ".intercalate xs} =>"
+        ++ nest 2 (space ++ text s!"callback {" ".intercalate given})"))
+    else text "callback"
+    mode ++ [closure]
+
 /-- A type as an argument of `IO`: in parentheses if it has spaces. -/
 def ioOf (type : String) : String :=
   if type.contains ' ' then s!"IO ({type})" else s!"IO {type}"
@@ -268,6 +351,7 @@ value has no raw type, which a bound function never has.
 -/
 def rawDecl (f : Lowered.Function) : Option Doc := do
   let args ← f.args.toList.mapM fun a => rawBinders a.names.lean a.value
+  let callback ← callbackBinders f
   let result ← match f.result with
     | none   => pure "Unit"
     | some v => v.rawLeanType
@@ -277,7 +361,8 @@ def rawDecl (f : Lowered.Function) : Option Doc := do
     ++ signature {
       keyword := "opaque"
       name    := "Internal." ++ f.names.lean
-      binders := receiverBinder f true ++ args.flatten ++ tablesBinders f
+      binders := receiverBinder f true ++ args.flatten ++ callback
+        ++ tablesBinders f
       result  := ioOf result
     }
 
@@ -306,14 +391,16 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
     | none   => pure "Unit"
     | some v => v.resultLeanType
   let callArgs :=
-    (f.receiver.toList.map fun _ => "self")
-      ++ (f.args.toList.flatMap fun a => rawArg a.names.lean a.value)
-      ++ (if Emit.C.takesStruct f then ["⟨_, rfl⟩"] else [])
+    ((f.receiver.toList.map fun _ => "self")
+      ++ (f.args.toList.flatMap fun a => rawArg a.names.lean a.value)).map text
+      ++ callbackRawArgs f
+      ++ (if Emit.C.takesStruct f then [text "⟨_, rfl⟩"] else [])
   let call := group (nest 4 (join space
-    ((text ("Internal." ++ f.names.lean)) :: callArgs.map text)))
+    ((text ("Internal." ++ f.names.lean)) :: callArgs)))
   let decoded := match f.result with
     | some (.enum _)          => text "CEnum.decode <$> " ++ call
     | some (.bitflag names)   => text s!"{names.lean}.mk <$> " ++ call
+    | some .future            => text "Future.mk <$> " ++ call
     | _                       => call
   -- Each struct's `size_t`s must fit this target, as a `size_t` argument's
   -- must: an `IO` error if not.
@@ -340,7 +427,7 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
     ++ signature {
       keyword := "def"
       name    := f.names.lean
-      binders := receiverBinder f false ++ args
+      binders := receiverBinder f false ++ args ++ callbackWrapperBinders f
       result  := ioOf result
     }
     ++ text " :=" ++ indented 2 body
@@ -586,7 +673,8 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "them. `docs/Safety.md` gives the rules they follow."
     ]
     (text "open Reloc" ::
-      (Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
+      (Emit.C.boundCallbacks spec).filterMap callbackDecl
+      ++ (Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
 
 /-- The module of constants. -/
 def constantsFile (p : Provenance) (spec : Lowered.Spec) : String :=

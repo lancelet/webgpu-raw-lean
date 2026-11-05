@@ -863,4 +863,76 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
           throw (IO.userError \"doIt: a size_t too large\")
     "
 
+/-! ## Callbacks -/
+
+/-- A callback of every kind of argument a callback can pass. -/
+def found : Lowered.Callback := {
+  names := ⟨"WGPUFoundCallback", "FoundCallback"⟩
+  doc   := ""
+  style := .callbackMode
+  args  := #[
+    arg "status" (.enum ⟨"WGPUMode", "Mode"⟩),
+    arg "buffer" (.object bufferNames true),
+    arg "message" (.string false)
+  ]
+}
+
+-- A callback type: the closure's, each argument as C passes it, an enum
+-- keeping a code no value has, its doc saying what it is given; and the
+-- closure's its raw declaration takes, an enum as its code.
+#guard
+  (callbackDecl found).map render == some (dedent "
+    /--
+    A closure C runs once, as a callback, given `status`, `buffer` and `message`.
+    -/
+    abbrev FoundCallback :=
+      Except UInt32 Mode → Option Buffer → String → IO Unit
+
+    /-- A `FoundCallback`, as its raw declaration takes it. -/
+    abbrev Internal.FoundCallback :=
+      UInt32 → Option Buffer → String → IO Unit
+    ")
+
+-- A function that takes a callback: its raw declaration takes the mode's
+-- code and the closure, borrowed (`Internal.FoundCallback`); the function
+-- takes the mode and the closure, decoding each enum for it, and makes a
+-- `Future` of the ID the shim returns.
+#guard
+  let f := { function "wgpuDoIt" "doIt" none #[arg "label" (.string false)]
+    (some .future) with callback := some found }
+  printFunction f == dedent "
+    /-- The shim behind `doIt`. -/
+    @[extern \"lean_wgpuDoIt\"]
+    opaque Internal.doIt
+        (label        : @& String)
+        (callbackMode : UInt32)
+        (callback     : @& Internal.FoundCallback) :
+        IO UInt64
+
+    @[inline]
+    def doIt
+        (label        : String)
+        (callbackMode : CallbackMode)
+        (callback     : FoundCallback) :
+        IO Future :=
+      Future.mk <$> Internal.doIt
+          label
+          (CEnum.toC callbackMode)
+          (fun status buffer message =>
+            callback (CEnum.decode status) buffer message)
+    "
+
+-- A callback the spec leaves undocumented, as it does each (its doc is
+-- `TODO`), is documented by what it is given. (A regression test: none was.)
+#guard
+  ((callbackDecl { found with doc := "TODO" }).map render).any
+    (·.startsWith "/--\nA closure C runs once, as a callback, given")
+
+-- A callback with no enum argument is passed as it is.
+#guard
+  let done := { found with args := #[arg "message" (.string false)] }
+  let f := { function "wgpuDoIt" "doIt" none #[] (some .future) with
+    callback := some done }
+  (printFunction f).endsWith "(CEnum.toC callbackMode) callback\n"
+
 end WebGPUGenTest.Emit.Lean

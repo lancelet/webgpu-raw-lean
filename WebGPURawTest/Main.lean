@@ -61,6 +61,10 @@ def main (args : List String) : IO Unit := do
       throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
   checkSpontaneousError
   let wgpu ← createInstance none
+  -- And WebGPU's: `requestAdapter`, through its shim and trampoline.
+  for (what, problem) in ← WebGPURawTest.Internal.Callback.webgpuChecks wgpu do
+    unless problem.isEmpty do
+      throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
   -- And with a descriptor: a struct C fills in, its limits a struct of its
   -- own, by their tables. (wgpu-native aborts on a timed `waitAny` feature or
   -- limit it does not support, so these ask for none.)
