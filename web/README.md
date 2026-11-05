@@ -47,6 +47,44 @@ everything they are built with, so a change to any of it builds them again.
 Then Lake compiles the bindings and the self-test to C, and `build.sh`
 compiles that C and the generated shims, and links them.
 
+## Writing a program for the web
+
+A browser runs WebGPU's callbacks from its event loop, once the program has
+returned to it: a Lean program cannot wait for one, as `main` is synchronous
+and the build has no Asyncify or JSPI (Asyncify would instrument all of
+Lean's runtime; JSPI is Chrome's alone so far). So a program goes on in its
+callbacks, each step in the last one's callback:
+
+```lean
+open WebGPU.Raw in
+def main : IO UInt32 := do
+  let wgpu ← createInstance none
+  let _ ← wgpu.requestAdapter none .allowSpontaneous fun _ adapter _ => do
+    -- ... request a device from `adapter`, and so on
+    IO.Process.exit 0
+  return 1
+```
+
+`main` returns while the request is pending, and the program is kept alive:
+the build links with `-sEXIT_RUNTIME=1`, and emdawnwebgpu keeps it alive
+while a request is pending. The browser runs the callback; the program ends
+when a callback calls `IO.Process.exit`, with its code, or, once the last
+pending callback returns without exiting, with `main`'s. So `main` returns 1:
+a program whose callbacks forget to end it fails. The same code runs
+natively, where wgpu-native calls back during the request.
+
+- **Register every step `allowSpontaneous`.** The instance may be released
+  before its callbacks run, as `wgpu` here is when `main` returns:
+  emdawnwebgpu then still runs a spontaneous callback, but completes the
+  others at once, as shut down, and there is no `processEvents` to run them.
+- **An exit is deferred while another request is pending:** `IO.Process.exit`,
+  or an error a callback the browser runs raises (`docs/Safety.md`), ends the
+  program at once only when no other request is pending; otherwise it ends
+  once those callbacks have run, which they still do.
+
+The self-test (`WebGPURawWebTest/SelfTest.lean`) is written this way: in a
+browser it finishes in `requestAdapter`'s callback.
+
 ## What to know
 
 - **`-DLEAN_EMSCRIPTEN` on all of Lean's C is required.** Without it, Lean

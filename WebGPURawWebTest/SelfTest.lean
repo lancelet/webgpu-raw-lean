@@ -72,6 +72,15 @@ def checks : List (String × Bool) :=
       WebGPU.Raw.Encode.Width.current == .bits32)
   ] ++ WebGPURawTest.Internal.Encode.checks
 
+/-- Report how many checks failed: the program's exit code. -/
+def finish (failures : Nat) : IO UInt32 := do
+  if failures == 0 then
+    IO.println "All checks passed."
+    return 0
+  else
+    IO.println s!"{failures} checks failed."
+    return 1
+
 end WebGPURawWebTest
 
 /-- Run the checks, then call the bindings; print what happens. -/
@@ -149,9 +158,26 @@ def main : IO UInt32 := do
     (bindings :: descriptor :: dawn :: relocations ++ callbacks
       ++ webgpuCallbacks).filter
       (!·.startsWith "ok") |>.length
-  if failed.isEmpty && bindingsFailed == 0 then
-    IO.println "All checks passed."
-    return 0
-  else
-    IO.println s!"{failed.length + bindingsFailed} checks failed."
+  let failures := failed.length + bindingsFailed
+  -- In a browser, an adapter is requested, and the program goes on in its
+  -- callback, which the browser runs from its event loop once `main` has
+  -- returned: the program is kept alive while the request is pending, and
+  -- the callback ends it (`web/README.md`). Elsewhere it ends here.
+  if WebGPURawWebTest.hasWebGPU () then
+    let wgpu ← WebGPU.Raw.createInstance none
+    let _ ← wgpu.requestAdapter none .allowSpontaneous
+      fun status adapter message => do
+        let success := status matches .ok .success
+        let ok := success == adapter.isSome
+        IO.println (if ok then
+          s!"ok   requestAdapter called back from the browser's event loop \
+            (a success: {success})"
+        else s!"FAIL requestAdapter called back with an adapter \
+          {adapter.isSome}, a success {success}: {message}")
+        IO.Process.exit (← WebGPURawWebTest.finish
+          (failures + if ok then 0 else 1)).toUInt8
+    -- The program ends with this once the callback returns, if it does not
+    -- end it: so a callback that forgets to fails.
     return 1
+  else
+    WebGPURawWebTest.finish failures

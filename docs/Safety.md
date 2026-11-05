@@ -231,13 +231,18 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   cannot complete, so every closure is released, whatever the status:
   upstream's contract (`webgpu.h`), assumed. *Checked by:* test, of
   `requestAdapter`, on wgpu-native and on emdawnwebgpu under Node (called
-  back once by the next `processEvents`, its closure released); not of the
-  others, nor in a browser, yet.
+  back once by the next `processEvents`, in each mode, its closure
+  released), and in a browser (called back from its event loop); not of the
+  others yet.
 - **A callback can run inside a finalizer**, as releasing an instance runs
   its waiting callbacks, cancelled: the Lean runtime allows Lean code in an
   external object's finalizer (`lean_dec_ref_cold` frees each object after
   its finalizer returns). *Checked by:* review, and test (a callback a
-  finalizer runs).
+  finalizer runs). On emdawnwebgpu a spontaneous callback outlives its
+  instance: releasing the instance completes only the other modes', as shut
+  down (`UnregisterInstance` in its `webgpu.cpp`). *Checked by:* review; and
+  the self-test relies on it in a browser, its instance released when `main`
+  returns.
 - **A closure may run on another thread than the one that made it**, as a
   Lean `Task` may run `processEvents`: so it is marked as shared between
   threads when C takes it (`lean_mark_mt`), and its reference counts are
@@ -269,8 +274,19 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
 - **An error a callback raises outside every call ends the program**, printed,
   as an error `main` raises does: a callback the browser's event loop runs,
   or one a finalizer runs outside every call, has no caller to raise it to.
-  *Checked by:* test, natively, in a process of its own; on the web, review
-  (`exit` with `-sEXIT_RUNTIME=1` ends the program from the event loop).
+  On the web it ends the program at once only when no other request is
+  pending; otherwise once those callbacks have run, which they still do
+  (emscripten defers an exit while the program is kept alive). *Checked by:*
+  test, natively, in a process of its own; on the web, review (`exit` with
+  `-sEXIT_RUNTIME=1` ends the program from the event loop, as the
+  self-test's callback ends it in a browser).
+- **On the web, a program goes on in callbacks the browser runs**, from its
+  event loop once `main` has returned: the program is kept alive while a
+  request is pending, and ends when a callback calls `IO.Process.exit`, or,
+  once the last pending callback returns without exiting, with `main`'s code
+  (`web/README.md`). *Checked by:* test: in a browser, the self-test
+  finishes in `requestAdapter`'s callback, and `main` returns 1, so the page
+  fails if the callback does not run, or does not end the program.
 - **A string C passes a callback is copied at once** into a new Lean string,
   as it is valid only during the callback: valid UTF-8, each invalid byte
   U+FFFD; sized, or NUL-terminated (`WGPU_STRLEN`); the null view `""`.

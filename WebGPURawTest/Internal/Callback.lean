@@ -226,10 +226,10 @@ def checks : IO (List (String × String)) := do
 A WebGPU function that takes a callback, `requestAdapter`, through its shim
 and trampoline. The callback must have run once by the next `processEvents`
 (wgpu-native runs it during the call; under Node, emdawnwebgpu finds no
-WebGPU at once and runs it in `processEvents`; a browser runs it later, from
-its event loop, which the web self-test does not wait for). Whether an adapter
-is found depends on the machine: the status says, and the adapter is given
-exactly when it is a success.
+WebGPU at once and runs it in `processEvents`). A browser runs it later, from
+its event loop: the web self-test, rather than these, waits for that. Whether
+an adapter is found depends on the machine: the status says, and the adapter
+is given exactly when it is a success.
 -/
 
 /-- The error `action` raises, or "" if none, after the events it waits on. -/
@@ -237,10 +237,14 @@ def errorAfterEvents (wgpu : WebGPU.Raw.Instance) (action : IO Unit) :
     IO String :=
   errorOf (action *> wgpu.processEvents)
 
-/-- `requestAdapter`'s callback runs once, the adapter given on success. -/
-def requested (wgpu : WebGPU.Raw.Instance) : IO String := do
+/--
+`requestAdapter`'s callback, registered with `mode`, runs once, the adapter
+given on success.
+-/
+def requested (wgpu : WebGPU.Raw.Instance) (mode : WebGPU.Raw.CallbackMode) :
+    IO String := do
   let calls ← IO.mkRef #[]
-  let _ ← wgpu.requestAdapter none .allowProcessEvents fun status adapter _ =>
+  let _ ← wgpu.requestAdapter none mode fun status adapter _ =>
     calls.modify (·.push (status matches .ok .success, adapter.isSome))
   wgpu.processEvents
   let got ← calls.get
@@ -285,7 +289,9 @@ def webgpuChecks (wgpu : WebGPU.Raw.Instance) :
     IO (List (String × String)) := do
   let named := [
     ("requestAdapter calling back once, an adapter given on success",
-      requested wgpu),
+      requested wgpu .allowProcessEvents),
+    ("requestAdapter calling back once, registered allowSpontaneous",
+      requested wgpu .allowSpontaneous),
     ("an error requestAdapter's callback raises, raised", requestRaised wgpu),
     ("requestAdapter's closure released once it has run",
       requestReleased wgpu)

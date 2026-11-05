@@ -47,6 +47,10 @@ if grep -q "$passed" "$tmp/page.html"; then
   echo "OK: the page ran, and all its checks passed"
 else
   echo "FAIL: the page did not report that all checks passed" >&2
+  # Its status, or none if the program never ended (a callback never ran).
+  status=$(sed -n \
+    's/.*<p id="status"[^>]*>\([^<]*\)<\/p>.*/\1/p' "$tmp/page.html")
+  echo "Its status: ${status:-none: the program never ended}" >&2
   echo "Chrome's log:" >&2
   cat "$tmp/chrome.log" >&2
   exit 1
