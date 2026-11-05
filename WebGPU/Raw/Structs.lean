@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 768eb11 (clean)
-  Generated:        2026-11-05 08:29:25 UTC
+  Generator commit: cf062a5 (clean)
+  Generated:        2026-11-05 09:10:39 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
