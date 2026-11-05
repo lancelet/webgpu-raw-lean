@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: aa0c435 (clean)
-  Generated:        2026-11-05 12:01:46 UTC
+  Generator commit: 3e49594 (clean)
+  Generated:        2026-11-05 12:23:21 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -162,6 +162,33 @@ def Buffer.mapAsync
       size
       (CEnum.toC callbackMode)
       (Internal.BufferMapCallback.raw callback)
+
+/-- The shim behind `Buffer.writeMappedRange`. -/
+@[extern "lean_wgpuBufferWriteMappedRange"]
+opaque Internal.Buffer.writeMappedRange
+    (self   : @& Buffer)
+    (offset : UInt64)
+    (data   : @& ByteArray) :
+    IO UInt32
+
+/--
+Copies a range of data from the provided source pointer into the buffer mapping.
+See [MappedRangeBehavior] for error conditions and guarantees. This function is
+safe to call inside spontaneous callbacks (see [CallbackReentrancy]).
+
+In Wasm, this is more efficient than copying from a `malloc`'d range into a
+mapped range.
+
+[MappedRangeBehavior]: https://webgpu-native.github.io/webgpu-headers/BufferMapping.html#MappedRangeBehavior
+[CallbackReentrancy]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackReentrancy
+-/
+@[inline]
+def Buffer.writeMappedRange
+    (self   : Buffer)
+    (offset : UInt64)
+    (data   : ByteArray) :
+    IO (Except UInt32 Status) :=
+  CEnum.decode <$> Internal.Buffer.writeMappedRange self offset data
 
 /-- The shim behind `Buffer.setLabel`. -/
 @[extern "lean_wgpuBufferSetLabel"]
@@ -664,6 +691,22 @@ def ComputePassEncoder.setBindGroup
       group
       dynamicOffsets
       ⟨_, rfl⟩
+
+/-- The shim behind `ComputePassEncoder.setImmediates`. -/
+@[extern "lean_wgpuComputePassEncoderSetImmediates"]
+opaque Internal.ComputePassEncoder.setImmediates
+    (self   : @& ComputePassEncoder)
+    (offset : UInt32)
+    (data   : @& ByteArray) :
+    IO Unit
+
+@[inline]
+def ComputePassEncoder.setImmediates
+    (self   : ComputePassEncoder)
+    (offset : UInt32)
+    (data   : ByteArray) :
+    IO Unit :=
+  Internal.ComputePassEncoder.setImmediates self offset data
 
 /-- The shim behind `ComputePassEncoder.dispatchWorkgroups`. -/
 @[extern "lean_wgpuComputePassEncoderDispatchWorkgroups"]
@@ -1398,6 +1441,80 @@ def Queue.onSubmittedWorkDone
       (CEnum.toC callbackMode)
       (Internal.QueueWorkDoneCallback.raw callback)
 
+/-- The shim behind `Queue.writeBuffer`. -/
+@[extern "lean_wgpuQueueWriteBuffer"]
+opaque Internal.Queue.writeBuffer
+    (self         : @& Queue)
+    (buffer       : @& Buffer)
+    (bufferOffset : UInt64)
+    (data         : @& ByteArray) :
+    IO Unit
+
+/--
+Produces a [DeviceError] both content-timeline (`size` alignment) and
+device-timeline errors defined by the WebGPU specification.
+
+[DeviceError]: https://webgpu-native.github.io/webgpu-headers/Errors.html#DeviceError
+-/
+@[inline]
+def Queue.writeBuffer
+    (self         : Queue)
+    (buffer       : Buffer)
+    (bufferOffset : UInt64)
+    (data         : ByteArray) :
+    IO Unit :=
+  Internal.Queue.writeBuffer self buffer bufferOffset data
+
+/-- The shim behind `Queue.writeTexture`. -/
+@[extern "lean_wgpuQueueWriteTexture"]
+opaque Internal.Queue.writeTexture
+    (self               : @& Queue)
+    (destination        : @& TexelCopyTextureInfo)
+    (destinationBytes   : @& BytesOf destination)
+    (destinationTargets : @& TargetsOf destination)
+    (destinationTable   : @& IndexOf TexelCopyTextureInfo)
+    (data               : @& ByteArray)
+    (dataLayout         : @& TexelCopyBufferLayout)
+    (dataLayoutBytes    : @& BytesOf dataLayout)
+    (dataLayoutTargets  : @& TargetsOf dataLayout)
+    (dataLayoutTable    : @& IndexOf TexelCopyBufferLayout)
+    (writeSize          : @& Extent3D)
+    (writeSizeBytes     : @& BytesOf writeSize)
+    (writeSizeTargets   : @& TargetsOf writeSize)
+    (writeSizeTable     : @& IndexOf Extent3D)
+    (tables             : @& CurrentTablesOf) :
+    IO Unit
+
+@[inline]
+def Queue.writeTexture
+    (self        : Queue)
+    (destination : TexelCopyTextureInfo)
+    (data        : ByteArray)
+    (dataLayout  : TexelCopyBufferLayout)
+    (writeSize   : Extent3D) :
+    IO Unit :=
+  if CStruct.sizesFit destination &&
+      CStruct.sizesFit dataLayout &&
+      CStruct.sizesFit writeSize then
+    Internal.Queue.writeTexture
+        self
+        destination
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        data
+        dataLayout
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        writeSize
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Queue.writeTexture: a size_t too large")
+
 /-- The shim behind `Queue.setLabel`. -/
 @[extern "lean_wgpuQueueSetLabel"]
 opaque Internal.Queue.setLabel (self : @& Queue) (label : @& String) : IO Unit
@@ -1454,6 +1571,22 @@ def RenderBundleEncoder.setBindGroup
       group
       dynamicOffsets
       ⟨_, rfl⟩
+
+/-- The shim behind `RenderBundleEncoder.setImmediates`. -/
+@[extern "lean_wgpuRenderBundleEncoderSetImmediates"]
+opaque Internal.RenderBundleEncoder.setImmediates
+    (self   : @& RenderBundleEncoder)
+    (offset : UInt32)
+    (data   : @& ByteArray) :
+    IO Unit
+
+@[inline]
+def RenderBundleEncoder.setImmediates
+    (self   : RenderBundleEncoder)
+    (offset : UInt32)
+    (data   : ByteArray) :
+    IO Unit :=
+  Internal.RenderBundleEncoder.setImmediates self offset data
 
 /-- The shim behind `RenderBundleEncoder.draw`. -/
 @[extern "lean_wgpuRenderBundleEncoderDraw"]
@@ -1704,6 +1837,22 @@ def RenderPassEncoder.setBindGroup
       group
       dynamicOffsets
       ⟨_, rfl⟩
+
+/-- The shim behind `RenderPassEncoder.setImmediates`. -/
+@[extern "lean_wgpuRenderPassEncoderSetImmediates"]
+opaque Internal.RenderPassEncoder.setImmediates
+    (self   : @& RenderPassEncoder)
+    (offset : UInt32)
+    (data   : @& ByteArray) :
+    IO Unit
+
+@[inline]
+def RenderPassEncoder.setImmediates
+    (self   : RenderPassEncoder)
+    (offset : UInt32)
+    (data   : ByteArray) :
+    IO Unit :=
+  Internal.RenderPassEncoder.setImmediates self offset data
 
 /-- The shim behind `RenderPassEncoder.draw`. -/
 @[extern "lean_wgpuRenderPassEncoderDraw"]

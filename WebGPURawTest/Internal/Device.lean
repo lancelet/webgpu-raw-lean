@@ -333,6 +333,54 @@ def bundles (wgpu : Instance) (adapter : Adapter) : IO String := do
       (same.isEmpty && other.startsWith "WebGPU validation error: ")
       s!"{repr same}; {repr other}")
 
+/-! ### Bytes passed to C -/
+
+/--
+Bytes written to a buffer reach C with their own size: 4 into a buffer of 4
+are written; 8 are refused, a validation error. And a texture's are written,
+a row of 16 bytes for each of its 4 rows of 4 texels.
+-/
+def written (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let queue ← device.getQueue
+    let some buffer ← device.createBuffer { size := 4, usage := .copyDst }
+      | pure "no buffer"
+    let fits ← errorOf (queue.writeBuffer buffer 0 (ByteArray.mk #[1, 2, 3, 4]))
+    let over ← errorOf
+      (queue.writeBuffer buffer 0 (ByteArray.mk (Array.replicate 8 0)))
+    let texture ← device.createTexture {
+      usage  := .copyDst
+      size   := { width := 4, height := 4 }
+      format := .rgba8Unorm
+    }
+    let texels ← errorOf (queue.writeTexture { texture := texture }
+      (ByteArray.mk (Array.replicate 64 7)) { bytesPerRow := 16 }
+      { width := 4, height := 4 })
+    pure (problemUnless (fits.isEmpty
+        && over.startsWith "WebGPU validation error: " && texels.isEmpty)
+      s!"{repr fits}; {repr over}; {repr texels}")
+
+/--
+`setImmediates`, which Dawn lacks, reaches wgpu-native, which the native
+build says it is built against: whatever wgpu-native makes of it (with no
+immediates allowed, by default, a validation error), not the error the shim
+raises where it is not called.
+-/
+def immediates (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let e ← errorOf do
+      let encoder ← device.createCommandEncoder none
+      let pass ← encoder.beginComputePass none
+      pass.setImmediates 0 (ByteArray.mk #[0, 0, 0, 0])
+      pass.«end»
+      let _ ← encoder.finish none
+    let called := (e.splitOn "not implemented").length == 1
+    pure (problemUnless called s!"raised {repr e}")
+
 /--
 A device's lost future, which wgpu-native leaves unimplemented: an IO error,
 not an abort.
@@ -378,7 +426,10 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
       lostFuture wgpu adapter),
     ("command buffers submitted, each", submitted wgpu adapter),
     ("a compute pass's dynamic offsets, each", dynamicOffsets wgpu adapter),
-    ("a render pass's bundles, each", bundles wgpu adapter)
+    ("a render pass's bundles, each", bundles wgpu adapter),
+    ("bytes written to a buffer and a texture, by their size",
+      written wgpu adapter),
+    ("setImmediates, which Dawn lacks, called", immediates wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

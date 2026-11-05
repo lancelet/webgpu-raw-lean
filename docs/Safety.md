@@ -74,6 +74,13 @@ it could call unimplemented.)
   last, refused; a compute pass's dynamic offsets, a misaligned one last,
   refused; and in a browser, a command buffer submitted, on wasm32); and
   the checked build checks each block unshared and of the array's size.
+- **Bytes an argument passes cross as their `ByteArray`**, borrowed: C is
+  given a pointer to them and their own size, which upstream declares as two
+  arguments (`data`, then `size`), so C can never read past them; C only
+  reads them. *Checked by:* proof that the shim and the raw declaration agree
+  (`Emit/Agreement.lean`); test, with an adapter, that their size reaches C
+  (4 bytes written into a buffer of 4; 8 refused) and a texture's are
+  written.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
@@ -458,9 +465,10 @@ submission's errors, not checked.
 
 - **Their shims call them only when built against an implementation known to
   implement them**, which the build says by defining a macro: the web build
-  defines `WEBGPU_RAW_DAWN`. Otherwise, as in the native build, which defines
-  nothing, they raise an `IO` error ("not implemented by wgpu-native"). So a
-  build that says nothing, or the wrong thing, gets the error, never the abort.
+  defines `WEBGPU_RAW_DAWN`. Any other build, as the native one, which
+  defines `WEBGPU_RAW_WGPU_NATIVE`, gets an `IO` error ("not implemented by
+  wgpu-native"). So a build that says nothing, or the wrong thing, gets the
+  error, never the abort.
   *Checked by:* test, on both: natively, a function and a method raise the
   error; on the web, both are called.
 - **The list is read from wgpu-native's source** at the pinned version, by
@@ -470,6 +478,18 @@ submission's errors, not checked.
   differs, and the test driver, which fails if a name in it is not a function
   `webgpu.h` declares (one renamed would lose its guard). A function that
   always aborts through a helper would not be found.
+- **Dawn lacks some too:** emdawnwebgpu's header, at the pinned Emscripten,
+  is older than the upstream one wgpu-native pins, and does not declare
+  `setImmediates` (on every encoder). Its shims call them only when built
+  against wgpu-native, which the native build says by defining
+  `WEBGPU_RAW_WGPU_NATIVE`; on the web they raise the error ("not
+  implemented by dawn"). The list is `vendor/emdawnwebgpu/missing`, which
+  `missing.sh` writes from the port's header after a web build. *Checked by:*
+  CI's web job, which runs it again and fails if the list differs; the web
+  build, which would not compile a call to an undeclared function; the test
+  driver, which compiles the shims against each implementation and against
+  neither; and test, with an adapter, that `setImmediates` reaches
+  wgpu-native natively, and raises the error in a browser.
 
 On the web, emdawnwebgpu needs the browser's WebGPU for some functions, such as
 `Instance.hasWGSLLanguageFeature`: where there is none, as under Node, it

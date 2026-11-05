@@ -21,7 +21,8 @@ both closures until the device was dropped. Last, a request registered
 
 namespace WebGPURawWebTest.Device
 open WebGPU.Raw
-open WebGPURawTest.Internal.Callback (token touch tokensReleased problemUnless)
+open WebGPURawTest.Internal.Callback
+  (token touch tokensReleased problemUnless errorOf)
 open WebGPURawTest.Internal.Device (badBuffer)
 
 /-- What the device's callbacks were given, in order. -/
@@ -131,6 +132,8 @@ def run (wgpu : Instance) (adapter : Adapter)
     let workDone ← IO.mkRef false
     -- What `waitAny` finds of the device's lost future while it lives.
     let alive ← IO.mkRef none
+    -- The lines of checks made along the way, for the end.
+    let along ← IO.mkRef ([] : List String)
     let t ← token
     let start ← tokensReleased
     -- The checks, from a later turn of the event loop (another adapter's
@@ -141,7 +144,8 @@ def run (wgpu : Instance) (adapter : Adapter)
       if (← seen.get).losses.size == 1 && (← workDone.get) then
         let _ ← wgpu.requestAdapter none .allowSpontaneous fun _ _ _ =>
           guarded finish do
-            waitOnly wgpu finish (← results wgpu start seen alive device)
+            waitOnly wgpu finish
+              ((← results wgpu start seen alive device) ++ (← along.get))
     let lost : DeviceLostCallback := fun reason message => guarded finish do
       touch t
       seen.modify fun s => { s with
@@ -166,6 +170,13 @@ def run (wgpu : Instance) (adapter : Adapter)
         | .ok .success, some d =>
           device.set (some d)
           alive.set (some (← wgpu.waitAny #[← d.getLostFuture]))
+          -- `setImmediates`, which Dawn lacks: the shim's error.
+          let e ← errorOf do
+            let pass ← (← d.createCommandEncoder none).beginComputePass none
+            pass.setImmediates 0 (ByteArray.mk #[0, 0, 0, 0])
+          along.modify (· ++ [line "setImmediates, which Dawn lacks, refused"
+            (problemUnless (e.endsWith "not implemented by dawn")
+              s!"raised {repr e}")])
           let _ ← d.createBuffer badBuffer
           -- In headless Chrome, the buffer's error reached its callback only
           -- while a request was pending (observed, not documented): so one is,

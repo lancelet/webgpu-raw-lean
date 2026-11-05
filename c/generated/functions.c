@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: aa0c435 (clean)
-  Generated:        2026-11-05 12:01:46 UTC
+  Generator commit: 3e49594 (clean)
+  Generated:        2026-11-05 12:23:21 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -480,6 +480,39 @@ LEAN_EXPORT lean_obj_res lean_wgpuBufferMapAsync(
         saved,
         lean_io_result_mk_ok(lean_box_uint64(result.id))
     );
+}
+
+// Lean's `Buffer.writeMappedRange`: calls `wgpuBufferWriteMappedRange`.
+LEAN_EXPORT lean_obj_res lean_wgpuBufferWriteMappedRange(
+    b_lean_obj_arg self,
+    uint64_t       offset,
+    b_lean_obj_arg data
+) {
+    #ifdef WEBGPU_RAW_DAWN
+    if ((offset != UINT64_MAX) && (((uint64_t)((size_t)offset)) != offset)) {
+        return lean_wgpu_io_error(
+            "Buffer.writeMappedRange: offset is too large for a size_t"
+        );
+    }
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUStatus result = wgpuBufferWriteMappedRange(
+        lean_wgpu_buffer_unbox(self),
+        lean_wgpu_size(offset),
+        lean_sarray_cptr(data),
+        lean_sarray_size(data)
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint32((uint32_t)result))
+    );
+    #else
+    (void)self;
+    (void)offset;
+    (void)data;
+    return lean_wgpu_io_error(
+        "Buffer.writeMappedRange: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Buffer.setLabel`: calls `wgpuBufferSetLabel`.
@@ -1049,6 +1082,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderSetBindGroup(
         dynamicOffsets_data
     );
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `ComputePassEncoder.setImmediates`: calls
+// `wgpuComputePassEncoderSetImmediates`.
+LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderSetImmediates(
+    b_lean_obj_arg self,
+    uint32_t       offset,
+    b_lean_obj_arg data
+) {
+    #ifdef WEBGPU_RAW_WGPU_NATIVE
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuComputePassEncoderSetImmediates(
+        lean_wgpu_compute_pass_encoder_unbox(self),
+        offset,
+        lean_sarray_cptr(data),
+        lean_sarray_size(data)
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    #else
+    (void)self;
+    (void)offset;
+    (void)data;
+    return lean_wgpu_io_error(
+        "ComputePassEncoder.setImmediates: not implemented by dawn"
+    );
+    #endif
 }
 
 // Lean's `ComputePassEncoder.dispatchWorkgroups`: calls
@@ -2040,6 +2099,75 @@ LEAN_EXPORT lean_obj_res lean_wgpuQueueOnSubmittedWorkDone(
     );
 }
 
+// Lean's `Queue.writeBuffer`: calls `wgpuQueueWriteBuffer`.
+LEAN_EXPORT lean_obj_res lean_wgpuQueueWriteBuffer(
+    b_lean_obj_arg self,
+    b_lean_obj_arg buffer,
+    uint64_t       bufferOffset,
+    b_lean_obj_arg data
+) {
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuQueueWriteBuffer(
+        lean_wgpu_queue_unbox(self),
+        lean_wgpu_buffer_unbox(buffer),
+        bufferOffset,
+        lean_sarray_cptr(data),
+        lean_sarray_size(data)
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `Queue.writeTexture`: calls `wgpuQueueWriteTexture`.
+LEAN_EXPORT lean_obj_res lean_wgpuQueueWriteTexture(
+    b_lean_obj_arg self,
+    b_lean_obj_arg destination,
+    b_lean_obj_arg destination_bytes,
+    b_lean_obj_arg destination_targets,
+    b_lean_obj_arg destination_table,
+    b_lean_obj_arg data,
+    b_lean_obj_arg dataLayout,
+    b_lean_obj_arg dataLayout_bytes,
+    b_lean_obj_arg dataLayout_targets,
+    b_lean_obj_arg dataLayout_table,
+    b_lean_obj_arg writeSize,
+    b_lean_obj_arg writeSize_bytes,
+    b_lean_obj_arg writeSize_targets,
+    b_lean_obj_arg writeSize_table,
+    b_lean_obj_arg tables
+) {
+    (void)destination;
+    void const * destination_struct = lean_wgpu_fill_arg(
+        destination_bytes,
+        tables,
+        lean_usize_of_nat(destination_table),
+        destination_targets
+    );
+    (void)dataLayout;
+    void const * dataLayout_struct = lean_wgpu_fill_arg(
+        dataLayout_bytes,
+        tables,
+        lean_usize_of_nat(dataLayout_table),
+        dataLayout_targets
+    );
+    (void)writeSize;
+    void const * writeSize_struct = lean_wgpu_fill_arg(
+        writeSize_bytes,
+        tables,
+        lean_usize_of_nat(writeSize_table),
+        writeSize_targets
+    );
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuQueueWriteTexture(
+        lean_wgpu_queue_unbox(self),
+        destination_struct,
+        lean_sarray_cptr(data),
+        lean_sarray_size(data),
+        dataLayout_struct,
+        writeSize_struct
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
 // Lean's `Queue.setLabel`: calls `wgpuQueueSetLabel`.
 LEAN_EXPORT lean_obj_res lean_wgpuQueueSetLabel(
     b_lean_obj_arg self,
@@ -2116,6 +2244,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetBindGroup(
         dynamicOffsets_data
     );
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `RenderBundleEncoder.setImmediates`: calls
+// `wgpuRenderBundleEncoderSetImmediates`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetImmediates(
+    b_lean_obj_arg self,
+    uint32_t       offset,
+    b_lean_obj_arg data
+) {
+    #ifdef WEBGPU_RAW_WGPU_NATIVE
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuRenderBundleEncoderSetImmediates(
+        lean_wgpu_render_bundle_encoder_unbox(self),
+        offset,
+        lean_sarray_cptr(data),
+        lean_sarray_size(data)
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    #else
+    (void)self;
+    (void)offset;
+    (void)data;
+    return lean_wgpu_io_error(
+        "RenderBundleEncoder.setImmediates: not implemented by dawn"
+    );
+    #endif
 }
 
 // Lean's `RenderBundleEncoder.draw`: calls `wgpuRenderBundleEncoderDraw`.
@@ -2366,6 +2520,32 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetBindGroup(
         dynamicOffsets_data
     );
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `RenderPassEncoder.setImmediates`: calls
+// `wgpuRenderPassEncoderSetImmediates`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetImmediates(
+    b_lean_obj_arg self,
+    uint32_t       offset,
+    b_lean_obj_arg data
+) {
+    #ifdef WEBGPU_RAW_WGPU_NATIVE
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuRenderPassEncoderSetImmediates(
+        lean_wgpu_render_pass_encoder_unbox(self),
+        offset,
+        lean_sarray_cptr(data),
+        lean_sarray_size(data)
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    #else
+    (void)self;
+    (void)offset;
+    (void)data;
+    return lean_wgpu_io_error(
+        "RenderPassEncoder.setImmediates: not implemented by dawn"
+    );
+    #endif
 }
 
 // Lean's `RenderPassEncoder.draw`: calls `wgpuRenderPassEncoderDraw`.
