@@ -90,7 +90,8 @@ theorem values_of_functionShim {objects : List Lowered.Object}
       ∧ ∀ c, f.callback = some c → (C.trampoline objects c).isSome := by
   simp [C.functionShim, Option.bind_eq_some_iff] at h
   -- One part for each guard and bind of `functionShim`, in order.
-  obtain ⟨_, _, _, ⟨_, htrampoline⟩, _, _, _, _, args, hargs, hresult⟩ := h
+  obtain ⟨_, _, _, ⟨_, htrampoline⟩, _, _, _, _, _, _, args, hargs, hresult⟩ :=
+    h
   refine ⟨?_, ?_, ?_⟩
   · intro a ha
     exact isSome_mapM.1 (by rw [hargs]; rfl) a ha

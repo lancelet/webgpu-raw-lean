@@ -60,7 +60,8 @@ def shimText (f : Lowered.Function) : Option String :=
 
 -- A method with every kind of value: its object first, as `self`; each
 -- argument converted from its Lean ABI type, a `size_t` checked to fit first;
--- and an optional object result, boxed with its reference.
+-- and an optional object result, boxed with its reference, which joins the
+-- family of the object it is made from (`c/family.c`), if any.
 #guard
   let input : Lowered.Function := {
     names    := {
@@ -107,6 +108,10 @@ def shimText (f : Lowered.Function) : Option String :=
             (WGPUBufferUsage)usage,
             lean_wgpu_buffer_unbox_option(other),
             lean_wgpu_option_string_view(label)
+        );
+        lean_wgpu_family_join(
+            result,
+            lean_wgpu_family_of(lean_wgpu_buffer_unbox(self))
         );
         return lean_io_result_mk_ok(lean_wgpu_buffer_box_option(result));
     }
@@ -215,10 +220,13 @@ def found : Lowered.Callback := {
 -- A callback's trampoline: each argument boxed as the closure takes it, an
 -- enum as its code, an object with the reference C gives it, as an `Option`,
 -- a string copied; then the closure applied, releasing it, its result given
--- to the call running it.
+-- to the call running it. An object it gives Lean joins the family
+-- `userdata2` names, whose reference it then gives back.
 #guard
   let expected := dedent "
-    // Calls the Lean closure `userdata1` as a `FoundCallback`, releasing it.
+    // Calls the Lean closure `userdata1` as a `FoundCallback`, releasing it; each
+    // object it gives Lean joins the family `userdata2` names, whose reference it
+    // gives back.
     LEAN_WGPU_HELPER void lean_WGPUFoundCallback(
         WGPUMode       status,
         WGPUBuffer     buffer,
@@ -226,7 +234,9 @@ def found : Lowered.Callback := {
         void *         userdata1,
         void *         userdata2
     ) {
-        (void)userdata2;
+        lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+        lean_wgpu_family_join(buffer, family);
+        lean_wgpu_family_release(family);
         lean_wgpu_callback_done(
             lean_apply_4(
                 (lean_object *)userdata1,
@@ -243,7 +253,7 @@ def found : Lowered.Callback := {
 -- A function that takes a callback: its mode's code and its closure, which
 -- the shim holds as the callback's userdata, passing its trampoline; the call
 -- bracketed, so that the first error a callback in it raised is its result;
--- and its future returned as its ID.
+-- and its future returned as its ID. Of no object, it carries no family.
 #guard
   let input :=
     { function #[arg "name" (.string false)] (some .future) with
@@ -255,12 +265,13 @@ def found : Lowered.Callback := {
         uint32_t       callbackMode,
         b_lean_obj_arg callback
     ) {
+        lean_wgpu_family family = 0;
         WGPUFoundCallbackInfo callbackInfo = {
             .nextInChain = NULL,
             .mode        = (WGPUCallbackMode)callbackMode,
             .callback    = lean_WGPUFoundCallback,
             .userdata1   = lean_wgpu_closure_hold(callback),
-            .userdata2   = NULL,
+            .userdata2   = (void *)family,
         };
         lean_object * saved = lean_wgpu_callbacks_enter();
         WGPUFuture result = wgpuDoIt(lean_wgpu_string_view(name), callbackInfo);
@@ -345,8 +356,9 @@ def lost : Lowered.Callback := {
 
 -- The trampoline of a callback a struct keeps: the closure the family holds,
 -- found by its ID and the ordinal, applied keeping the family's; nothing if
--- the family is gone; the object C lends unused. And its address, for Lean
--- to write into the struct.
+-- the family is gone; the object C lends unused. On the web, Dawn calls one
+-- with a mode once, which gives back the reference taken for it. And its
+-- address, for Lean to write into the struct.
 #guard
   let expected := dedent "
     // Calls the closure the family `userdata1` holds at `userdata2`, as a
@@ -360,10 +372,14 @@ def lost : Lowered.Callback := {
         void *             userdata2
     ) {
         (void)device;
+        lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata1);
         lean_object * closure = lean_wgpu_family_closure(
-            (lean_wgpu_family)((uintptr_t)userdata1),
+            family,
             (size_t)((uintptr_t)userdata2)
         );
+        #ifdef WEBGPU_RAW_DAWN
+        lean_wgpu_family_release(family);
+        #endif
         if (closure == NULL) {
             return;
         }
@@ -421,6 +437,74 @@ def lost : Lowered.Callback := {
   }
   (heldCallbacks spec).map (fun (c, m) => (c.names.c, m))
     == [("WGPUDeviceLostCallback", true)]
+
+/-- A method of a buffer that takes a callback, and a struct, if `held`. -/
+def request (held : Bool) : Lowered.Function := {
+  names     := {
+    c    := "wgpuBufferRequest"
+    lean := "Buffer.request"
+  }
+  doc       := ""
+  receiver  := some buffer.names
+  args      := if held
+    then #[arg "descriptor" (.structPointer ⟨"WGPUDescriptor", "D"⟩ true)]
+    else #[]
+  result    := some .future
+  callback  := some found
+  heldInfos := if held
+    then [⟨"descriptor", "lost", true, 0⟩, ⟨"descriptor", "error", false, 1⟩]
+    else []
+}
+
+-- A method's callback carries its object's family, a reference to it taken
+-- for the callback, which gives it back.
+#guard
+  let has (text part : String) := (text.splitOn part).length == 2
+  ((functionShim [buffer] [] (request false)).map (file [.function ·])).any
+    fun text => has text ("lean_wgpu_family family = " ++
+        "lean_wgpu_family_of(lean_wgpu_buffer_unbox(self));")
+      && has text "lean_wgpu_family_retain(family);"
+
+-- One whose struct keeps callbacks makes a new family, which the fill holds
+-- their closures in, set around the fill; and its callback carries it. On
+-- the web, it takes a reference for each callback with a mode it is given,
+-- which Dawn calls once.
+#guard
+  let structs : List Names := [⟨"WGPUDescriptor", "D"⟩]
+  let text := (functionShim [buffer] structs (request true)).map
+    (file [.function ·])
+  text.any fun text => (text.splitOn (dedent "
+    ) {
+        lean_wgpu_family family = lean_wgpu_family_new();
+        lean_wgpu_family filling = lean_wgpu_family_set_filling(family);
+        (void)descriptor;
+        void const * descriptor_struct = lean_wgpu_fill_arg(
+            descriptor_bytes,
+            tables,
+            lean_usize_of_nat(descriptor_table),
+            descriptor_targets
+        );
+        lean_wgpu_family_set_filling(filling);
+        #ifdef WEBGPU_RAW_DAWN
+        if (descriptor_struct != NULL) {
+            WGPUDescriptor const * held = descriptor_struct;
+            if (held->lost.userdata1 != NULL) {
+                lean_wgpu_family_retain(family);
+            }
+        }
+        #endif
+        WGPUFoundCallbackInfo callbackInfo = {
+    ")).length == 2
+
+-- Not one whose struct keeps two closures at one ordinal, which the second
+-- would replace; nor one with no callback, to give the family's reference to.
+#guard
+  let structs : List Names := [⟨"WGPUDescriptor", "D"⟩]
+  let twice := { request true with
+    heldInfos := [⟨"descriptor", "a", true, 0⟩, ⟨"descriptor", "b", true, 0⟩] }
+  let uncalled := { request true with callback := none, result := none }
+  (functionShim [buffer] structs twice).isNone
+    && (functionShim [buffer] structs uncalled).isNone
 
 /-! ## Not bound -/
 

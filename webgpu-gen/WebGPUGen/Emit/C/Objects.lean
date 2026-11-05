@@ -153,15 +153,26 @@ def objectsSource (objects : List Lowered.Object) : List Decl :=
   }
   let classes := objects.map fun o =>
     Decl.variable ["static"] "lean_external_class *" (shimName o "class") (some (.lit "NULL"))
+  -- An object leaves its family before its handle is released, so that a new
+  -- object C makes at the address meets no entry of it, and gives back its
+  -- reference after, so the family outlives the release (`c/family.c`).
   let finalizer (o : Lowered.Object) := Decl.function {
-    doc    := s!"Release the reference a Lean `{o.names.lean}` owned, when Lean frees it."
+    doc    := s!"Release the reference a Lean `{o.names.lean}` owned, when \
+      Lean frees it: it leaves its family first, and gives back its reference \
+      after."
     attrs  := ["static"]
     result := "void"
     name   := shimName o "finalize"
     params := [⟨"void *", "data"⟩]
-    body   := [.expr (.call o.release [.cast o.names.c (.name "data")])]
+    body   := [
+      .decl "lean_wgpu_family" "family"
+        (some (.call "lean_wgpu_family_leave" [.name "data"])),
+      .expr (.call o.release [.cast o.names.c (.name "data")]),
+      .expr (.call "lean_wgpu_family_release" [.name "family"])
+    ]
   }
-  [.includeLocal "objects.h", .function visit] ++ classes ++ objects.map finalizer
+  [.includeLocal "family.h", .includeLocal "objects.h", .function visit]
+    ++ classes ++ objects.map finalizer
     ++ [.function (initFunction objects)]
     ++ objects.flatMap fun o => [
       .function (boxFunction o),

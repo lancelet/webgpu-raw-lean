@@ -366,7 +366,7 @@ def trampoline (objects : List Lowered.Object) (c : Lowered.Callback)
     (held : Bool := false) : Option Function := do
   -- An argument named like a userdata pointer, or the closure, would hide it.
   guard (c.args.all fun a =>
-    !["userdata1", "userdata2", "closure"].contains a.names.c)
+    !["userdata1", "userdata2", "closure", "family"].contains a.names.c)
   guard (!held || c.passed.all fun a => !(a.value matches .object ..))
   let params ← c.args.toList.mapM fun a =>
     a.value.cType.map fun type => (⟨type, a.names.c⟩ : Param)
@@ -381,24 +381,41 @@ def trampoline (objects : List Lowered.Object) (c : Lowered.Callback)
     .expr (.call "lean_wgpu_callback_done" [
       .call s!"lean_apply_{boxed.length + 1}" (closure :: boxed ++ [world])])
   let userdata (x type : String) := Expr.cast type (.cast "uintptr_t" (.name x))
+  -- The objects it gives Lean join the family `userdata2` names.
+  let joins := c.passed.filterMap fun a => match a.value with
+    | .object .. => some (Stmt.expr
+      (.call "lean_wgpu_family_join" [.name a.names.c, .name "family"]))
+    | _ => none
+  let family (x : String) := Stmt.decl "lean_wgpu_family" "family"
+    (some (userdata x "lean_wgpu_family"))
+  -- On the web, one with a mode is called once, giving back the reference
+  -- its family took for it then (`familyAround`).
+  let once := if c.style == .callbackMode then
+    [Stmt.ifDefined ["WEBGPU_RAW_DAWN"]
+      [.expr (.call "lean_wgpu_family_release" [.name "family"])] []]
+    else []
   pure {
     doc    := if held then s!"Calls the closure the family `userdata1` holds \
       at `userdata2`, as a `{c.names.lean}`, keeping it, as C may call it \
       again; nothing if the family is gone."
       else s!"Calls the Lean closure `userdata1` as a `{c.names.lean}`, \
-        releasing it."
+        releasing it; each object it gives Lean joins the family `userdata2` \
+        names, whose reference it gives back."
     attrs  := helperAttrs
     result := "void"
     name   := trampolineName c
     params := params ++ [⟨"void *", "userdata1"⟩, ⟨"void *", "userdata2"⟩]
+    -- The reference for a call Dawn makes once is given back before the
+    -- closure is looked up: it is the family's, wherever the closure is.
     body   := lent ++ if held then [
+      family "userdata1",
       .decl "lean_object *" "closure" (some (.call "lean_wgpu_family_closure"
-        [userdata "userdata1" "lean_wgpu_family",
-          userdata "userdata2" "size_t"])),
+        [.name "family", userdata "userdata2" "size_t"]))
+    ] ++ once ++ [
       .ifElse (.binary "==" (.name "closure") (.lit "NULL")) [.ret none] [],
       apply (.name "closure")
-    ] else [
-      .expr (.cast "void" (.name "userdata2")),
+    ] else [family "userdata2"] ++ joins ++ [
+      .expr (.call "lean_wgpu_family_release" [.name "family"]),
       apply (.cast "lean_object *" (.name "userdata1"))
     ]
   }
@@ -464,7 +481,8 @@ def callbackParams (c : Lowered.Callback) : List Param :=
 
 /--
 The callback info the shim passes for a callback of type `c`, `callbackInfo`:
-its trampoline, and the closure, held, as its userdata.
+its trampoline, the closure, held, as its first userdata, and the family the
+objects it gives Lean join, `family`, as its second.
 -/
 def callbackInfo (c : Lowered.Callback) : Stmt :=
   .decl (c.names.c ++ "Info") "callbackInfo" (some (.init (
@@ -473,7 +491,54 @@ def callbackInfo (c : Lowered.Callback) : Stmt :=
         [("mode", .cast "WGPUCallbackMode" (.name "callbackMode"))] else [])
       ++ [("callback", .name (trampolineName c)),
         ("userdata1", .call "lean_wgpu_closure_hold" [.name "callback"]),
-        ("userdata2", .lit "NULL")])))
+        ("userdata2", .cast "void *" (.name "family"))])))
+
+/--
+The family a shim's callback carries (`family`), for the objects it gives Lean
+to join: a new one, if the structs `f` takes keep callbacks, which the fill
+holds the closures of (`filling` is the one it replaces); otherwise the
+family of its object, if any, a reference to it taken for the callback. The
+statements before the fill, and after it: on the web, a reference for each
+callback with a mode the structs keep and are given, which Dawn calls once,
+and its trampoline gives back.
+-/
+def familyAround (f : Lowered.Function) (receiver : Option Expr) :
+    List Stmt × List Stmt :=
+  if f.heldInfos.isEmpty then
+    match f.callback, receiver with
+    | some _, some handle => ([
+      .decl "lean_wgpu_family" "family"
+        (some (.call "lean_wgpu_family_of" [handle])),
+      .expr (.call "lean_wgpu_family_retain" [.name "family"])], [])
+    | some _, none => ([.decl "lean_wgpu_family" "family" (some (.lit "0"))],
+      [])
+    | none, _ => ([], [])
+  else
+    let once := f.heldInfos.filter (·.hasMode)
+    -- For each struct argument that keeps one: if given, its pointer typed,
+    -- `held`, and a reference for each such callback it is given.
+    let onceOf (a : Arg) : List Stmt := match a.value with
+      | .structPointer names _ =>
+        let mine := once.filter (·.arg == a.names.c)
+        if mine.isEmpty then [] else
+        let filled := Expr.name (a.names.c ++ "_struct")
+        [.ifElse (.binary "!=" filled (.lit "NULL"))
+          ([.decl s!"{names.c} const *" "held" (some filled)]
+            ++ mine.map fun h => .ifElse
+              -- Its first userdata is the family's ID exactly when the fill
+              -- held a closure: not its function, which may be a default.
+              (.binary "!=" (.member (.arrow (.name "held") h.member)
+                "userdata1") (.lit "NULL"))
+              [.expr (.call "lean_wgpu_family_retain" [.name "family"])] [])
+          []]
+      | _ => []
+    ([.decl "lean_wgpu_family" "family"
+        (some (.call "lean_wgpu_family_new" [])),
+      .decl "lean_wgpu_family" "filling"
+        (some (.call "lean_wgpu_family_set_filling" [.name "family"]))],
+    [.expr (.call "lean_wgpu_family_set_filling" [.name "filling"])]
+      ++ if once.isEmpty then [] else [.ifDefined ["WEBGPU_RAW_DAWN"]
+        (f.args.toList.flatMap onceOf) []])
 
 /-! ## Shims -/
 
@@ -538,7 +603,7 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
   -- struct crosses as, on either side, would hide it.
   guard (f.args.all fun a =>
     !["self", "result", "tables", "callbackMode", "callback", "callbackInfo",
-        "saved"].contains a.names.c
+        "saved", "family", "filling"].contains a.names.c
       && !["callbackMode", "callback"].contains a.names.lean
       && !(["_struct", "_bytes", "_targets", "_table"].any
         (a.names.c.endsWith ·))
@@ -548,6 +613,10 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
   -- calls back takes each of its arguments, by its Lean name (`wrapperDecl`).
   let _ ← f.callback.mapM (trampoline objects)
   guard (f.callback.all fun c => c.args.all (·.names.lean != "callback"))
+  -- A shim that makes a family gives its reference to its callback, which it
+  -- must take; and the closures it holds are each at an ordinal of their own.
+  guard (f.heldInfos.isEmpty || f.callback.isSome)
+  guard ((f.heldInfos.map (·.ordinal)).eraseDups.length == f.heldInfos.length)
   -- A shim that brackets its call returns only through `callbacks_leave`:
   -- no check of its result returns before.
   guard (!runsCallbacks f || f.result.all (!Value.checked ·))
@@ -561,6 +630,8 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
     ++ (if f.callback.isSome then [.name "callbackInfo"] else []))
   -- A call that can run callbacks is bracketed: the first error a callback in
   -- it raised is its result.
+  let (familyBefore, familyAfter) :=
+    familyAround f ((receiver.head?).map (·.2))
   let enter := Stmt.decl "lean_object *" "saved"
     (some (.call "lean_wgpu_callbacks_enter" []))
   let callbacks := (f.callback.map callbackInfo).toList
@@ -575,7 +646,13 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
     | some v => do
       let cType ← v.cType
       let boxed ← resultExpr objects v
-      pure ([.decl cType "result" (some call)] ++ resultCheck f v
+      -- An object made from another joins its family, if it has one
+      -- (`c/family.c`): a device's, as all made from a device are.
+      let join := match v, receiver with
+        | .object .., (_, handle) :: _ => [.expr (.call "lean_wgpu_family_join"
+          [.name "result", .call "lean_wgpu_family_of" [handle]])]
+        | _, _ => []
+      pure ([.decl cType "result" (some call)] ++ resultCheck f v ++ join
         ++ [ret (.call "lean_io_result_mk_ok" [boxed])])
   let params := receiver.map (·.1) ++ args.flatMap (·.params)
     ++ (f.callback.map callbackParams).getD [] ++ tablesParams f
@@ -586,7 +663,10 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
     name   := shim
     params := params
     body   := guardStubs f params
-      (checks ++ args.flatMap (·.before) ++ callbacks ++ body)
+      -- No statement between making a family and the call returns: the checks
+      -- that may come first.
+      (checks ++ familyBefore ++ args.flatMap (·.before) ++ familyAfter
+        ++ callbacks ++ body)
   }
 
 /-- Every function and method of the spec, in its order. -/
@@ -644,7 +724,10 @@ def functionsSource (spec : Lowered.Spec) : List Decl :=
     ++ (if bound.any (takesStruct ·.1) then [.includeLocal "reloc.h"] else [])
     ++ (if bound.any (runsCallbacks ·.1) || !held.isEmpty
       then [.includeLocal "callback.h"] else [])
-    ++ (if held.isEmpty then [] else [.includeLocal "family.h"])
+    -- Families, for an object made from another, and for any callback.
+    ++ (if held.isEmpty && !bound.any (fun (f, _) => f.callback.isSome
+        || f.receiver.isSome && f.result.any (· matches .object ..))
+      then [] else [.includeLocal "family.h"])
     ++ helperMacro
     ++ helpers.filterMap (fun (needs, d) =>
       if bound.any (needs ·.1) then some d else none)

@@ -368,7 +368,8 @@ theorem lower_fields {r : Resolved.Spec} {sections : List (String × String)}
       ∧ aligned (lower r sections stubs).shapeOf n values = true := by
   refine settleStructDefaults_fields ?_ hs hm hd
   intro s hs m hm
-  simp only [structs_markRequiredChains, keepPassableExtensions,
+  simp only [structs_markHeldInfos, structs_markRequiredChains,
+    keepPassableExtensions,
     Array.mem_map] at hs
   obtain ⟨s₁, ⟨s₀, -, rfl⟩, rfl⟩ := hs
   exact lowerStruct_no_fields hm

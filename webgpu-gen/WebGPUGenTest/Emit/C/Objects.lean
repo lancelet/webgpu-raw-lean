@@ -72,11 +72,14 @@ def queue : Lowered.Object := {
 /-! ## The source -/
 
 -- A class per object type, registered by the bindings' start-up, whose
--- finalizer releases the handle; boxing takes the reference, and stops the
+-- finalizer releases the handle, leaving its family first (a new object at
+-- the address meets no entry of it) and giving back its reference after;
+-- boxing takes the reference, and stops the
 -- program on a NULL handle (a regression test: releasing NULL crashes) or
 -- before start-up; unboxing borrows it.
 #guard
   let expected := dedent "
+    #include \"family.h\"
     #include \"objects.h\"
 
     // An object holds no Lean values, so there are none to visit.
@@ -90,9 +93,12 @@ def queue : Lowered.Object := {
 
     static lean_external_class * lean_wgpu_device_class = NULL;
 
-    // Release the reference a Lean `Device` owned, when Lean frees it.
+    // Release the reference a Lean `Device` owned, when Lean frees it: it leaves
+    // its family first, and gives back its reference after.
     static void lean_wgpu_device_finalize(void * data) {
+        lean_wgpu_family family = lean_wgpu_family_leave(data);
         wgpuDeviceRelease((WGPUDevice)data);
+        lean_wgpu_family_release(family);
     }
 
     // The bindings' start-up, run by Lean when a program using them starts:

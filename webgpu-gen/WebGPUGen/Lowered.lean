@@ -309,6 +309,18 @@ def Callback.passed (c : Callback) : List Arg :=
 /-! ## Functions -/
 
 /--
+A callback a struct a function takes keeps (`Value.callbackInfo`): the C names
+of the argument and of its member, whether it has a mode, and the ordinal its
+family holds its closure at.
+-/
+structure HeldInfo where
+  arg     : String
+  member  : String
+  hasMode : Bool
+  ordinal : Nat
+  deriving Repr, DecidableEq
+
+/--
 A function, or a method of an object type, which takes its object as a first
 argument before the others, borrowed like them.
 -/
@@ -337,6 +349,11 @@ structure Function where
   (`Struct.chainRequired`): its function refuses one with none.
   -/
   requiredChains   : List String := []
+  /--
+  The callbacks the structs it takes keep, each a member of one of them: its
+  shim makes the family that holds their closures (`c/family.c`).
+  -/
+  heldInfos        : List HeldInfo := []
   deriving Repr, DecidableEq
 
 /--

@@ -93,7 +93,9 @@ def stmt (depth : Nat) : Stmt → Doc
     let condition := match names with
       | [name] => "#ifdef " ++ name
       | _      => "#if " ++ " || ".intercalate (names.map (s!"defined({·})"))
-    join hardline ([text condition] ++ thenDocs ++ [text "#else"] ++ elseDocs
+    -- No `#else` for nothing else.
+    join hardline ([text condition] ++ thenDocs
+      ++ (if elseDocs.isEmpty then [] else text "#else" :: elseDocs)
       ++ [text "#endif"])
 decreasing_by
   all_goals simp_wf

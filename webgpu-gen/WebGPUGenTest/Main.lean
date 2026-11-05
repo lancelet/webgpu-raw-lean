@@ -239,6 +239,8 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
     IO.FS.writeFile (dir / "reloc.h") (← IO.FS.readFile (← relocHeaderPath))
     IO.FS.writeFile (dir / "callback.h")
       (← IO.FS.readFile (← callbackHeaderPath))
+    IO.FS.writeFile (dir / "family.h")
+      (← IO.FS.readFile (((← relocHeaderPath).parent.getD ".") / "family.h"))
     let files :=
       WebGPUGen.Emit.C.objectsFiles testProvenance spec
         ++ WebGPUGen.Emit.C.functionsFiles testProvenance spec
@@ -606,6 +608,18 @@ def main : IO Unit := do
   ]
   unless passable.mergeSort (· < ·) == expected do
     failWith s!"callbacks that can be passed: {passable}, not {expected}"
+
+  -- A struct that keeps a callback is only ever a function's argument, never
+  -- in another struct: a function's shim makes the family that holds its
+  -- closures from the structs it takes (`markHeldInfos`).
+  let keeps (s : WebGPUGen.Lowered.Struct) := s.members.any fun m =>
+    m.value matches .callbackInfo ..
+  let nested := structs.flatMap fun s => s.members.toList.filterMap fun m =>
+    m.value.structRef?
+  let deep := structs.filter fun s => keeps s && nested.contains s.names
+  unless deep.isEmpty do
+    failWith s!"structs keeping callbacks inside others: \
+      {deep.map (·.names.c)}"
 
   -- No function is bound whose struct describes nothing but by a chain it
   -- cannot have: wgpu-native aborts without it.

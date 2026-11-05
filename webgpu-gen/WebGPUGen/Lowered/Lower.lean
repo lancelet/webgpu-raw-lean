@@ -579,6 +579,36 @@ theorem structs_markRequiredChains (spec : Lowered.Spec) :
   rfl
 
 /--
+Each function's callbacks the structs it takes keep (`HeldInfo`), each a
+member of one: so its shim makes the family that holds them. Only members of
+the structs themselves; the test driver checks the spec keeps none deeper.
+-/
+def markHeldInfos (spec : Lowered.Spec) : Lowered.Spec :=
+  let structs := spec.structs.toList
+  let mark (f : Lowered.Function) : Lowered.Function :=
+    { f with heldInfos := f.args.toList.flatMap fun a => match a.value with
+        | .structPointer names _ =>
+          ((structs.find? (·.names == names)).map fun s =>
+            s.members.toList.filterMap fun m => match m.value with
+              -- With a mode as its callback is registered with one, which its
+              -- trampoline, too, decides by.
+              | .callbackInfo names _ k =>
+                let hasMode := spec.callbacks.any fun c =>
+                  c.names == names && c.style == .callbackMode
+                some ⟨a.names.c, m.names.c, hasMode, k⟩
+              | _ => none).getD []
+        | _ => [] }
+  { spec with
+    functions := spec.functions.map mark
+    objects   := spec.objects.map fun o =>
+      { o with methods := o.methods.map mark } }
+
+/-- It leaves the structs as they are. -/
+theorem structs_markHeldInfos (spec : Lowered.Spec) :
+    (markHeldInfos spec).structs = spec.structs :=
+  rfl
+
+/--
 Lower a resolved spec. `sections` are the documentation sections its docs may
 refer to, each with its page (`articleSections` reads them from upstream's
 articles); `stubs` are the functions each implementation leaves unimplemented
@@ -591,7 +621,8 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
     sections  := Std.HashMap.ofList sections
   }
   let mark := markStubs stubs
-  settleStructDefaults <| markRequiredChains <| keepPassableExtensions {
+  settleStructDefaults <| markHeldInfos <| markRequiredChains
+    <| keepPassableExtensions {
     constants := r.constants.map (lowerConstant ctx)
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)

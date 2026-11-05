@@ -304,8 +304,9 @@ object made from a device reports its errors through the device's, even
 after the device's release; in Dawn, "lost" can come after the release. So
 their closures are kept by the device's family, the objects made from it,
 directly or not, until the last of them is gone (`c/family.c`). The walker
-holds a callback's closure in the family the shim filling the struct sets;
-no shim does yet. The families are tested on their own
+holds a callback's closure in the family the shim filling the struct sets,
+which a shim taking a struct that keeps callbacks makes; no struct is bound
+that does yet. The families are tested on their own
 (`WebGPURawTest/Internal/Family.lean`), natively and on the web, a closure
 filled in among them.
 
@@ -331,8 +332,28 @@ filled in among them.
 - **A member leaves its family before its handle is released**, so that a new
   object C makes at the same address never meets the old entry; its
   reference to the family is given back after the release, so the family
-  outlives it. *Checked by:* review, for now: the finalizers that do so come
-  with the bindings' use of the families.
+  outlives it. *Checked by:* test, of the finalizer printed (every object
+  type's does so).
+- **Every object made from another joins its family**: a method's object
+  result joins the family of the object it is called on, and an object a
+  callback gives Lean joins the family its call carries in the callback's
+  second userdata: its object's, a reference to it taken for the call, or a
+  new one, if the structs it takes keep callbacks, whose closures their fill
+  holds; the trampoline gives the reference back. On the web, Dawn calls a
+  kept callback with a mode (device lost) exactly once, even after the
+  device's release, so its family keeps a reference for it until then:
+  promptly with `allowSpontaneous`, the default; with `allowProcessEvents`,
+  at a `processEvents` after; with `waitAnyOnly`, only at the instance's
+  shutdown, as the device's lost future is not bound, so the family
+  outlives the device till then (a leak, never a use of freed memory).
+  *Checked by:* test, of the shims and trampolines printed; that a device's
+  objects join its family, at run time, comes with the device.
+- **Every Lean object of a member's handle has joined its family**, as each
+  leaves it when finalized: so a way of making an object that joins none
+  must never give one of a handle another way joins. None does: the objects
+  of no family (an instance, an adapter, a surface) are made only so. A
+  surface's textures will be of no family, so their errors after the device
+  is gone will be dropped. *Checked by:* review.
 - **The families are safe from any thread**, behind one lock. *Checked by:*
   test (members joining and leaving from many tasks at once, natively).
 
