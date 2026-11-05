@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -34,6 +34,23 @@ an info structure too: the closure, and the mode it is registered with.
 namespace WebGPU.Raw
 
 open Reloc
+
+/--
+A closure C runs once, as a callback, given `status`, `device` and `message`.
+-/
+abbrev RequestDeviceCallback :=
+  Except UInt32 RequestDeviceStatus → Option Device → String → IO Unit
+
+/-- A `RequestDeviceCallback`, as its raw declaration takes it. -/
+abbrev Internal.RequestDeviceCallback :=
+  UInt32 → Option Device → String → IO Unit
+
+/-- `f`, as its raw declaration takes it: each enum decoded. -/
+@[inline]
+def Internal.RequestDeviceCallback.raw
+    (f : WebGPU.Raw.RequestDeviceCallback) :
+    Internal.RequestDeviceCallback :=
+  fun status device message => f (CEnum.decode status) device message
 
 /-- A closure C runs once, as a callback, given `status` and `message`. -/
 abbrev BufferMapCallback :=
@@ -138,6 +155,97 @@ def Internal.QueueWorkDoneCallback.raw
     (f : WebGPU.Raw.QueueWorkDoneCallback) :
     Internal.QueueWorkDoneCallback :=
   fun status message => f (CEnum.decode status) message
+
+/--
+A closure C runs as a callback, perhaps more than once, given `reason` and
+`message`.
+-/
+abbrev DeviceLostCallback :=
+  Except UInt32 DeviceLostReason → String → IO Unit
+
+/-- A `DeviceLostCallback`, as its raw declaration takes it. -/
+abbrev Internal.DeviceLostCallback :=
+  UInt32 → String → IO Unit
+
+/-- `f`, as its raw declaration takes it: each enum decoded. -/
+@[inline]
+def Internal.DeviceLostCallback.raw
+    (f : WebGPU.Raw.DeviceLostCallback) :
+    Internal.DeviceLostCallback :=
+  fun reason message => f (CEnum.decode reason) message
+
+/-- A `DeviceLostCallback` C keeps, in a struct. -/
+structure DeviceLostCallbackInfo where
+  /-- The mode it is registered with. -/
+  mode     : CallbackMode       := .allowSpontaneous
+  /-- The closure. -/
+  callback : DeviceLostCallback
+
+/-- An `Internal.DeviceLostCallback`, as the `Closure` its family holds. -/
+@[extern c inline "#1"]
+opaque Internal.DeviceLostCallback.toClosure :
+    Internal.DeviceLostCallback → Closure
+
+/-- The address of the trampoline of `DeviceLostCallback`, for C to call. -/
+@[extern "lean_WGPUDeviceLostCallback_address"]
+opaque Internal.DeviceLostCallback.address : Unit → UInt64
+
+/-- What the encoder writes of a `DeviceLostCallbackInfo`. -/
+instance : KeptCallback DeviceLostCallbackInfo where
+  mode i      := CEnum.toC i.mode
+  closure i   := Internal.DeviceLostCallback.toClosure
+    (Internal.DeviceLostCallback.raw i.callback)
+  address     := Internal.DeviceLostCallback.address ()
+  noneAddress := 0
+
+/--
+A closure C runs as a callback, perhaps more than once, given `type` and
+`message`.
+-/
+abbrev UncapturedErrorCallback :=
+  Except UInt32 ErrorType → String → IO Unit
+
+/-- An `UncapturedErrorCallback`, as its raw declaration takes it. -/
+abbrev Internal.UncapturedErrorCallback :=
+  UInt32 → String → IO Unit
+
+/-- `f`, as its raw declaration takes it: each enum decoded. -/
+@[inline]
+def Internal.UncapturedErrorCallback.raw
+    (f : WebGPU.Raw.UncapturedErrorCallback) :
+    Internal.UncapturedErrorCallback :=
+  fun type message => f (CEnum.decode type) message
+
+/-- An `UncapturedErrorCallback` C keeps, in a struct. -/
+structure UncapturedErrorCallbackInfo where
+  /-- The closure. -/
+  callback : UncapturedErrorCallback
+
+/-- An `Internal.UncapturedErrorCallback`, as the `Closure` its family holds. -/
+@[extern c inline "#1"]
+opaque Internal.UncapturedErrorCallback.toClosure :
+    Internal.UncapturedErrorCallback → Closure
+
+/--
+The address of the trampoline of `UncapturedErrorCallback`, for C to call.
+-/
+@[extern "lean_WGPUUncapturedErrorCallback_address"]
+opaque Internal.UncapturedErrorCallback.address : Unit → UInt64
+
+/--
+The address of the bindings' own handler, for no `UncapturedErrorCallback`: 0
+where there is none.
+-/
+@[extern "lean_WGPUUncapturedErrorCallback_default_address"]
+opaque Internal.UncapturedErrorCallback.defaultAddress : Unit → UInt64
+
+/-- What the encoder writes of an `UncapturedErrorCallbackInfo`. -/
+instance : KeptCallback UncapturedErrorCallbackInfo where
+  mode _      := 0
+  closure i   := Internal.UncapturedErrorCallback.toClosure
+    (Internal.UncapturedErrorCallback.raw i.callback)
+  address     := Internal.UncapturedErrorCallback.address ()
+  noneAddress := Internal.UncapturedErrorCallback.defaultAddress ()
 
 end WebGPU.Raw
 

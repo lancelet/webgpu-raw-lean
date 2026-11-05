@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -47,6 +47,30 @@ LEAN_WGPU_HELPER size_t lean_wgpu_size(uint64_t size) {
 LEAN_WGPU_HELPER lean_obj_res lean_wgpu_io_error(char const * message) {
     return lean_io_result_mk_error(
         lean_mk_io_user_error(lean_mk_string(message))
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `RequestDeviceCallback`, releasing
+// it; each object it gives Lean joins the family `userdata2` names, whose
+// reference it gives back.
+LEAN_WGPU_HELPER void lean_WGPURequestDeviceCallback(
+    WGPURequestDeviceStatus status,
+    WGPUDevice              device,
+    WGPUStringView          message,
+    void *                  userdata1,
+    void *                  userdata2
+) {
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata2);
+    lean_wgpu_family_join(device, family);
+    lean_wgpu_family_release(family);
+    lean_wgpu_callback_done(
+        lean_apply_4(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_device_box_option(device),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
     );
 }
 
@@ -187,6 +211,83 @@ LEAN_WGPU_HELPER void lean_WGPUQueueWorkDoneCallback(
     );
 }
 
+// Calls the closure the family `userdata1` holds at `userdata2`, as a
+// `DeviceLostCallback`, keeping it, as C may call it again; nothing if the
+// family is gone.
+LEAN_WGPU_HELPER void lean_WGPUDeviceLostCallback(
+    WGPUDevice const *   device,
+    WGPUDeviceLostReason reason,
+    WGPUStringView       message,
+    void *               userdata1,
+    void *               userdata2
+) {
+    (void)device;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata1);
+    lean_object * closure = lean_wgpu_family_closure(
+        family,
+        (size_t)((uintptr_t)userdata2)
+    );
+    #ifdef WEBGPU_RAW_DAWN
+    lean_wgpu_family_release(family);
+    #endif
+    if (closure == NULL) {
+        return;
+    }
+    lean_wgpu_callback_done(
+        lean_apply_3(
+            closure,
+            lean_box_uint32((uint32_t)reason),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// The address of `DeviceLostCallback`'s trampoline, for Lean to write into a
+// struct.
+LEAN_EXPORT uint64_t lean_WGPUDeviceLostCallback_address(b_lean_obj_arg unit) {
+    (void)unit;
+    return (uint64_t)((uintptr_t)lean_WGPUDeviceLostCallback);
+}
+
+// Calls the closure the family `userdata1` holds at `userdata2`, as a
+// `UncapturedErrorCallback`, keeping it, as C may call it again; nothing if the
+// family is gone.
+LEAN_WGPU_HELPER void lean_WGPUUncapturedErrorCallback(
+    WGPUDevice const * device,
+    WGPUErrorType      type,
+    WGPUStringView     message,
+    void *             userdata1,
+    void *             userdata2
+) {
+    (void)device;
+    lean_wgpu_family family = (lean_wgpu_family)((uintptr_t)userdata1);
+    lean_object * closure = lean_wgpu_family_closure(
+        family,
+        (size_t)((uintptr_t)userdata2)
+    );
+    if (closure == NULL) {
+        return;
+    }
+    lean_wgpu_callback_done(
+        lean_apply_3(
+            closure,
+            lean_box_uint32((uint32_t)type),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// The address of `UncapturedErrorCallback`'s trampoline, for Lean to write into
+// a struct.
+LEAN_EXPORT uint64_t lean_WGPUUncapturedErrorCallback_address(
+    b_lean_obj_arg unit
+) {
+    (void)unit;
+    return (uint64_t)((uintptr_t)lean_WGPUUncapturedErrorCallback);
+}
+
 // Lean's `createInstance`: calls `wgpuCreateInstance`.
 LEAN_EXPORT lean_obj_res lean_wgpuCreateInstance(
     b_lean_obj_arg descriptor,
@@ -232,6 +333,54 @@ LEAN_EXPORT lean_obj_res lean_wgpuAdapterHasFeature(
         (WGPUFeatureName)feature
     );
     return lean_io_result_mk_ok(lean_box(result != 0));
+}
+
+// Lean's `Adapter.requestDevice`: calls `wgpuAdapterRequestDevice`.
+LEAN_EXPORT lean_obj_res lean_wgpuAdapterRequestDevice(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback,
+    b_lean_obj_arg tables
+) {
+    lean_wgpu_family family = lean_wgpu_family_new();
+    lean_wgpu_family filling = lean_wgpu_family_set_filling(family);
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    lean_wgpu_family_set_filling(filling);
+    #ifdef WEBGPU_RAW_DAWN
+    if (descriptor_struct != NULL) {
+        WGPUDeviceDescriptor const * held = descriptor_struct;
+        if (held->deviceLostCallbackInfo.userdata1 != NULL) {
+            lean_wgpu_family_retain(family);
+        }
+    }
+    #endif
+    WGPURequestDeviceCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPURequestDeviceCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = (void *)family,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuAdapterRequestDevice(
+        lean_wgpu_adapter_unbox(self),
+        descriptor_struct,
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
 }
 
 // Lean's `BindGroup.setLabel`: calls `wgpuBindGroupSetLabel`.

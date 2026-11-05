@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -598,6 +598,17 @@ FIELD(WGPUComputePipelineDescriptor, label,       8,  4);
 FIELD(WGPUComputePipelineDescriptor, layout,      24, 12);
 FIELD(WGPUComputePipelineDescriptor, compute,     32, 16);
 STRUCT(WGPUComputePipelineDescriptor, 80, 40, 8, 4);
+
+// WGPUDeviceDescriptor
+FIELD(WGPUDeviceDescriptor, nextInChain,                 0,   0);
+FIELD(WGPUDeviceDescriptor, label,                       8,   4);
+FIELD(WGPUDeviceDescriptor, requiredFeatureCount,        24,  12);
+FIELD(WGPUDeviceDescriptor, requiredFeatures,            32,  16);
+FIELD(WGPUDeviceDescriptor, requiredLimits,              40,  20);
+FIELD(WGPUDeviceDescriptor, defaultQueue,                48,  24);
+FIELD(WGPUDeviceDescriptor, deviceLostCallbackInfo,      72,  36);
+FIELD(WGPUDeviceDescriptor, uncapturedErrorCallbackInfo, 112, 56);
+STRUCT(WGPUDeviceDescriptor, 144, 72, 8, 4);
 
 // WGPURenderPassDescriptor
 FIELD(WGPURenderPassDescriptor, nextInChain,            0,  0);

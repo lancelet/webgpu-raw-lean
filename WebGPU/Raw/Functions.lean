@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -75,6 +75,40 @@ opaque Internal.Adapter.hasFeature
 @[inline]
 def Adapter.hasFeature (self : Adapter) (feature : FeatureName) : IO Bool :=
   Internal.Adapter.hasFeature self (CEnum.toC feature)
+
+/-- The shim behind `Adapter.requestDevice`. -/
+@[extern "lean_wgpuAdapterRequestDevice"]
+opaque Internal.Adapter.requestDevice
+    (self              : @& Adapter)
+    (descriptor        : @& Option DeviceDescriptor)
+    (descriptorBytes   : @& OptBytesOf descriptor)
+    (descriptorTargets : @& OptTargetsOf descriptor)
+    (descriptorTable   : @& IndexOf DeviceDescriptor)
+    (callbackMode      : UInt32)
+    (callback          : @& Internal.RequestDeviceCallback)
+    (tables            : @& CurrentTablesOf) :
+    IO UInt64
+
+@[inline]
+def Adapter.requestDevice
+    (self         : Adapter)
+    (descriptor   : Option DeviceDescriptor)
+    (callbackMode : CallbackMode)
+    (callback     : RequestDeviceCallback) :
+    IO Future :=
+  let descriptor := some (descriptor.getD {})
+  if CStruct.optSizesFit descriptor then
+    Future.mk <$> Internal.Adapter.requestDevice
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        (CEnum.toC callbackMode)
+        (Internal.RequestDeviceCallback.raw callback)
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Adapter.requestDevice: a size_t too large")
 
 /-- The shim behind `BindGroup.setLabel`. -/
 @[extern "lean_wgpuBindGroupSetLabel"]

@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -861,6 +861,26 @@ structure ComputePipelineDescriptor where
   label   : String                := ""
   layout  : Option PipelineLayout := none
   compute : ComputeState
+
+structure DeviceDescriptor where
+  label                       : String                             := ""
+  requiredFeatures            : Array FeatureName                  := #[]
+  requiredLimits              : Option Limits                      := none
+  defaultQueue                : QueueDescriptor                    := {}
+  deviceLostCallbackInfo      : Option DeviceLostCallbackInfo      := none
+  /--
+  Called when there is an uncaptured error on this device, from any thread. See
+  [ErrorScopes].
+
+  **Important:** This callback does not have a configurable `CallbackMode`; it
+  may be called at any time (like `CallbackMode.allowSpontaneous`). As such,
+  calls into the `webgpu.h` API from this callback are unsafe. See
+  [CallbackReentrancy].
+
+  [ErrorScopes]: https://webgpu-native.github.io/webgpu-headers/Errors.html#ErrorScopes
+  [CallbackReentrancy]: https://webgpu-native.github.io/webgpu-headers/Asynchronous-Operations.html#CallbackReentrancy
+  -/
+  uncapturedErrorCallbackInfo : Option UncapturedErrorCallbackInfo := none
 
 /-- What can be chained to a `RenderPassDescriptor`: one of its extensions. -/
 inductive RenderPassDescriptor.Chained where

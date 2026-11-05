@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f8e434c (clean)
-  Generated:        2026-11-05 07:48:20 UTC
+  Generator commit: 5ff898e (clean)
+  Generated:        2026-11-05 08:15:59 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -13703,6 +13703,261 @@ def toTargets (d : ComputePipelineDescriptor) : Array Target :=
 
 end ComputePipelineDescriptor
 
+/-! ### `DeviceDescriptor` -/
+
+namespace DeviceDescriptor
+
+/-- The scalar fields on 64-bit targets: the specification. -/
+def fields64 : List (Field DeviceDescriptor) := [
+  ⟨16, .size, fun d => (d.label.utf8ByteSize.toUInt64).toNat⟩,
+  ⟨24, .size, fun d => (d.requiredFeatures.size.toUInt64).toNat⟩,
+  ⟨64, .size, fun d => (d.defaultQueue.label.utf8ByteSize.toUInt64).toNat⟩,
+  ⟨80, .u32, fun d => (keptMode d.deviceLostCallbackInfo).toNat⟩,
+  ⟨88, .size, fun d => (keptAddress d.deviceLostCallbackInfo).toNat⟩,
+  ⟨104, .size, fun d => (keptOrdinal 0 d.deviceLostCallbackInfo).toNat⟩,
+  ⟨120, .size, fun d => (keptAddress d.uncapturedErrorCallbackInfo).toNat⟩,
+  ⟨136, .size, fun d => (keptOrdinal 1 d.uncapturedErrorCallbackInfo).toNat⟩
+]
+
+/-- The pointers on 64-bit targets, for C to fill in. -/
+def pointers64 : List Nat := [0, 8, 32, 40, 48, 56, 72, 96, 112, 128]
+
+/-- The fields are well-formed: in order, apart, within the struct. -/
+theorem fields64_wellFormed : Fields.WellFormed .bits64 144 fields64 := by
+  unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers64_within :
+    ∀ o ∈ pointers64, o + 8 ≤ 144 := by
+  decide
+
+/-- The pointers are apart from every field. -/
+theorem pointers64_apart :
+    ∀ o ∈ pointers64, ∀ f ∈ fields64,
+      f.offset + f.scalar.bytes .bits64 ≤ o ∨ o + 8 ≤ f.offset := by
+  decide
+
+/-- `d` as C lays it out on 64-bit targets, its pointers 0. -/
+@[noinline, never_extract]
+def encode64 (d : DeviceDescriptor) : ByteArray :=
+  let b := Block.fresh 144
+  let b := b.pokeU64 16 d.label.utf8ByteSize.toUInt64 (by decide)
+  let b := b.pokeU64 24 d.requiredFeatures.size.toUInt64 (by decide)
+  let b := b.pokeU64 64 d.defaultQueue.label.utf8ByteSize.toUInt64 (by decide)
+  let b := b.pokeU32 80 (keptMode d.deviceLostCallbackInfo) (by decide)
+  let b := b.pokeU64 88 (keptAddress d.deviceLostCallbackInfo) (by decide)
+  let b := b.pokeU64 104 (keptOrdinal 0 d.deviceLostCallbackInfo) (by decide)
+  let b := b.pokeU64 120 (keptAddress d.uncapturedErrorCallbackInfo) (by decide)
+  let b := b.pokeU64 136
+      (keptOrdinal 1 d.uncapturedErrorCallbackInfo)
+      (by decide)
+  b.1
+
+/-- The encoder is `encode` of the fields: `readLE_encode` holds of it. -/
+theorem encode64_eq (d : DeviceDescriptor) :
+    encode64 d = Encode.encode .bits64 144 fields64 d := by
+  simp only [
+    encode64, Encode.encode, fields64, Block.val_fresh, Block.val_pokeU64,
+    Block.val_pokeU32, List.map, Field.write, writeAll, List.foldl,
+    Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode64 (d : DeviceDescriptor) :
+    (encode64 d).size = 144 := by
+  rw [encode64_eq, size_encode]
+
+/-- Its pointers read as 0, for C to fill in. -/
+theorem encode64_pointers (d : DeviceDescriptor) :
+    ∀ o ∈ pointers64, readLE (encode64 d) o 8 = 0 :=
+  fun o ho => by
+    rw [encode64_eq]
+    exact readLE_encode_apart d o 8 (pointers64_apart o ho)
+
+/-- Its pointers' relocations on 64-bit targets: what C fills each in from. -/
+noncomputable def relocs64 : List Reloc := [
+  ⟨0, .null⟩, ⟨8, .string⟩, ⟨32, .block 0⟩, ⟨40, .block 53⟩, ⟨48, .null⟩,
+  ⟨56, .string⟩, ⟨72, .null⟩, ⟨96, .optClosure 0⟩, ⟨112, .null⟩,
+  ⟨128, .optClosure 1⟩
+]
+
+/-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
+def table64 : ByteArray := ⟨#[
+  144, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 4, 0,
+  0, 0, 53, 0, 0, 0, 48, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 72, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 6, 0, 0, 0,
+  0, 0, 0, 0, 112, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 6, 0, 0, 0, 1,
+  0, 0, 0
+]⟩
+
+set_option maxRecDepth 4096 in
+/-- The table is its relocations. -/
+theorem table64_eq : table64 = serialize 144 relocs64 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs64_offsets : relocs64.map (·.offset) = pointers64 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs64_fit : relocs64.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on 64-bit targets, in order. -/
+@[never_extract]
+def targets64 (d : DeviceDescriptor) : Array Target :=
+  #[.string d.label, .block (encodeU32s CEnum.toC d.requiredFeatures)]
+  ++ optBlock Limits.block64 d.requiredLimits
+  ++ #[
+    .string d.defaultQueue.label,
+    .optClosure (keptClosure d.deviceLostCallbackInfo),
+    .optClosure (keptClosure d.uncapturedErrorCallbackInfo)
+  ]
+
+/-- `d` as the block a pointer to it points to on 64-bit targets. -/
+@[never_extract]
+def block64 (d : DeviceDescriptor) : Array Target :=
+  #[.block (encode64 d)] ++ targets64 d
+
+/-- The scalar fields on wasm32: the specification. -/
+def fields32 : List (Field DeviceDescriptor) := [
+  ⟨8, .size, fun d => (d.label.utf8ByteSize.toUInt32).toNat⟩,
+  ⟨12, .size, fun d => (d.requiredFeatures.size.toUInt32).toNat⟩,
+  ⟨32, .size, fun d => (d.defaultQueue.label.utf8ByteSize.toUInt32).toNat⟩,
+  ⟨40, .u32, fun d => (keptMode d.deviceLostCallbackInfo).toNat⟩,
+  ⟨44, .size, fun d => ((keptAddress d.deviceLostCallbackInfo).toUInt32).toNat⟩,
+  ⟨52, .size,
+      fun d => ((keptOrdinal 0 d.deviceLostCallbackInfo).toUInt32).toNat⟩,
+  ⟨60, .size,
+      fun d => ((keptAddress d.uncapturedErrorCallbackInfo).toUInt32).toNat⟩,
+  ⟨68, .size,
+      fun d => ((keptOrdinal 1 d.uncapturedErrorCallbackInfo).toUInt32).toNat⟩
+]
+
+/-- The pointers on wasm32, for C to fill in. -/
+def pointers32 : List Nat := [0, 4, 16, 20, 24, 28, 36, 48, 56, 64]
+
+/-- The fields are well-formed: in order, apart, within the struct. -/
+theorem fields32_wellFormed : Fields.WellFormed .bits32 72 fields32 := by
+  unfold Fields.WellFormed; decide
+
+/-- The pointers are within the struct. -/
+theorem pointers32_within :
+    ∀ o ∈ pointers32, o + 4 ≤ 72 := by
+  decide
+
+/-- The pointers are apart from every field. -/
+theorem pointers32_apart :
+    ∀ o ∈ pointers32, ∀ f ∈ fields32,
+      f.offset + f.scalar.bytes .bits32 ≤ o ∨ o + 4 ≤ f.offset := by
+  decide
+
+/-- `d` as C lays it out on wasm32, its pointers 0. -/
+@[noinline, never_extract]
+def encode32 (d : DeviceDescriptor) : ByteArray :=
+  let b := Block.fresh 72
+  let b := b.pokeU32 8 d.label.utf8ByteSize.toUInt32 (by decide)
+  let b := b.pokeU32 12 d.requiredFeatures.size.toUInt32 (by decide)
+  let b := b.pokeU32 32 d.defaultQueue.label.utf8ByteSize.toUInt32 (by decide)
+  let b := b.pokeU32 40 (keptMode d.deviceLostCallbackInfo) (by decide)
+  let b := b.pokeU32 44
+      ((keptAddress d.deviceLostCallbackInfo).toUInt32)
+      (by decide)
+  let b := b.pokeU32 52
+      ((keptOrdinal 0 d.deviceLostCallbackInfo).toUInt32)
+      (by decide)
+  let b := b.pokeU32 60
+      ((keptAddress d.uncapturedErrorCallbackInfo).toUInt32)
+      (by decide)
+  let b := b.pokeU32 68
+      ((keptOrdinal 1 d.uncapturedErrorCallbackInfo).toUInt32)
+      (by decide)
+  b.1
+
+/-- The encoder is `encode` of the fields: `readLE_encode` holds of it. -/
+theorem encode32_eq (d : DeviceDescriptor) :
+    encode32 d = Encode.encode .bits32 72 fields32 d := by
+  simp only [
+    encode32, Encode.encode, fields32, Block.val_fresh, Block.val_pokeU32,
+    List.map, Field.write, writeAll, List.foldl, Scalar.bytes, Width.bytes]
+
+/-- Its encoding is its size. -/
+theorem size_encode32 (d : DeviceDescriptor) :
+    (encode32 d).size = 72 := by
+  rw [encode32_eq, size_encode]
+
+/-- Its pointers read as 0, for C to fill in. -/
+theorem encode32_pointers (d : DeviceDescriptor) :
+    ∀ o ∈ pointers32, readLE (encode32 d) o 4 = 0 :=
+  fun o ho => by
+    rw [encode32_eq]
+    exact readLE_encode_apart d o 4 (pointers32_apart o ho)
+
+/-- Its pointers' relocations on wasm32: what C fills each in from. -/
+noncomputable def relocs32 : List Reloc := [
+  ⟨0, .null⟩, ⟨4, .string⟩, ⟨16, .block 0⟩, ⟨20, .block 53⟩, ⟨24, .null⟩,
+  ⟨28, .string⟩, ⟨36, .null⟩, ⟨48, .optClosure 0⟩, ⟨56, .null⟩,
+  ⟨64, .optClosure 1⟩
+]
+
+/-- Its table on wasm32, for C: `serialize` of its relocations. -/
+def table32 : ByteArray := ⟨#[
+  72, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0,
+  0, 0, 53, 0, 0, 0, 24, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 36, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 48, 0, 0, 0, 6, 0, 0, 0,
+  0, 0, 0, 0, 56, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 6, 0, 0, 0, 1,
+  0, 0, 0
+]⟩
+
+set_option maxRecDepth 4096 in
+/-- The table is its relocations. -/
+theorem table32_eq : table32 = serialize 72 relocs32 := rfl
+
+/-- Every pointer has a relocation, and only a pointer. -/
+theorem relocs32_offsets : relocs32.map (·.offset) = pointers32 :=
+  rfl
+
+/-- Its relocations' numbers fit its table. -/
+theorem relocs32_fit : relocs32.all Reloc.fits := by decide
+
+/-- What C fills in `d`'s pointers from on wasm32, in order. -/
+@[never_extract]
+def targets32 (d : DeviceDescriptor) : Array Target :=
+  #[.string d.label, .block (encodeU32s CEnum.toC d.requiredFeatures)]
+  ++ optBlock Limits.block32 d.requiredLimits
+  ++ #[
+    .string d.defaultQueue.label,
+    .optClosure (keptClosure d.deviceLostCallbackInfo),
+    .optClosure (keptClosure d.uncapturedErrorCallbackInfo)
+  ]
+
+/-- `d` as the block a pointer to it points to on wasm32. -/
+@[never_extract]
+def block32 (d : DeviceDescriptor) : Array Target :=
+  #[.block (encode32 d)] ++ targets32 d
+
+/--
+Whether each `size_t` of `d` fits the target: on wasm32, in 32 bits, or
+as the largest `UInt64`, `SIZE_MAX`. A caller refuses one that does not,
+as for a `size_t` argument.
+-/
+def sizesFit (_ : DeviceDescriptor) : Bool :=
+  true
+
+/-- `d` as C lays it out on this target, its pointers 0. -/
+@[inline]
+def toBytes (d : DeviceDescriptor) : ByteArray :=
+  if Width.is64 () then encode64 d else encode32 d
+
+/-- Its table's index in `tables64` and `tables32`. -/
+def tableIndex : Nat := 66
+
+/-- What C fills in `d`'s pointers from on this target. -/
+@[inline]
+def toTargets (d : DeviceDescriptor) : Array Target :=
+  if Width.is64 () then targets64 d else targets32 d
+
+end DeviceDescriptor
+
 /-! ### `RenderPassDescriptor` -/
 
 namespace RenderPassDescriptor
@@ -13927,7 +14182,7 @@ def toBytes (d : RenderPassDescriptor) : ByteArray :=
   if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
-def tableIndex : Nat := 66
+def tableIndex : Nat := 67
 
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
@@ -14180,7 +14435,7 @@ def toBytes (d : TextureViewDescriptor) : ByteArray :=
   if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
-def tableIndex : Nat := 67
+def tableIndex : Nat := 68
 
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
@@ -14383,7 +14638,7 @@ def toBytes (d : VertexState) : ByteArray :=
   if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
-def tableIndex : Nat := 68
+def tableIndex : Nat := 69
 
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
@@ -14586,7 +14841,7 @@ def toBytes (d : FragmentState) : ByteArray :=
   if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
-def tableIndex : Nat := 69
+def tableIndex : Nat := 70
 
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
@@ -14677,7 +14932,7 @@ theorem encode64_pointers (d : RenderPipelineDescriptor) :
 noncomputable def relocs64 : List Reloc := [
   ⟨0, .null⟩, ⟨8, .string⟩, ⟨24, .optObject⟩, ⟨32, .null⟩, ⟨40, .object⟩,
   ⟨48, .optString⟩, ⟨72, .block 9⟩, ⟨88, .block 61⟩, ⟨96, .null⟩,
-  ⟨128, .block 50⟩, ⟨136, .null⟩, ⟨160, .block 69⟩
+  ⟨128, .block 50⟩, ⟨136, .null⟩, ⟨160, .block 70⟩
 ]
 
 /-- Its table on 64-bit targets, for C: `serialize` of its relocations. -/
@@ -14688,7 +14943,7 @@ def table64 : ByteArray := ⟨#[
   0, 0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0, 88, 0, 0, 0, 4, 0, 0, 0,
   61, 0, 0, 0, 96, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 4, 0, 0, 0,
   50, 0, 0, 0, 136, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 4, 0, 0, 0,
-  69, 0, 0, 0
+  70, 0, 0, 0
 ]⟩
 
 set_option maxRecDepth 4096 in
@@ -14798,7 +15053,7 @@ theorem encode32_pointers (d : RenderPipelineDescriptor) :
 noncomputable def relocs32 : List Reloc := [
   ⟨0, .null⟩, ⟨4, .string⟩, ⟨12, .optObject⟩, ⟨16, .null⟩, ⟨20, .object⟩,
   ⟨24, .optString⟩, ⟨36, .block 9⟩, ⟨44, .block 61⟩, ⟨48, .null⟩,
-  ⟨72, .block 50⟩, ⟨76, .null⟩, ⟨92, .block 69⟩
+  ⟨72, .block 50⟩, ⟨76, .null⟩, ⟨92, .block 70⟩
 ]
 
 /-- Its table on wasm32, for C: `serialize` of its relocations. -/
@@ -14808,7 +15063,7 @@ def table32 : ByteArray := ⟨#[
   0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 1, 0, 0,
   0, 0, 0, 0, 0, 36, 0, 0, 0, 4, 0, 0, 0, 9, 0, 0, 0, 44, 0, 0, 0, 4, 0, 0, 0,
   61, 0, 0, 0, 48, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 4, 0, 0, 0, 50,
-  0, 0, 0, 76, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 4, 0, 0, 0, 69, 0,
+  0, 0, 0, 76, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 92, 0, 0, 0, 4, 0, 0, 0, 70, 0,
   0, 0
 ]⟩
 
@@ -14856,7 +15111,7 @@ def toBytes (d : RenderPipelineDescriptor) : ByteArray :=
   if Width.is64 () then encode64 d else encode32 d
 
 /-- Its table's index in `tables64` and `tables32`. -/
-def tableIndex : Nat := 70
+def tableIndex : Nat := 71
 
 /-- What C fills in `d`'s pointers from on this target. -/
 @[inline]
@@ -14898,9 +15153,9 @@ def tables64 : Array ByteArray := #[
   TextureComponentSwizzleDescriptor.table64, TextureDescriptor.table64,
   VertexBufferLayout.table64, BindGroupDescriptor.table64,
   BindGroupLayoutDescriptor.table64, ColorTargetState.table64,
-  ComputePipelineDescriptor.table64, RenderPassDescriptor.table64,
-  TextureViewDescriptor.table64, VertexState.table64, FragmentState.table64,
-  RenderPipelineDescriptor.table64
+  ComputePipelineDescriptor.table64, DeviceDescriptor.table64,
+  RenderPassDescriptor.table64, TextureViewDescriptor.table64,
+  VertexState.table64, FragmentState.table64, RenderPipelineDescriptor.table64
 ]
 
 /-- Every struct's table on 64-bit targets, as the walk reads it. -/
@@ -14943,9 +15198,9 @@ noncomputable def specs64 : Array Spec := #[
   (80, TextureDescriptor.relocs64), (40, VertexBufferLayout.relocs64),
   (48, BindGroupDescriptor.relocs64), (40, BindGroupLayoutDescriptor.relocs64),
   (32, ColorTargetState.relocs64), (80, ComputePipelineDescriptor.relocs64),
-  (64, RenderPassDescriptor.relocs64), (64, TextureViewDescriptor.relocs64),
-  (64, VertexState.relocs64), (64, FragmentState.relocs64),
-  (168, RenderPipelineDescriptor.relocs64)
+  (144, DeviceDescriptor.relocs64), (64, RenderPassDescriptor.relocs64),
+  (64, TextureViewDescriptor.relocs64), (64, VertexState.relocs64),
+  (64, FragmentState.relocs64), (168, RenderPipelineDescriptor.relocs64)
 ]
 
 set_option maxRecDepth 16384 in
@@ -14993,9 +15248,9 @@ def tables32 : Array ByteArray := #[
   TextureComponentSwizzleDescriptor.table32, TextureDescriptor.table32,
   VertexBufferLayout.table32, BindGroupDescriptor.table32,
   BindGroupLayoutDescriptor.table32, ColorTargetState.table32,
-  ComputePipelineDescriptor.table32, RenderPassDescriptor.table32,
-  TextureViewDescriptor.table32, VertexState.table32, FragmentState.table32,
-  RenderPipelineDescriptor.table32
+  ComputePipelineDescriptor.table32, DeviceDescriptor.table32,
+  RenderPassDescriptor.table32, TextureViewDescriptor.table32,
+  VertexState.table32, FragmentState.table32, RenderPipelineDescriptor.table32
 ]
 
 /-- Every struct's table on wasm32, as the walk reads it. -/
@@ -15037,9 +15292,9 @@ noncomputable def specs32 : Array Spec := #[
   (64, TextureDescriptor.relocs32), (24, VertexBufferLayout.relocs32),
   (24, BindGroupDescriptor.relocs32), (20, BindGroupLayoutDescriptor.relocs32),
   (24, ColorTargetState.relocs32), (40, ComputePipelineDescriptor.relocs32),
-  (32, RenderPassDescriptor.relocs32), (48, TextureViewDescriptor.relocs32),
-  (32, VertexState.relocs32), (32, FragmentState.relocs32),
-  (96, RenderPipelineDescriptor.relocs32)
+  (72, DeviceDescriptor.relocs32), (32, RenderPassDescriptor.relocs32),
+  (48, TextureViewDescriptor.relocs32), (32, VertexState.relocs32),
+  (32, FragmentState.relocs32), (96, RenderPipelineDescriptor.relocs32)
 ]
 
 set_option maxRecDepth 16384 in
@@ -21470,6 +21725,105 @@ instance : CStruct.Fills currentSpecs ComputePipelineDescriptor :=
 
 end ComputePipelineDescriptor
 
+/-! ### `DeviceDescriptor`: its walk -/
+
+namespace DeviceDescriptor
+
+/-- Its index finds its tables. -/
+theorem getElem?_tables_tableIndex :
+    tables64[tableIndex]? = some table64 ∧
+      tables32[tableIndex]? = some table32 :=
+  ⟨rfl, rfl⟩
+
+/-- Its index finds its table as the walk reads it. -/
+theorem getElem?_specs64 :
+    specs64[66]? = some (144, relocs64) :=
+  rfl
+
+/-- An element's walk takes exactly its targets. -/
+theorem element_targets64 (d : DeviceDescriptor) (ts : List Target) :
+    element specs64 66 relocs64
+      ((targets64 d).toList ++ ts) = some ts := by
+  cases h0 : d.requiredLimits <;>
+    simp [
+      element, relocs64, targets64, step, closures, optBlock, h0,
+      Limits.block64, Limits.walk_encode64,
+      walk_empty Limits.getElem?_specs64 (by decide),
+      walk_words getElem?_specs64_words]
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk_encode64 (d : DeviceDescriptor) (ts : List Target) :
+    walk specs64 66 (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
+    (size_encode64 d) (element_targets64 d) ts
+
+/-- The same, at its index. -/
+theorem walk_encode64_tableIndex (d : DeviceDescriptor) (ts : List Target) :
+    walk specs64 tableIndex (encode64 d).size
+      ((targets64 d).toList ++ ts) = some ts :=
+  walk_encode64 d ts
+
+/-- Its index finds its table as the walk reads it. -/
+theorem getElem?_specs32 :
+    specs32[66]? = some (72, relocs32) :=
+  rfl
+
+/-- An element's walk takes exactly its targets. -/
+theorem element_targets32 (d : DeviceDescriptor) (ts : List Target) :
+    element specs32 66 relocs32
+      ((targets32 d).toList ++ ts) = some ts := by
+  cases h0 : d.requiredLimits <;>
+    simp [
+      element, relocs32, targets32, step, closures, optBlock, h0,
+      Limits.block32, Limits.walk_encode32,
+      walk_empty Limits.getElem?_specs32 (by decide),
+      walk_words getElem?_specs32_words]
+
+/-- Walking its table over its bytes takes exactly its targets. -/
+theorem walk_encode32 (d : DeviceDescriptor) (ts : List Target) :
+    walk specs32 66 (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
+    (size_encode32 d) (element_targets32 d) ts
+
+/-- The same, at its index. -/
+theorem walk_encode32_tableIndex (d : DeviceDescriptor) (ts : List Target) :
+    walk specs32 tableIndex (encode32 d).size
+      ((targets32 d).toList ++ ts) = some ts :=
+  walk_encode32 d ts
+
+/-- Its bytes are one struct, on this target. -/
+theorem size_toBytes (d : DeviceDescriptor) :
+    ∃ relocs,
+      currentSpecs[tableIndex]? = some ((toBytes d).size, relocs) := by
+  by_cases h : Width.is64 () = true
+  · simp only [currentSpecs, toBytes, h, ↓reduceIte]
+    exact ⟨_, by rw [size_encode64]; exact getElem?_specs64⟩
+  · simp only [currentSpecs, toBytes, h, Bool.false_eq_true, ↓reduceIte]
+    exact ⟨_, by rw [size_encode32]; exact getElem?_specs32⟩
+
+/-- Walking its table over its bytes takes its targets, on this target. -/
+theorem walk_toBytes (d : DeviceDescriptor) (ts : List Target) :
+    walk currentSpecs tableIndex (toBytes d).size
+      ((toTargets d).toList ++ ts) = some ts := by
+  by_cases h : Width.is64 () = true
+  · simp only [currentSpecs, toBytes, toTargets, h, ↓reduceIte]
+    exact walk_encode64_tableIndex d ts
+  · simp only [
+      currentSpecs, toBytes, toTargets, h, Bool.false_eq_true, ↓reduceIte]
+    exact walk_encode32_tableIndex d ts
+
+/-- It is a struct C fills in. -/
+instance : CStruct DeviceDescriptor :=
+  ⟨toBytes, toTargets, tableIndex, sizesFit⟩
+
+/-- C fills it in as its table says, on this target. -/
+instance : CStruct.Fills currentSpecs DeviceDescriptor :=
+  ⟨size_toBytes, walk_toBytes⟩
+
+end DeviceDescriptor
+
 /-! ### `RenderPassDescriptor`: its walk -/
 
 namespace RenderPassDescriptor
@@ -21516,12 +21870,12 @@ theorem walk_chain64 {table : Nat}
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs64 :
-    specs64[66]? = some (64, relocs64) :=
+    specs64[67]? = some (64, relocs64) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets64 (d : RenderPassDescriptor) (ts : List Target) :
-    element specs64 66 relocs64
+    element specs64 67 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   cases h0 : d.depthStencilAttachment <;>
   cases h1 : d.timestampWrites <;>
@@ -21534,11 +21888,11 @@ theorem element_targets64 (d : RenderPassDescriptor) (ts : List Target) :
       walk_empty PassTimestampWrites.getElem?_specs64 (by decide),
       RenderPassColorAttachment.array64,
       RenderPassColorAttachment.walk_encodeAll64,
-      RenderPassDescriptor.walk_chain64 (table := 66) (by decide)]
+      RenderPassDescriptor.walk_chain64 (table := 67) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : RenderPassDescriptor) (ts : List Target) :
-    walk specs64 66 (encode64 d).size
+    walk specs64 67 (encode64 d).size
       ((targets64 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
     (size_encode64 d) (element_targets64 d) ts
@@ -21585,12 +21939,12 @@ theorem walk_chain32 {table : Nat}
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs32 :
-    specs32[66]? = some (32, relocs32) :=
+    specs32[67]? = some (32, relocs32) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets32 (d : RenderPassDescriptor) (ts : List Target) :
-    element specs32 66 relocs32
+    element specs32 67 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   cases h0 : d.depthStencilAttachment <;>
   cases h1 : d.timestampWrites <;>
@@ -21603,11 +21957,11 @@ theorem element_targets32 (d : RenderPassDescriptor) (ts : List Target) :
       walk_empty PassTimestampWrites.getElem?_specs32 (by decide),
       RenderPassColorAttachment.array32,
       RenderPassColorAttachment.walk_encodeAll32,
-      RenderPassDescriptor.walk_chain32 (table := 66) (by decide)]
+      RenderPassDescriptor.walk_chain32 (table := 67) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : RenderPassDescriptor) (ts : List Target) :
-    walk specs32 66 (encode32 d).size
+    walk specs32 67 (encode32 d).size
       ((targets32 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
     (size_encode32 d) (element_targets32 d) ts
@@ -21696,20 +22050,20 @@ theorem walk_chain64 {table : Nat}
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs64 :
-    specs64[67]? = some (64, relocs64) :=
+    specs64[68]? = some (64, relocs64) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets64 (d : TextureViewDescriptor) (ts : List Target) :
-    element specs64 67 relocs64
+    element specs64 68 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
     element, relocs64, targets64, step,
-    TextureViewDescriptor.walk_chain64 (table := 67) (by decide)]
+    TextureViewDescriptor.walk_chain64 (table := 68) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : TextureViewDescriptor) (ts : List Target) :
-    walk specs64 67 (encode64 d).size
+    walk specs64 68 (encode64 d).size
       ((targets64 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
     (size_encode64 d) (element_targets64 d) ts
@@ -21758,20 +22112,20 @@ theorem walk_chain32 {table : Nat}
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs32 :
-    specs32[67]? = some (48, relocs32) :=
+    specs32[68]? = some (48, relocs32) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets32 (d : TextureViewDescriptor) (ts : List Target) :
-    element specs32 67 relocs32
+    element specs32 68 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
     element, relocs32, targets32, step,
-    TextureViewDescriptor.walk_chain32 (table := 67) (by decide)]
+    TextureViewDescriptor.walk_chain32 (table := 68) (by decide)]
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : TextureViewDescriptor) (ts : List Target) :
-    walk specs32 67 (encode32 d).size
+    walk specs32 68 (encode32 d).size
       ((targets32 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
     (size_encode32 d) (element_targets32 d) ts
@@ -21826,12 +22180,12 @@ theorem getElem?_tables_tableIndex :
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs64 :
-    specs64[68]? = some (64, relocs64) :=
+    specs64[69]? = some (64, relocs64) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets64 (d : VertexState) (ts : List Target) :
-    element specs64 68 relocs64
+    element specs64 69 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
     element, relocs64, targets64, step, ConstantEntry.array64,
@@ -21840,7 +22194,7 @@ theorem element_targets64 (d : VertexState) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : VertexState) (ts : List Target) :
-    walk specs64 68 (encode64 d).size
+    walk specs64 69 (encode64 d).size
       ((targets64 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
     (size_encode64 d) (element_targets64 d) ts
@@ -21853,12 +22207,12 @@ theorem walk_encode64_tableIndex (d : VertexState) (ts : List Target) :
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs32 :
-    specs32[68]? = some (32, relocs32) :=
+    specs32[69]? = some (32, relocs32) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets32 (d : VertexState) (ts : List Target) :
-    element specs32 68 relocs32
+    element specs32 69 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
     element, relocs32, targets32, step, ConstantEntry.array32,
@@ -21867,7 +22221,7 @@ theorem element_targets32 (d : VertexState) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : VertexState) (ts : List Target) :
-    walk specs32 68 (encode32 d).size
+    walk specs32 69 (encode32 d).size
       ((targets32 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
     (size_encode32 d) (element_targets32 d) ts
@@ -21921,12 +22275,12 @@ theorem getElem?_tables_tableIndex :
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs64 :
-    specs64[69]? = some (64, relocs64) :=
+    specs64[70]? = some (64, relocs64) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets64 (d : FragmentState) (ts : List Target) :
-    element specs64 69 relocs64
+    element specs64 70 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   simp [
     element, relocs64, targets64, step, ConstantEntry.array64,
@@ -21935,7 +22289,7 @@ theorem element_targets64 (d : FragmentState) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : FragmentState) (ts : List Target) :
-    walk specs64 69 (encode64 d).size
+    walk specs64 70 (encode64 d).size
       ((targets64 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
     (size_encode64 d) (element_targets64 d) ts
@@ -21948,12 +22302,12 @@ theorem walk_encode64_tableIndex (d : FragmentState) (ts : List Target) :
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs32 :
-    specs32[69]? = some (32, relocs32) :=
+    specs32[70]? = some (32, relocs32) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets32 (d : FragmentState) (ts : List Target) :
-    element specs32 69 relocs32
+    element specs32 70 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   simp [
     element, relocs32, targets32, step, ConstantEntry.array32,
@@ -21962,7 +22316,7 @@ theorem element_targets32 (d : FragmentState) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : FragmentState) (ts : List Target) :
-    walk specs32 69 (encode32 d).size
+    walk specs32 70 (encode32 d).size
       ((targets32 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
     (size_encode32 d) (element_targets32 d) ts
@@ -22016,12 +22370,12 @@ theorem getElem?_tables_tableIndex :
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs64 :
-    specs64[70]? = some (168, relocs64) :=
+    specs64[71]? = some (168, relocs64) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets64 (d : RenderPipelineDescriptor) (ts : List Target) :
-    element specs64 70 relocs64
+    element specs64 71 relocs64
       ((targets64 d).toList ++ ts) = some ts := by
   cases h0 : d.depthStencil <;>
   cases h1 : d.fragment <;>
@@ -22036,7 +22390,7 @@ theorem element_targets64 (d : RenderPipelineDescriptor) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode64 (d : RenderPipelineDescriptor) (ts : List Target) :
-    walk specs64 70 (encode64 d).size
+    walk specs64 71 (encode64 d).size
       ((targets64 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs64 (by decide) d (fun d => (targets64 d).toList) _
     (size_encode64 d) (element_targets64 d) ts
@@ -22050,12 +22404,12 @@ theorem walk_encode64_tableIndex (d : RenderPipelineDescriptor)
 
 /-- Its index finds its table as the walk reads it. -/
 theorem getElem?_specs32 :
-    specs32[70]? = some (96, relocs32) :=
+    specs32[71]? = some (96, relocs32) :=
   rfl
 
 /-- An element's walk takes exactly its targets. -/
 theorem element_targets32 (d : RenderPipelineDescriptor) (ts : List Target) :
-    element specs32 70 relocs32
+    element specs32 71 relocs32
       ((targets32 d).toList ++ ts) = some ts := by
   cases h0 : d.depthStencil <;>
   cases h1 : d.fragment <;>
@@ -22070,7 +22424,7 @@ theorem element_targets32 (d : RenderPipelineDescriptor) (ts : List Target) :
 
 /-- Walking its table over its bytes takes exactly its targets. -/
 theorem walk_encode32 (d : RenderPipelineDescriptor) (ts : List Target) :
-    walk specs32 70 (encode32 d).size
+    walk specs32 71 (encode32 d).size
       ((targets32 d).toList ++ ts) = some ts :=
   walk_one getElem?_specs32 (by decide) d (fun d => (targets32 d).toList) _
     (size_encode32 d) (element_targets32 d) ts
