@@ -107,6 +107,12 @@ inductive Value where
   it) and a pointer to the elements; in Lean, an `Array`.
   -/
   | array   (element : Value) (count : String)
+  /--
+  A future, which a function that takes a callback returns: in C a
+  `WGPUFuture`, the struct holding its ID; in Lean the `Future` structure.
+  (`getLostFuture`'s, a result of struct type, is not one yet.)
+  -/
+  | future
   | unsupported (what : String)
   deriving Repr, DecidableEq
 
@@ -134,6 +140,7 @@ def Value.leanType : Value → Option String
     if b then s!"Option {names.lean}" else names.lean
   | .array element _   => element.leanType.map fun t =>
     if t.contains ' ' then s!"Array ({t})" else s!"Array {t}"
+  | .future            => "Future"
   | .unsupported _     => none
 
 /--
@@ -166,6 +173,7 @@ def Value.cType : Value → Option String
   | .struct names      => names.c
   | .structPointer names _ => s!"{names.c} const *"
   | .array element _   => element.cType.map (· ++ " const *")
+  | .future            => "WGPUFuture"
   | .unsupported _     => none
 
 /-! ### Across the boundary
@@ -188,8 +196,10 @@ def Value.isObject : Value → Bool
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
-  -- Not passed to functions yet: their shims come with descriptors.
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
+  -- Not passed to functions yet: their shims come with descriptors, and a
+  -- future with callbacks.
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
+    none
   | .enum _    => "UInt32"
   | .bitflag _ => "UInt64"
   | v          => v.leanType
@@ -212,7 +222,8 @@ def Value.abiCType : Value → Option String
   | .bitflag _       => "uint64_t"
   | .object ..       => "b_lean_obj_arg"
   | .string _        => "b_lean_obj_arg"
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
+    none
   | .unsupported _   => none
 
 /-- What the bindings cannot pass yet, if anything. -/
@@ -222,14 +233,44 @@ def Value.unsupported? : Value → Option String
   | .array element _   => element.unsupported?
   | _                 => none
 
-/-! ## Functions -/
+/-! ## Arguments -/
 
-/-- A function's argument: borrowed from Lean for the call. -/
+/--
+A function's argument, borrowed from Lean for the call; or a callback's,
+passed to Lean.
+-/
 structure Arg where
   names : Names
   doc   : String
   value : Value
   deriving Repr, DecidableEq
+
+/-! ## Callbacks -/
+
+/--
+A callback type: the arguments C calls it with, each crossing into Lean as a
+result does (`Value.resultLeanType`): an enum keeps a code the bindings do not
+know, and an object C gives its reference to is an `Option`, as C may pass
+NULL even where the spec does not say so. Its `style` says when it may be
+called. Its arguments are `Arg`s, but cross the other way: C gives each to
+Lean, as it gives a function's result.
+-/
+structure Callback where
+  names : Names
+  doc   : String
+  style : Common.CallbackStyle
+  args  : Array Arg
+  deriving Repr, DecidableEq
+
+/--
+What the bindings cannot pass yet among the callback's arguments: one reason
+for each, naming it. None if they can.
+-/
+def Callback.unsupported (c : Callback) : List String :=
+  c.args.toList.filterMap fun a =>
+    a.value.unsupported?.map (s!"callback {a.names.lean}: " ++ ·)
+
+/-! ## Functions -/
 
 /--
 A function, or a method of an object type, which takes its object as a first
@@ -244,10 +285,11 @@ structure Function where
   /-- What it returns, owned by Lean; `none` if it returns nothing. -/
   result   : Option Value
   /--
-  Whether it takes a callback. Every such function in the spec is asynchronous,
-  calling back when its operation completes; none is bound yet.
+  The callback it takes, if any. Every such function in the spec is
+  asynchronous, calling back when its operation completes, and returns a
+  future (`Value.future`); none is bound yet.
   -/
-  callback : Bool
+  callback : Option Callback
   /--
   The implementations that leave it unimplemented, aborting if it is called,
   such as `wgpu-native`: built against one, its shim raises an `IO` error
@@ -263,10 +305,13 @@ structure Function where
 
 /--
 Why the bindings cannot bind the function yet: one reason for each value they
-cannot pass, and one if it takes a callback. None if they can.
+cannot pass, and one if it takes a callback, with each its callback cannot.
+None if they can.
 -/
 def Function.unsupported (f : Function) : List String :=
-  (if f.callback then ["takes a callback"] else [])
+  (match f.callback with
+    | some c => "takes a callback" :: c.unsupported
+    | none   => [])
     ++ f.args.toList.filterMap (·.value.unsupported?)
     ++ (f.result.bind (·.unsupported?)).toList
 

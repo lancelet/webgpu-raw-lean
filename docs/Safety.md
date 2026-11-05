@@ -82,7 +82,8 @@ it could call unimplemented.)
   that can be NULL `WGPU_NULLABLE`, and each agrees with the spec's `optional`.
 - **An object C passes to a callback can be NULL** even where the spec does not
   say `optional` (the adapter in a failed `requestAdapter`), so it is always an
-  `Option`. *Checked by:* not yet: callbacks are not bound.
+  `Option`. *Checked by:* proof of lowering (`nullable_of_callbackArgValue`);
+  that the trampolines box it as an `Option` comes with them.
 
 ## Values
 

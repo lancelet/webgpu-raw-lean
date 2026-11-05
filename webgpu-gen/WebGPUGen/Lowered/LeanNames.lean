@@ -106,6 +106,10 @@ def lowerFirstWord (s : String) : String :=
 /-- A type: `texture_format` is `TextureFormat`. -/
 def leanTypeName (n : Name) : String := quoteIdent (pascalCase n.text)
 
+/-- A callback type: `request_adapter` is `RequestAdapterCallback`. -/
+def leanCallbackTypeName (n : Name) : String :=
+  quoteIdent (pascalCase n.text ++ "Callback")
+
 /--
 Anything that is not a type (an enum entry, flag, constant, member, argument,
 function or method): `BC1_RGBA_unorm` is `bc1RGBAUnorm`.

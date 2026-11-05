@@ -192,7 +192,7 @@ def probeSource (buffer : WebGPUGen.Lowered.Object) : String :=
     receiver := if receiver then some buffer.names else none
     args     := args.toArray.map fun (n, v) => ⟨⟨"arg" ++ n, "arg" ++ n⟩, "", v⟩
     result   := result
-    callback := false
+    callback := none
   }
   let functions :=
     function "Args" true kinds none
@@ -555,6 +555,44 @@ def main : IO Unit := do
     | none   => true
   unless wrong.isEmpty do
     failWith s!"structs C keeps beyond a call, not excluded: {wrong}"
+
+  -- The callbacks functions take, each declared in webgpu.h by its C name;
+  -- all but shader compilation's, which passes a struct, can be passed.
+  let callbacks := (WebGPUGen.Emit.C.allFunctions lowered).filterMap
+    (·.callback) |>.eraseDups
+  let undeclared := callbacks.filter fun c =>
+    (header.splitOn s!"(*{c.names.c})(").length < 2
+  unless undeclared.isEmpty do
+    failWith s!"callbacks not in webgpu.h: {undeclared.map (·.names.c)}"
+  -- And each that can be passed is declared as lowered: each argument by
+  -- value, of its C type, in order, then the two userdata pointers; which
+  -- its trampoline will take.
+  let typedef (c : WebGPUGen.Lowered.Callback) : String :=
+    let args := c.args.toList.map fun a =>
+      s!"{(a.value.cType.getD "?")} {a.names.c}"
+    let userdata := ["WGPU_NULLABLE void* userdata1",
+      "WGPU_NULLABLE void* userdata2"]
+    s!"typedef void (*{c.names.c})({", ".intercalate (args ++ userdata)})"
+  let misdeclared := callbacks.filter fun c =>
+    c.unsupported.isEmpty && (header.splitOn (typedef c)).length < 2
+  unless misdeclared.isEmpty do
+    failWith s!"callbacks declared otherwise in webgpu.h: \
+      {misdeclared.map typedef}"
+  -- And every function that takes one returns a future, as lowered.
+  let futureless := (WebGPUGen.Emit.C.allFunctions lowered).filter fun f =>
+    f.callback.isSome
+      && (header.splitOn s!"WGPUFuture {f.names.c}(").length < 2
+  unless futureless.isEmpty do
+    failWith s!"functions taking a callback that return no WGPUFuture: \
+      {futureless.map (·.names.c)}"
+  let passable := (callbacks.filter (·.unsupported.isEmpty)).map (·.names.lean)
+  let expected := [
+    "BufferMapCallback", "CreateComputePipelineAsyncCallback",
+    "CreateRenderPipelineAsyncCallback", "PopErrorScopeCallback",
+    "QueueWorkDoneCallback", "RequestAdapterCallback", "RequestDeviceCallback"
+  ]
+  unless passable.mergeSort (· < ·) == expected do
+    failWith s!"callbacks that can be passed: {passable}, not {expected}"
 
   -- No function is bound whose struct describes nothing but by a chain it
   -- cannot have: wgpu-native aborts without it.

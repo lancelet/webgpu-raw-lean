@@ -49,7 +49,7 @@ def function (args : Array Arg) (result : Option Value) : Lowered.Function := {
   receiver := none
   args     := args
   result   := result
-  callback := false
+  callback := none
 }
 
 /-- The shim for `f`, printed, if it has one. -/
@@ -79,7 +79,7 @@ def shimText (f : Lowered.Function) : Option String :=
       arg "label" (.string true)
     ]
     result   := some (.object buffer.names true)
-    callback := false
+    callback := none
   }
   let expected := dedent "
     // Lean's `Buffer.doAll`: calls `wgpuBufferDoAll`.
@@ -204,7 +204,13 @@ def shimText (f : Lowered.Function) : Option String :=
 
 -- Nor does a function that takes a callback.
 #guard
-  let input := { function #[] none with callback := true }
+  let done : Lowered.Callback := {
+    names := ⟨"WGPUDoneCallback", "DoneCallback"⟩
+    doc   := ""
+    style := .immediate
+    args  := #[]
+  }
+  let input := { function #[] none with callback := some done }
   shimText input == none
 
 -- Nor a function with an argument named like a shim's own variable, which

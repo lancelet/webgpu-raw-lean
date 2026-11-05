@@ -283,7 +283,7 @@ def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
   | .object _ nullable          => if nullable then some .null else none
   | .structPointer _ nullable   => if nullable then some .null else none
   | .struct _                   => some .nested
-  | .nullableFloat32            => none
+  | .nullableFloat32 | .future  => none
   | .enum _ => match p.type with
     | .named (.enum id) => do
       let e ← r.enums[id.idx]?
@@ -338,6 +338,61 @@ def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
           implicitDefault r m value
     }
 
+/-! ## Callbacks -/
+
+/--
+How a callback's argument crosses into Lean, as a result does: an enum by its
+code, a string copied (`out_string`, which C passes for the call only), and an
+object C gives its reference to (`passed_with_ownership`), which the Lean
+value takes, as an `Option` whatever the spec says, as C may pass NULL. An
+object C lends, behind a pointer, and a struct are not passed yet.
+-/
+def callbackArgValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
+  let unsupported := Value.unsupported (describe p.type p.pointer)
+  if p.pointer.isSome || p.optional then unsupported else
+  match p.type with
+  | .named (.enum id)   => named r (.enum id) .enum
+  | .primitive (.scalar .outString) =>
+    if p.passedWithOwnership == some true then unsupported else .string false
+  | .named (.object id) =>
+    if p.passedWithOwnership == some true then
+      named r (.object id) (.object · true)
+    else unsupported
+  | _ => unsupported
+
+/--
+Every object a callback passes Lean is an `Option`: so a callback C passes
+NULL is never given a Lean value of nothing.
+-/
+theorem nullable_of_callbackArgValue {r : Resolved.Spec}
+    {p : Parameter Paragraph} {names : Names} {nullable : Bool}
+    (h : callbackArgValue r p = .object names nullable) : nullable = true := by
+  unfold callbackArgValue named at h
+  -- Each case of the type, then of ownership and the lookup in range.
+  split at h
+  · simp at h
+  · split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/--
+A callback type, named on both sides, with how each of its arguments
+crosses.
+-/
+def lowerCallback (ctx : DocContext) (r : Resolved.Spec)
+    (c : Resolved.Callback) : Lowered.Callback where
+  names := bothNames callbackTypeName leanCallbackTypeName c.name
+  doc   := translateDoc ctx c.doc
+  style := c.style
+  args  := c.args.map fun a => {
+    names := bothNames memberName leanName a.name
+    doc   := translateDoc ctx a.doc.text
+    value := callbackArgValue r a
+  }
+
+/-- The callback `id` names, lowered, if it is in range. -/
+def callbackNamed (ctx : DocContext) (r : Resolved.Spec) (id : Id .callback) :
+    Option Lowered.Callback :=
+  r.callbacks[id.idx]?.map (lowerCallback ctx r)
+
 /-! ## Functions and objects -/
 
 /--
@@ -361,8 +416,14 @@ def lowerFunction (ctx : DocContext) (r : Resolved.Spec)
     doc   := translateDoc ctx a.doc.text
     value := argValue r a
   }
-  result   := f.returns.map (resultValue r)
-  callback := f.callback.isSome
+  -- A function that takes a callback returns a future, which the spec leaves
+  -- implicit (the test driver checks `webgpu.h` declares it so).
+  result   := match f.callback with
+    | some id =>
+      if (callbackNamed ctx r id).isSome then some .future
+      else some (.unsupported "a reference out of range")
+    | none    => f.returns.map (resultValue r)
+  callback := f.callback.bind (callbackNamed ctx r)
 
 /-- An object type, named on both sides, with its methods. -/
 def lowerObject (ctx : DocContext) (r : Resolved.Spec) (o : Resolved.Object) :

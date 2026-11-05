@@ -171,7 +171,7 @@ where
     | .usize => some [.int (match w with
       | .bits64 => q
       | .bits32 => s!"size32 {q}")]
-    | .unsupported _ => none
+    | .future | .unsupported _ => none
 
 /--
 The checks that each `size_t` of a value of kind `v`, at `q`, fits the target:

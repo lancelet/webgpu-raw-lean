@@ -348,7 +348,7 @@ def function (c lean : String) (receiver : Option Names) (args : Array Arg)
   receiver := receiver
   args     := args
   result   := result
-  callback := false
+  callback := none
 }
 
 /-- A function's two declarations, printed. -/

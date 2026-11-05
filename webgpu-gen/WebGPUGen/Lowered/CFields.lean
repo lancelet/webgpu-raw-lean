@@ -77,7 +77,7 @@ where
       let nested ← structs.find? (·.names.c == names.c)
       let fields ← cFields structs nested fuel
       pure (.struct (fields.map (·.2)))
-    | .array .. | .unsupported _     => none
+    | .array .. | .future | .unsupported _ => none
 
 /-- A struct's fields in C, among `structs`. -/
 def Struct.cFields (structs : List Struct) (s : Struct) :

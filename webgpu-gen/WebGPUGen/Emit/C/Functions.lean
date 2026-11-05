@@ -177,8 +177,10 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
     .call (shimName o (if b then "unbox_option" else "unbox")) [.name x]
   | .string b          =>
     some (.call (if b then optionStringViewName else stringViewName) [.name x])
-  -- Not passed to functions yet: their conversions come with descriptors.
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
+  -- Not passed to functions yet: their conversions come with descriptors,
+  -- and a future with callbacks.
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
+    none
   | .unsupported _     => none
 
 /-- The C function that fills in a struct argument's pointers (`c/reloc.c`). -/
@@ -269,7 +271,8 @@ def resultExpr (objects : List Lowered.Object) : Value → Option Expr
   | .object names b => (objectNamed objects names.c).map fun o =>
     box (shimName o (if b then "box_option" else "box")) result
   | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
-  | .string _       => none
+  -- A future is boxed with callbacks.
+  | .string _ | .future => none
   | .unsupported _  => none
 where
   result : Expr := .name "result"

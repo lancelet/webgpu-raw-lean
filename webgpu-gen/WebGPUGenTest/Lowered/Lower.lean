@@ -236,7 +236,7 @@ def resultValue? (methods : String) : Option (Option Value) :=
       }
     ]
     result   := some (.object queue false)
-    callback := false
+    callback := none
   }
   deviceMethods input == some #[expected] && expected.unsupported == []
 
@@ -380,6 +380,132 @@ def resultValue? (methods : String) : Option (Option Value) :=
     (objects := deviceWith methods)
   ((lowerText input).bind (·.objects[0]?.bind (·.methods[0]?)))
     |>.map (·.unsupported) == some ["takes a callback"]
+
+/-! ## Callbacks -/
+
+/--
+A spec with a device, an enum, a struct, and `callbacks`; the device's method
+`m` takes the callback `found`.
+-/
+def callbackSpec (callbacks : String) : String :=
+  spec
+    (enums := dedent "
+      - name: mode
+        doc: x
+        entries:
+          - name: a
+            doc: x
+      ")
+    (structs := dedent "
+      - name: info
+        doc: x
+        type: standalone
+      ")
+    (callbacks := callbacks)
+    (objects := deviceWith "- name: m\n  doc: x\n  callback: callback.found\n")
+
+/-- The callback the device's method takes, lowered, if the spec lowers. -/
+def methodCallback (callbacks : String) : Option Lowered.Callback :=
+  (lowerText (callbackSpec callbacks)).bind fun l =>
+    l.objects[0]?.bind (·.methods[0]?.bind (·.callback))
+
+-- A callback, named on both sides: each argument crosses into Lean as a
+-- result does, an enum by its code, an object C gives its reference to as an
+-- `Option` (C may pass NULL even where the spec does not say so), and a
+-- string copied, as a `String`.
+#guard
+  let input := dedent "
+    - name: found
+      doc: x
+      style: callback_mode
+      args:
+        - name: status
+          doc: x
+          type: enum.mode
+        - name: device
+          doc: x
+          type: object.device
+          passed_with_ownership: true
+        - name: message
+          doc: x
+          type: out_string
+          passed_with_ownership: false
+    "
+  let mode : Names := ⟨"WGPUMode", "Mode"⟩
+  let device : Names := ⟨"WGPUDevice", "Device"⟩
+  (methodCallback input).map (fun c =>
+      (c.names, c.style, c.args.toList.map (·.value)))
+    == some (⟨"WGPUFoundCallback", "FoundCallback"⟩, .callbackMode,
+      [.enum mode, .object device true, .string false])
+
+-- What a callback cannot pass yet: an object C lends without its reference,
+-- behind a pointer, as a device's lost callback's device; and a struct, as
+-- shader compilation's info. Its function is not bound, for each.
+#guard
+  let input := dedent "
+    - name: found
+      doc: x
+      style: callback_mode
+      args:
+        - name: device
+          doc: x
+          type: object.device
+          pointer: immutable
+          passed_with_ownership: false
+        - name: info
+          doc: x
+          type: struct.info
+          pointer: immutable
+          passed_with_ownership: false
+    "
+  let method := (lowerText (callbackSpec input)).bind fun l =>
+    l.objects[0]?.bind (·.methods[0]?)
+  method.map (·.unsupported) == some [
+    "takes a callback",
+    "callback device: object (immutable pointer)",
+    "callback info: struct (immutable pointer)"
+  ]
+
+-- Nor, though the spec has none, an optional argument, a string C gives its
+-- memory to, or an object C does not give its reference to; and an enum
+-- crosses as a result's does, keeping a code the bindings do not know.
+#guard
+  let input := dedent "
+    - name: found
+      doc: x
+      style: callback_mode
+      args:
+        - name: status
+          doc: x
+          type: enum.mode
+          optional: true
+        - name: message
+          doc: x
+          type: out_string
+          passed_with_ownership: true
+        - name: device
+          doc: x
+          type: object.device
+        - name: mode
+          doc: x
+          type: enum.mode
+    "
+  (methodCallback input).map (fun c =>
+      (c.unsupported, c.args.toList.getLast?.bind (·.value.resultLeanType)))
+    == some ([
+      "callback status: enum",
+      "callback message: out_string",
+      "callback device: object"
+    ], some "Except UInt32 Mode")
+
+-- A function that takes a callback returns a future, in Lean a `Future`.
+#guard
+  let input := "- name: found\n  doc: x\n  style: immediate\n"
+  let method := (lowerText (callbackSpec input)).bind fun l =>
+    l.objects[0]?.bind (·.methods[0]?)
+  method.map (·.result) == some (some .future)
+    && Value.future.leanType == some "Future"
+    && Value.future.cType == some "WGPUFuture"
 
 -- A nullable string is an `Option String`, `none` being the null view.
 #guard
@@ -1196,7 +1322,7 @@ def bareStruct (name : String) (kind : Common.StructKind)
       ⟨⟨"labelled", "labelled"⟩, "", .structPointer labelled.names false⟩
     ]
     result   := none
-    callback := false
+    callback := none
   }
   let spec : Lowered.Spec := {
     constants := #[], enums := #[], bitflags := #[], objects := #[]
