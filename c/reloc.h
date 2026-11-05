@@ -30,4 +30,16 @@ void const * lean_wgpu_fill_arg(
     b_lean_obj_arg bytes, b_lean_obj_arg tables, size_t table,
     b_lean_obj_arg targets);
 
+// Fill in `block`, the zeroed block of an array argument of objects
+// (`objects`, an `Array` of them), with their handles, a pointer wide each,
+// in place: it is fresh, and held by the call alone. The pointer to pass: to
+// the handles, or NULL if there are none.
+void const * lean_wgpu_fill_objects(
+    b_lean_obj_arg block, b_lean_obj_arg objects);
+
+// The pointer to pass for an array argument of `uint32_t`s (`words`, an
+// `Array UInt32`) whose block, as C lays them out, is `block`: to it, or NULL
+// if there are none. C only reads it.
+void const * lean_wgpu_u32s_arg(b_lean_obj_arg block, b_lean_obj_arg words);
+
 #endif

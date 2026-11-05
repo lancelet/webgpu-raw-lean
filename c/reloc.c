@@ -183,3 +183,29 @@ void const * lean_wgpu_fill_arg(
     lean_wgpu_fill_struct(data, size, tables, table, targets);
     return data;
 }
+
+void const * lean_wgpu_fill_objects(
+        b_lean_obj_arg block, b_lean_obj_arg objects) {
+    size_t count = lean_array_size(objects);
+    LEAN_WGPU_CHECK(lean_sarray_size(block) == count * sizeof(void *),
+        "an array's block not a pointer wide an object");
+    if (count == 0) {
+        return NULL;
+    }
+    // Written into in place: the block is fresh, held by the call alone.
+    LEAN_WGPU_CHECK(lean_is_exclusive(block),
+        "an array's block held by anything else");
+    uint8_t * data = lean_sarray_cptr(block);
+    for (size_t k = 0; k < count; k++) {
+        void * handle = lean_get_external_data(lean_array_get_core(objects, k));
+        memcpy(data + k * sizeof handle, &handle, sizeof handle);
+    }
+    return data;
+}
+
+void const * lean_wgpu_u32s_arg(b_lean_obj_arg block, b_lean_obj_arg words) {
+    size_t count = lean_array_size(words);
+    LEAN_WGPU_CHECK(lean_sarray_size(block) == count * sizeof(uint32_t),
+        "an array's block not 4 bytes an element");
+    return count == 0 ? NULL : lean_sarray_cptr(block);
+}

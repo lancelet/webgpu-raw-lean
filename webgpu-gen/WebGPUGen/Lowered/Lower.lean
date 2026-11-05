@@ -116,10 +116,11 @@ def structNamed (r : Resolved.Spec) (id : Id .struct) (value : Names → Value) 
 /--
 How an argument crosses into C, borrowed for the call. Only the shapes the
 bindings handle are passed: a primitive, enum, bitflag or object, not behind a
-pointer, or a struct behind an immutable one, which C only reads; a nullable
-float is not passed yet. An object or a struct can be optional: NULL in C. An
-argument with ownership stated is an output struct whose members the caller
-must free, which is not handled yet.
+pointer; a struct behind an immutable one, which C only reads; or an array,
+behind an immutable one, of objects (none optional) or of `uint32`s; a
+nullable float is not passed yet. An object or a struct can be optional:
+NULL in C. An argument with ownership stated is an output struct whose
+members the caller must free, which is not handled yet.
 -/
 def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
   let unsupported := Value.unsupported (describe p.type p.pointer)
@@ -127,6 +128,12 @@ def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
   match p.pointer, p.type with
   | some .immutable, .named (.struct id) =>
     structNamed r id (.structPointer · p.optional)
+  -- An array of objects, or of `uint32`s, as C's count and pointer.
+  | some .immutable, .arrayOf (.object id) =>
+    if p.optional then unsupported
+    else named r (.object id) fun names => .array (.object names false) count
+  | some .immutable, .primitive (.array .uint32) =>
+    if p.optional then unsupported else .array .uint32 count
   | some _, _ => unsupported
   | none, _ =>
   match p.type with
@@ -140,6 +147,8 @@ def argValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
     if p.optional then unsupported else named r (.bitflag id) .bitflag
   | .named (.object id) => named r (.object id) (.object · p.optional)
   | _ => unsupported
+where
+  count := arrayCountName p.name
 
 /--
 How a result crosses back into Lean. An object is passed only if the spec says

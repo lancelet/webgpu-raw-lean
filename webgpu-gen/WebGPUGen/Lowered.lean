@@ -212,8 +212,10 @@ def Value.isObject : Value → Bool
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
-  -- Not passed to functions yet: their shims come with descriptors. A
-  -- callback's info is only ever in a struct.
+  -- Not one raw type: a struct behind a pointer, or an array, is several
+  -- parameters (`Emit.Lean.rawBinders`). Not passed to functions yet: a
+  -- nullable float or a struct by value. A callback's info is only ever in
+  -- a struct.
   | .nullableFloat32 | .struct _ | .structPointer .. | .array ..
   | .callbackInfo .. => none
   | .enum _    => "UInt32"

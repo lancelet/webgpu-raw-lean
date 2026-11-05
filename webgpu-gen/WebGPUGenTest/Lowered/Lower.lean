@@ -397,6 +397,39 @@ def resultValue? (methods : String) : Option (Option Value) :=
   argValues input == some [.unsupported "nullable_float32"]
     && resultValue? input == some (some (.unsupported "nullable_float32"))
 
+-- An array argument of objects, or of `uint32`s, is passed, its count named
+-- as C's: as `Queue.submit`'s command buffers, and `setBindGroup`'s dynamic
+-- offsets; an array of optional objects, or of other scalars, is not yet.
+#guard
+  let input := dedent "
+    - name: m
+      doc: x
+      args:
+        - name: queues
+          doc: x
+          type: array<object.queue>
+          pointer: immutable
+        - name: offsets
+          doc: x
+          type: array<uint32>
+          pointer: immutable
+        - name: maybe
+          doc: x
+          type: array<object.queue>
+          pointer: immutable
+          optional: true
+        - name: wide
+          doc: x
+          type: array<uint64>
+          pointer: immutable
+    "
+  argValues input == some [
+    .array (.object ⟨"WGPUQueue", "Queue"⟩ false) "queueCount",
+    .array .uint32 "offsetCount",
+    .unsupported "array (immutable pointer)",
+    .unsupported "array<uint64> (immutable pointer)"
+  ]
+
 -- A method that takes a callback whose arguments can all be passed can be
 -- bound.
 #guard
@@ -567,8 +600,7 @@ def methodCallback (callbacks : String) : Option Lowered.Callback :=
   (resultValue? input).map (·.bind Value.resultLeanType)
     == some (some "Option Queue")
 
--- An optional enum has no `none` to stand for: not passed. Nor are arrays and
--- callbacks yet.
+-- An optional enum has no `none` to stand for: not passed.
 #guard
   let input := dedent "
     - name: m
@@ -578,20 +610,8 @@ def methodCallback (callbacks : String) : Option Lowered.Callback :=
           doc: x
           type: enum.mode
           optional: true
-        - name: b
-          doc: x
-          type: array<object.queue>
-          pointer: immutable
-        - name: c
-          doc: x
-          type: array<uint32>
-          pointer: immutable
     "
-  argValues input == some [
-    .unsupported "enum",
-    .unsupported "array (immutable pointer)",
-    .unsupported "array<uint32> (immutable pointer)"
-  ]
+  argValues input == some [.unsupported "enum"]
 
 -- A value the bindings cannot pass has no type on either side, so a printer
 -- cannot print one by mistake.

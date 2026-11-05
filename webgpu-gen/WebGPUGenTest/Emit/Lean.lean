@@ -843,6 +843,31 @@ def member (name : String) (value : Value) (default : Option Lowered.Default) :
         throw (IO.userError \"doIt: a size_t too large\")
     "
 
+-- An array: the raw declaration takes it and its block, typed as its own
+-- (`ObjectsBlockOf`, `U32sOf`); the function passes the block, proved by
+-- `rfl`.
+#guard
+  let buffers :=
+    Value.array (.object ⟨"WGPUBuffer", "Buffer"⟩ false) "bufferCount"
+  let f := function "wgpuDoIt" "doIt" none
+    #[arg "buffers" buffers, arg "offsets" (.array .uint32 "offsetCount")]
+    none
+  render ((rawDecl f).getD .nil) == dedent "
+    /-- The shim behind `doIt`. -/
+    @[extern \"lean_wgpuDoIt\"]
+    opaque Internal.doIt
+        (buffers      : @& Array Buffer)
+        (buffersBlock : @& ObjectsBlockOf buffers)
+        (offsets      : @& Array UInt32)
+        (offsetsBlock : @& U32sOf offsets) :
+        IO Unit
+    "
+  && render ((wrapperDecl f).getD .nil) == dedent "
+    @[inline]
+    def doIt (buffers : Array Buffer) (offsets : Array UInt32) : IO Unit :=
+      Internal.doIt buffers ⟨_, rfl⟩ offsets ⟨_, rfl⟩
+    "
+
 -- A struct that is of no use without its chain: the function refuses it with
 -- an empty chain, as an implementation may abort (wgpu-native does), before
 -- checking its `size_t`s.

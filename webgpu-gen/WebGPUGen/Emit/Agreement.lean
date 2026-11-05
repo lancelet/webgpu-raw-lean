@@ -63,6 +63,12 @@ theorem isSome_mapM {α β} {f : α → Option β} :
     rw [List.mapM_cons, List.forall_mem_cons, ← isSome_mapM (l := xs)]
     cases f x <;> cases xs.mapM f <;> simp
 
+/-- An array a shim takes is of objects, none optional, or of `uint32`s. -/
+theorem element_of_arrayArgName {e : Value} (h : (C.arrayArgName e).isSome) :
+    (∃ names, e = .object names false) ∨ e = .uint32 := by
+  unfold C.arrayArgName at h
+  split at h <;> simp_all
+
 /-- An argument a shim takes has parameters in the raw declaration. -/
 theorem rawBinders_of_argCrossing {objects : List Lowered.Object}
     {x y : String} {v : Value} (h : (C.argCrossing objects x v).isSome) :
@@ -70,6 +76,8 @@ theorem rawBinders_of_argCrossing {objects : List Lowered.Object}
   cases v <;> simp_all [C.argCrossing, Lean.rawBinders, C.argExpr,
     Value.abiCType, Value.rawLeanType, Value.leanType, Option.isSome_bind,
     apply_ite Option.isSome]
+  all_goals obtain ⟨_, rfl⟩ | rfl := element_of_arrayArgName h <;>
+    simp [Value.leanType]
 
 /-- An argument a shim takes has a Lean type. -/
 theorem leanType_of_argCrossing {objects : List Lowered.Object}
@@ -77,6 +85,8 @@ theorem leanType_of_argCrossing {objects : List Lowered.Object}
     v.leanType.isSome := by
   cases v <;> simp_all [C.argCrossing, C.argExpr, Value.abiCType,
     Value.leanType, Option.isSome_bind, apply_ite Option.isSome]
+  all_goals obtain ⟨_, rfl⟩ | rfl := element_of_arrayArgName h <;>
+    simp [Value.leanType]
 
 /--
 What a shim for `f` needs of its values: a crossing for each argument, a

@@ -192,8 +192,10 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
     .call (shimName o (if b then "unbox_option" else "unbox")) [.name x]
   | .string b          =>
     some (.call (if b then optionStringViewName else stringViewName) [.name x])
-  -- Not passed to functions yet: their conversions come with descriptors. A
-  -- future is only ever a result, and a callback's info in a struct.
+  -- Not one parameter: a struct behind a pointer, or an array, crosses as
+  -- several (`argCrossing`). Not passed to functions yet: a nullable float
+  -- or a struct by value. A future is only ever a result, and a callback's
+  -- info in a struct.
   | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future
   | .callbackInfo .. | .lentObject _ => none
   | .unsupported _     => none
@@ -202,13 +204,25 @@ def argExpr (objects : List Lowered.Object) (x : String) : Value → Option Expr
 def fillArgName : String := "lean_wgpu_fill_arg"
 
 /--
+The C function that gives the pointer to pass for an array argument whose
+elements are `element` (`c/reloc.c`): filling an array of objects' block with
+their handles, or giving an array of `uint32_t`s' block as it is. None for
+other elements, which the bindings do not pass yet.
+-/
+def arrayArgName : Value → Option String
+  | .object _ false => some "lean_wgpu_fill_objects"
+  | .uint32         => some "lean_wgpu_u32s_arg"
+  | _               => none
+
+/--
 How an argument crosses into C: the shim's parameters for it, statements
-before the call, and the C value the function takes.
+before the call, and the C values the function takes for it, in order: one,
+or an array's count and pointer.
 -/
 structure Crossing where
   params : List Param
   before : List Stmt
-  value  : Expr
+  values : List Expr
 
 /--
 How an argument `x` of the value `v` crosses, none if it cannot. Most cross as
@@ -217,7 +231,9 @@ four: the Lean value, unused, which the proofs about the others are of; its
 bytes, as C lays it out (borrowed: Lean releases them after the call); what C
 fills in its pointers from; and its table's index. Before the call they are
 filled in, by the tables (the shim's `tables`), into a pointer to pass, as
-`void const *`, which C converts to the struct's pointer type.
+`void const *`, which C converts to the struct's pointer type. An array
+crosses as two: the Lean array, and its block (`arrayArgName`), whose pointer
+C passes after the array's size.
 -/
 def argCrossing (objects : List Lowered.Object) (x : String) (v : Value) :
     Option Crossing :=
@@ -233,12 +249,21 @@ def argCrossing (objects : List Lowered.Object) (x : String) (v : Value) :
           .name (x ++ "_bytes"), .name "tables",
           .call "lean_usize_of_nat" [.name (x ++ "_table")],
           .name (x ++ "_targets")]))]
-      value  := .name filled
+      values := [.name filled]
+    }
+  | .array element _ => do
+    let fill ← arrayArgName element
+    let data := x ++ "_data"
+    pure {
+      params := [⟨"b_lean_obj_arg", x⟩, ⟨"b_lean_obj_arg", x ++ "_block"⟩]
+      before := [.decl "void const *" data
+        (some (.call fill [.name (x ++ "_block"), .name x]))]
+      values := [.call "lean_array_size" [.name x], .name data]
     }
   | v => do
     let type ← v.abiCType
     let e ← argExpr objects x v
-    pure { params := [⟨type, x⟩], before := [], value := e }
+    pure { params := [⟨type, x⟩], before := [], values := [e] }
 
 /-- Whether `f` takes a struct behind a pointer: its shim takes the tables. -/
 def takesStruct (f : Lowered.Function) : Bool :=
@@ -604,7 +629,7 @@ def functionShim (objects : List Lowered.Object) (structs : List Names)
   let args ← f.args.toList.mapM fun a => argCrossing objects a.names.c a.value
   let checks :=
     f.args.toList.flatMap fun a => argCheck f.names.lean a.names.c a.value
-  let call := Expr.call f.names.c (receiver.map (·.2) ++ args.map (·.value)
+  let call := Expr.call f.names.c (receiver.map (·.2) ++ args.flatMap (·.values)
     ++ (if f.callback.isSome then [.name "callbackInfo"] else []))
   let (familyBefore, familyAfter) :=
     familyAround f ((receiver.head?).map (·.2))

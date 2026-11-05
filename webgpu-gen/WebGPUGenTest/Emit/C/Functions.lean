@@ -598,4 +598,36 @@ def request (held : Bool) : Lowered.Function := {
     }
     ")
 
+-- An array crosses as itself and its block, which C fills with an array of
+-- objects' handles, or passes as it is for `uint32_t`s; the function takes
+-- its size and the pointer. An array of anything else has no shim.
+#guard
+  let buffers :=
+    Value.array (.object ⟨"WGPUBuffer", "Buffer"⟩ false) "bufferCount"
+  let f := function #[arg "buffers" buffers,
+    arg "offsets" (.array .uint32 "offsetCount")] none
+  let wide := function #[arg "sizes" (.array .uint64 "sizeCount")] none
+  (functionShim [buffer] [] wide).isNone
+    && (functionShim [buffer] [] f).map (fun s => file [.function s])
+      == some (dedent "
+    // Lean's `doIt`: calls `wgpuDoIt`.
+    LEAN_EXPORT lean_obj_res lean_wgpuDoIt(
+        b_lean_obj_arg buffers,
+        b_lean_obj_arg buffers_block,
+        b_lean_obj_arg offsets,
+        b_lean_obj_arg offsets_block
+    ) {
+        void const * buffers_data = lean_wgpu_fill_objects(buffers_block, buffers);
+        void const * offsets_data = lean_wgpu_u32s_arg(offsets_block, offsets);
+        lean_object * saved = lean_wgpu_callbacks_enter();
+        wgpuDoIt(
+            lean_array_size(buffers),
+            buffers_data,
+            lean_array_size(offsets),
+            offsets_data
+        );
+        return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+    }
+    ")
+
 end WebGPUGenTest.Emit.C.Functions

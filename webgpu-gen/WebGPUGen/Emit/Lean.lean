@@ -388,10 +388,12 @@ def receiverBinder (f : Lowered.Function) (borrowed : Bool) : List Binder :=
 
 /--
 An argument's parameters in the raw declaration: one, its raw type, borrowed if
-an object; or, for a struct behind a pointer, four, as its shim takes them
+an object; for a struct behind a pointer, four, as its shim takes them
 (`Emit.C.argCrossing`): the value, which the others' types are of; its bytes,
 its targets and its table's index, each typed as exactly the struct's own, so
-nothing else can be passed. None if a value has no raw type.
+nothing else can be passed; and for an array, two: the array, and its block
+(`ObjectsBlockOf`, `U32sOf`), typed as exactly its own. None if a value has
+no raw type.
 -/
 def rawBinders (x : String) : Value → Option (List Binder)
   | .structPointer names b =>
@@ -403,6 +405,14 @@ def rawBinders (x : String) : Value → Option (List Binder)
       ⟨x ++ "Bytes", s!"@& {bytes} {x}"⟩,
       ⟨x ++ "Targets", s!"@& {targets} {x}"⟩,
       ⟨x ++ "Table", s!"@& IndexOf {names.lean}"⟩]
+  | .array element _ =>
+    let block := match element with
+      | .object _ false => some "ObjectsBlockOf"
+      | .uint32         => some "U32sOf"
+      | _               => none
+    block.bind fun block => element.leanType.map fun type => [
+      ⟨x, s!"@& Array {type}"⟩,
+      ⟨x ++ "Block", s!"@& {block} {x}"⟩]
   | v => v.rawLeanType.map fun type =>
     [⟨x, (if v.isObject then "@& " else "") ++ type⟩]
 
@@ -437,12 +447,13 @@ def rawDecl (f : Lowered.Function) : Option Doc := do
 /--
 An argument `x` of `f`, converted to what the raw declaration takes: a struct
 behind a pointer as itself and its bytes, targets and table's index, each
-proved its own by `rfl`.
+proved its own by `rfl`; and an array as itself and its block, likewise.
 -/
 def rawArg (x : String) : Value → List String
   | .enum _          => [s!"(CEnum.toC {x})"]
   | .bitflag _       => [s!"{x}.bits"]
   | .structPointer .. => [x, "⟨_, rfl⟩", "⟨_, rfl⟩", "⟨_, rfl⟩"]
+  | .array ..         => [x, "⟨_, rfl⟩"]
   | _                => [x]
 
 /--

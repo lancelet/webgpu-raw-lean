@@ -605,6 +605,22 @@ abbrev OptTargetsOf {T : Type} [CStruct T] (d : Option T) :=
 abbrev IndexOf (T : Type) [CStruct T] :=
   {i : Nat // i = CStruct.tableIndex T}
 
+/-!
+A function that takes an array of objects passes C the array and a block of
+zeros, a pointer wide an object on this target, which C fills with their
+handles (`lean_wgpu_fill_objects`) and passes, with the array's size; one
+that takes an array of `UInt32`s passes the block of them, as C lays them
+out. Each block is typed as exactly the array's own.
+-/
+
+/-- The zeroed block for the handles of `xs`, and no other. -/
+abbrev ObjectsBlockOf {α : Type} (xs : Array α) :=
+  {b : ByteArray // b = objectsBlock Width.current.bytes xs}
+
+/-- The block of `xs`, as C lays them out, and no other. -/
+abbrev U32sOf (xs : Array UInt32) :=
+  {b : ByteArray // b = encodeU32s id xs}
+
 end WebGPU.Raw.Reloc
 
 end
