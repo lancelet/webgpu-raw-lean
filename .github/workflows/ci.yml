@@ -55,8 +55,14 @@ jobs:
       #
       # The generator is only needed to regenerate the bindings: users of the
       # bindings can skip this step and the next.
+      #
+      # The generated shims are compiled with the system C compiler, and on
+      # Linux with clang too, which warns of what gcc allows (clang is macOS's
+      # compiler already). By path, since Lake puts Lean's own clang first.
       - name: Build and test the generator
         uses: leanprover/lean-action@v1
+        env:
+          CLANG: ${{ runner.os == 'Linux' && '/usr/bin/clang' || '' }}
         with:
           lake-package-directory: webgpu-gen
           auto-config: false

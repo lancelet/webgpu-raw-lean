@@ -71,16 +71,31 @@ def takes (p : Value → Bool) (f : Lowered.Function) : Bool :=
 def checksAValue (f : Lowered.Function) : Bool := takes Value.checked f
 
 /--
-The helpers shims use, defined once at the top of the file: each with which
-functions need it. A helper no shim uses is left out, since C warns of it. They
-are `static inline`, since in a build where an implementation leaves some
-functions unimplemented, the shims that would use one may not be compiled.
+How a function the shims use is declared, by the macro `helperMacro`
+defines: `static inline`, and marked as perhaps unused, as in a build against
+an implementation that leaves some functions unimplemented, the shims that
+would use it are not compiled (gcc allows an unused `static inline` function;
+clang warns of it).
 -/
+def helperAttrs : List String := ["LEAN_WGPU_HELPER"]
+
+/-- The definition of the macro `helperAttrs` names, with what it is for. -/
+def helperMacro : List Decl := [
+  .comment "A function the shims use, which some builds may not.",
+  .define "LEAN_WGPU_HELPER" [] ["static inline __attribute__((unused))"]
+]
+
+/--
+The helpers shims use, defined once at the top of the file: each with which
+functions need it. A helper no shim uses is left out, as C warns of it; one
+only some builds use is declared so (`helperAttrs`).
+-/
+
 def helpers : List ((Lowered.Function → Bool) × Decl) := [
   (takes (· matches .string _), .function {
     doc    := "A view of the bytes of the Lean string `s`, which stays alive \
       while the string is borrowed. Its length leaves out the terminating NUL."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "WGPUStringView"
     name   := stringViewName
     params := [⟨"b_lean_obj_arg", "s"⟩]
@@ -96,7 +111,7 @@ def helpers : List ((Lowered.Function → Bool) × Decl) := [
   (takes (· == .string true), .function {
     doc    := "A view of the string a Lean `Option String` holds, or the null \
       view for `none`."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "WGPUStringView"
     name   := optionStringViewName
     params := [⟨"b_lean_obj_arg", "option"⟩]
@@ -112,7 +127,7 @@ def helpers : List ((Lowered.Function → Bool) × Decl) := [
   (takes (· == .usize), .function {
     doc    := "A size from Lean as a `size_t`, checked to fit: the largest \
       `UInt64` stands for `SIZE_MAX`, which is 32 bits on the web."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "size_t"
     name   := sizeName
     params := [⟨"uint64_t", "size"⟩]
@@ -122,10 +137,10 @@ def helpers : List ((Lowered.Function → Bool) × Decl) := [
       .ret (some (.cast "size_t" (.name "size")))
     ]
   }),
-  (takes (· == .usize), .function {
+  (fun f => f.result == some .usize, .function {
     doc    := "A `size_t` as a size in Lean: `SIZE_MAX` is the largest \
       `UInt64`."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "uint64_t"
     name   := sizeToLeanName
     params := [⟨"size_t", "size"⟩]
@@ -138,7 +153,7 @@ def helpers : List ((Lowered.Function → Bool) × Decl) := [
   (fun f => !f.notImplementedBy.isEmpty || checksAValue f, .function {
     doc    := "An `IO` error saying `message`, for a check a shim makes, or a \
       function an implementation does not implement."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "lean_obj_res"
     name   := ioErrorName
     params := [⟨"char const *", "message"⟩]
@@ -300,7 +315,7 @@ A callback's closure is its C userdata (`userdata1`), held until it is called
 (`c/callback.c`). Its trampoline, one for each callback type, boxes each
 argument as the closure takes it and applies the closure, which releases it:
 
-    static inline void lean_WGPUQueueWorkDoneCallback(
+    LEAN_WGPU_HELPER void lean_WGPUQueueWorkDoneCallback(
         WGPUQueueWorkDoneStatus status,
         WGPUStringView          message,
         void *                  userdata1,
@@ -355,7 +370,7 @@ def trampoline (objects : List Lowered.Object) (c : Lowered.Callback) :
   pure {
     doc    := s!"Calls the Lean closure `userdata1` as a `{c.names.lean}`, \
       releasing it."
-    attrs  := ["static", "inline"]
+    attrs  := helperAttrs
     result := "void"
     name   := trampolineName c
     params := params ++ [⟨"void *", "userdata1"⟩, ⟨"void *", "userdata2"⟩]
@@ -554,6 +569,7 @@ def functionsSource (spec : Lowered.Spec) : List Decl :=
     ++ (if bound.any (takesStruct ·.1) then [.includeLocal "reloc.h"] else [])
     ++ (if bound.any (runsCallbacks ·.1) then [.includeLocal "callback.h"]
       else [])
+    ++ helperMacro
     ++ helpers.filterMap (fun (needs, d) =>
       if bound.any (needs ·.1) then some d else none)
     ++ callbacks.filterMap (fun c =>

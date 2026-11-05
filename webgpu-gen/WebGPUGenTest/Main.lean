@@ -226,7 +226,9 @@ def probeSource (buffer : WebGPUGen.Lowered.Object) : String :=
 Compile the generated C shims, with warnings as errors, against the vendored
 `webgpu.h` (at `headerPath`) and Lean's `lean.h`, with the system C compiler
 (`cc`, or the one `CC` names), as the bindings' build does: Lean's bundled
-compiler lacks the C library's headers, which `webgpu.h` includes.
+compiler lacks the C library's headers, which `webgpu.h` includes. And with
+the one `CLANG` names, if any, as compilers warn of different things (clang
+of an unused `static inline` function, which gcc allows; CI names one).
 Only compiling, not linking: nothing here needs wgpu-native.
 -/
 def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
@@ -256,19 +258,24 @@ def compileShims (spec : WebGPUGen.Lowered.Spec) (header : System.FilePath) :
       ("layouts", #[]),
       ("probe", #[])
     ]
-    for (source, defines) in builds do
-      let out ← IO.Process.output {
-        cmd  := (← IO.getEnv "CC").getD "cc"
-        args := #[
-          "-c", "-std=c11", "-Wall", "-Wextra", "-Werror",
-          "-I", dir.toString, "-I", leanInclude.toString
-        ] ++ defines ++ #[
-          (dir / s!"{source}.c").toString, "-o", (dir / s!"{source}.o").toString
-        ]
-      }
-      errors := errors ++ out.stderr
-      unless out.exitCode == 0 do
-        return some errors
+    let compilers :=
+      [(← IO.getEnv "CC").getD "cc"]
+        ++ ((← IO.getEnv "CLANG").toList.filter (!·.isEmpty))
+    for cc in compilers do
+      for (source, defines) in builds do
+        let out ← IO.Process.output {
+          cmd  := cc
+          args := #[
+            "-c", "-std=c11", "-Wall", "-Wextra", "-Werror",
+            "-I", dir.toString, "-I", leanInclude.toString
+          ] ++ defines ++ #[
+            (dir / s!"{source}.c").toString, "-o",
+            (dir / s!"{source}.o").toString
+          ]
+        }
+        errors := errors ++ out.stderr
+        unless out.exitCode == 0 do
+          return some errors
     return none
 
 /--

@@ -219,7 +219,7 @@ def found : Lowered.Callback := {
 #guard
   let expected := dedent "
     // Calls the Lean closure `userdata1` as a `FoundCallback`, releasing it.
-    static inline void lean_WGPUFoundCallback(
+    LEAN_WGPU_HELPER void lean_WGPUFoundCallback(
         WGPUMode       status,
         WGPUBuffer     buffer,
         WGPUStringView message,
