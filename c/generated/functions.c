@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: bf5c6e3 (clean)
-  Generated:        2026-11-04 23:49:00 UTC
+  Generator commit: 0348310 (clean)
+  Generated:        2026-11-05 04:04:48 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include "objects.h"
 #include "reloc.h"
+#include "callback.h"
 
 // A view of the bytes of the Lean string `s`, which stays alive while the
 // string is borrowed. Its length leaves out the terminating NUL.
@@ -27,11 +28,149 @@ static inline WGPUStringView lean_wgpu_string_view(b_lean_obj_arg s) {
     return view;
 }
 
+// A size from Lean as a `size_t`, checked to fit: the largest `UInt64` stands
+// for `SIZE_MAX`, which is 32 bits on the web.
+static inline size_t lean_wgpu_size(uint64_t size) {
+    if (size == UINT64_MAX) {
+        return SIZE_MAX;
+    }
+    return (size_t)size;
+}
+
+// A `size_t` as a size in Lean: `SIZE_MAX` is the largest `UInt64`.
+static inline uint64_t lean_wgpu_size_to_lean(size_t size) {
+    if (size == SIZE_MAX) {
+        return UINT64_MAX;
+    }
+    return (uint64_t)size;
+}
+
 // An `IO` error saying `message`, for a check a shim makes, or a function an
 // implementation does not implement.
 static inline lean_obj_res lean_wgpu_io_error(char const * message) {
     return lean_io_result_mk_error(
         lean_mk_io_user_error(lean_mk_string(message))
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `BufferMapCallback`, releasing it.
+static inline void lean_WGPUBufferMapCallback(
+    WGPUMapAsyncStatus status,
+    WGPUStringView     message,
+    void *             userdata1,
+    void *             userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_3(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `CreateComputePipelineAsyncCallback`,
+// releasing it.
+static inline void lean_WGPUCreateComputePipelineAsyncCallback(
+    WGPUCreatePipelineAsyncStatus status,
+    WGPUComputePipeline           pipeline,
+    WGPUStringView                message,
+    void *                        userdata1,
+    void *                        userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_4(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_compute_pipeline_box_option(pipeline),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `CreateRenderPipelineAsyncCallback`,
+// releasing it.
+static inline void lean_WGPUCreateRenderPipelineAsyncCallback(
+    WGPUCreatePipelineAsyncStatus status,
+    WGPURenderPipeline            pipeline,
+    WGPUStringView                message,
+    void *                        userdata1,
+    void *                        userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_4(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_render_pipeline_box_option(pipeline),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `PopErrorScopeCallback`, releasing
+// it.
+static inline void lean_WGPUPopErrorScopeCallback(
+    WGPUPopErrorScopeStatus status,
+    WGPUErrorType           type,
+    WGPUStringView          message,
+    void *                  userdata1,
+    void *                  userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_4(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_box_uint32((uint32_t)type),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `RequestAdapterCallback`, releasing
+// it.
+static inline void lean_WGPURequestAdapterCallback(
+    WGPURequestAdapterStatus status,
+    WGPUAdapter              adapter,
+    WGPUStringView           message,
+    void *                   userdata1,
+    void *                   userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_4(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_adapter_box_option(adapter),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
+    );
+}
+
+// Calls the Lean closure `userdata1` as a `QueueWorkDoneCallback`, releasing
+// it.
+static inline void lean_WGPUQueueWorkDoneCallback(
+    WGPUQueueWorkDoneStatus status,
+    WGPUStringView          message,
+    void *                  userdata1,
+    void *                  userdata2
+) {
+    (void)userdata2;
+    lean_wgpu_callback_done(
+        lean_apply_3(
+            (lean_object *)userdata1,
+            lean_box_uint32((uint32_t)status),
+            lean_wgpu_string_of_view(message),
+            lean_io_mk_world()
+        )
     );
 }
 
@@ -122,6 +261,46 @@ LEAN_EXPORT lean_obj_res lean_wgpuBindGroupLayoutSetLabel(
     #endif
 }
 
+// Lean's `Buffer.mapAsync`: calls `wgpuBufferMapAsync`.
+LEAN_EXPORT lean_obj_res lean_wgpuBufferMapAsync(
+    b_lean_obj_arg self,
+    uint64_t       mode,
+    uint64_t       offset,
+    uint64_t       size,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback
+) {
+    if ((offset != UINT64_MAX) && (((uint64_t)((size_t)offset)) != offset)) {
+        return lean_wgpu_io_error(
+            "Buffer.mapAsync: offset is too large for a size_t"
+        );
+    }
+    if ((size != UINT64_MAX) && (((uint64_t)((size_t)size)) != size)) {
+        return lean_wgpu_io_error(
+            "Buffer.mapAsync: size is too large for a size_t"
+        );
+    }
+    WGPUBufferMapCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPUBufferMapCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuBufferMapAsync(
+        lean_wgpu_buffer_unbox(self),
+        (WGPUMapMode)mode,
+        lean_wgpu_size(offset),
+        lean_wgpu_size(size),
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
+}
+
 // Lean's `Buffer.setLabel`: calls `wgpuBufferSetLabel`.
 LEAN_EXPORT lean_obj_res lean_wgpuBufferSetLabel(
     b_lean_obj_arg self,
@@ -171,14 +350,16 @@ LEAN_EXPORT lean_obj_res lean_wgpuBufferGetMapState(b_lean_obj_arg self) {
 
 // Lean's `Buffer.unmap`: calls `wgpuBufferUnmap`.
 LEAN_EXPORT lean_obj_res lean_wgpuBufferUnmap(b_lean_obj_arg self) {
+    lean_object * saved = lean_wgpu_callbacks_enter();
     wgpuBufferUnmap(lean_wgpu_buffer_unbox(self));
-    return lean_io_result_mk_ok(lean_box(0));
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
 
 // Lean's `Buffer.destroy`: calls `wgpuBufferDestroy`.
 LEAN_EXPORT lean_obj_res lean_wgpuBufferDestroy(b_lean_obj_arg self) {
+    lean_object * saved = lean_wgpu_callbacks_enter();
     wgpuBufferDestroy(lean_wgpu_buffer_unbox(self));
-    return lean_io_result_mk_ok(lean_box(0));
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
 
 // Lean's `CommandBuffer.setLabel`: calls `wgpuCommandBufferSetLabel`.
@@ -832,6 +1013,58 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipeline(
     return lean_io_result_mk_ok(lean_wgpu_compute_pipeline_box(result));
 }
 
+// Lean's `Device.createComputePipelineAsync`: calls
+// `wgpuDeviceCreateComputePipelineAsync`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateComputePipelineAsync(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback,
+    b_lean_obj_arg tables
+) {
+    #ifdef WEBGPU_RAW_DAWN
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUCreateComputePipelineAsyncCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPUCreateComputePipelineAsyncCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuDeviceCreateComputePipelineAsync(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct,
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
+    #else
+    (void)self;
+    (void)descriptor;
+    (void)descriptor_bytes;
+    (void)descriptor_targets;
+    (void)descriptor_table;
+    (void)callbackMode;
+    (void)callback;
+    (void)tables;
+    return lean_wgpu_io_error(
+        "Device.createComputePipelineAsync: not implemented by wgpu-native"
+    );
+    #endif
+}
+
 // Lean's `Device.createPipelineLayout`: calls `wgpuDeviceCreatePipelineLayout`.
 LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreatePipelineLayout(
     b_lean_obj_arg self,
@@ -882,6 +1115,58 @@ LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateQuerySet(
         return lean_wgpu_io_error("Device.createQuerySet returned NULL");
     }
     return lean_io_result_mk_ok(lean_wgpu_query_set_box(result));
+}
+
+// Lean's `Device.createRenderPipelineAsync`: calls
+// `wgpuDeviceCreateRenderPipelineAsync`.
+LEAN_EXPORT lean_obj_res lean_wgpuDeviceCreateRenderPipelineAsync(
+    b_lean_obj_arg self,
+    b_lean_obj_arg descriptor,
+    b_lean_obj_arg descriptor_bytes,
+    b_lean_obj_arg descriptor_targets,
+    b_lean_obj_arg descriptor_table,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback,
+    b_lean_obj_arg tables
+) {
+    #ifdef WEBGPU_RAW_DAWN
+    (void)descriptor;
+    void const * descriptor_struct = lean_wgpu_fill_arg(
+        descriptor_bytes,
+        tables,
+        lean_usize_of_nat(descriptor_table),
+        descriptor_targets
+    );
+    WGPUCreateRenderPipelineAsyncCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPUCreateRenderPipelineAsyncCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuDeviceCreateRenderPipelineAsync(
+        lean_wgpu_device_unbox(self),
+        descriptor_struct,
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
+    #else
+    (void)self;
+    (void)descriptor;
+    (void)descriptor_bytes;
+    (void)descriptor_targets;
+    (void)descriptor_table;
+    (void)callbackMode;
+    (void)callback;
+    (void)tables;
+    return lean_wgpu_io_error(
+        "Device.createRenderPipelineAsync: not implemented by wgpu-native"
+    );
+    #endif
 }
 
 // Lean's `Device.createRenderBundleEncoder`: calls
@@ -1056,6 +1341,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuDevicePushErrorScope(
     return lean_io_result_mk_ok(lean_box(0));
 }
 
+// Lean's `Device.popErrorScope`: calls `wgpuDevicePopErrorScope`.
+LEAN_EXPORT lean_obj_res lean_wgpuDevicePopErrorScope(
+    b_lean_obj_arg self,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback
+) {
+    WGPUPopErrorScopeCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPUPopErrorScopeCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuDevicePopErrorScope(
+        lean_wgpu_device_unbox(self),
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
+}
+
 // Lean's `Device.setLabel`: calls `wgpuDeviceSetLabel`.
 LEAN_EXPORT lean_obj_res lean_wgpuDeviceSetLabel(
     b_lean_obj_arg self,
@@ -1119,8 +1428,46 @@ LEAN_EXPORT lean_obj_res lean_wgpuInstanceHasWGSLLanguageFeature(
 
 // Lean's `Instance.processEvents`: calls `wgpuInstanceProcessEvents`.
 LEAN_EXPORT lean_obj_res lean_wgpuInstanceProcessEvents(b_lean_obj_arg self) {
+    lean_object * saved = lean_wgpu_callbacks_enter();
     wgpuInstanceProcessEvents(lean_wgpu_instance_unbox(self));
-    return lean_io_result_mk_ok(lean_box(0));
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `Instance.requestAdapter`: calls `wgpuInstanceRequestAdapter`.
+LEAN_EXPORT lean_obj_res lean_wgpuInstanceRequestAdapter(
+    b_lean_obj_arg self,
+    b_lean_obj_arg options,
+    b_lean_obj_arg options_bytes,
+    b_lean_obj_arg options_targets,
+    b_lean_obj_arg options_table,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback,
+    b_lean_obj_arg tables
+) {
+    (void)options;
+    void const * options_struct = lean_wgpu_fill_arg(
+        options_bytes,
+        tables,
+        lean_usize_of_nat(options_table),
+        options_targets
+    );
+    WGPURequestAdapterCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPURequestAdapterCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuInstanceRequestAdapter(
+        lean_wgpu_instance_unbox(self),
+        options_struct,
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
 }
 
 // Lean's `PipelineLayout.setLabel`: calls `wgpuPipelineLayoutSetLabel`.
@@ -1179,6 +1526,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuQuerySetGetCount(b_lean_obj_arg self) {
 LEAN_EXPORT lean_obj_res lean_wgpuQuerySetDestroy(b_lean_obj_arg self) {
     wgpuQuerySetDestroy(lean_wgpu_query_set_unbox(self));
     return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Lean's `Queue.onSubmittedWorkDone`: calls `wgpuQueueOnSubmittedWorkDone`.
+LEAN_EXPORT lean_obj_res lean_wgpuQueueOnSubmittedWorkDone(
+    b_lean_obj_arg self,
+    uint32_t       callbackMode,
+    b_lean_obj_arg callback
+) {
+    WGPUQueueWorkDoneCallbackInfo callbackInfo = {
+        .nextInChain = NULL,
+        .mode        = (WGPUCallbackMode)callbackMode,
+        .callback    = lean_WGPUQueueWorkDoneCallback,
+        .userdata1   = lean_wgpu_closure_hold(callback),
+        .userdata2   = NULL,
+    };
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    WGPUFuture result = wgpuQueueOnSubmittedWorkDone(
+        lean_wgpu_queue_unbox(self),
+        callbackInfo
+    );
+    return lean_wgpu_callbacks_leave(
+        saved,
+        lean_io_result_mk_ok(lean_box_uint64(result.id))
+    );
 }
 
 // Lean's `Queue.setLabel`: calls `wgpuQueueSetLabel`.

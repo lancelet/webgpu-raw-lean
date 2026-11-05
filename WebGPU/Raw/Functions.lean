@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: bf5c6e3 (clean)
-  Generated:        2026-11-04 23:49:00 UTC
+  Generator commit: 0348310 (clean)
+  Generated:        2026-11-05 04:04:48 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -34,6 +34,68 @@ them. `docs/Safety.md` gives the rules they follow.
 namespace WebGPU.Raw
 
 open Reloc
+
+/-- A closure C runs once, as a callback, given `status` and `message`. -/
+abbrev BufferMapCallback :=
+  Except UInt32 MapAsyncStatus → String → IO Unit
+
+/-- A `BufferMapCallback`, as its raw declaration takes it. -/
+abbrev Internal.BufferMapCallback :=
+  UInt32 → String → IO Unit
+
+/--
+A closure C runs once, as a callback, given `status`, `pipeline` and `message`.
+-/
+abbrev CreateComputePipelineAsyncCallback :=
+  Except UInt32 CreatePipelineAsyncStatus →
+    Option ComputePipeline →
+    String →
+    IO Unit
+
+/-- A `CreateComputePipelineAsyncCallback`, as its raw declaration takes it. -/
+abbrev Internal.CreateComputePipelineAsyncCallback :=
+  UInt32 → Option ComputePipeline → String → IO Unit
+
+/--
+A closure C runs once, as a callback, given `status`, `pipeline` and `message`.
+-/
+abbrev CreateRenderPipelineAsyncCallback :=
+  Except UInt32 CreatePipelineAsyncStatus →
+    Option RenderPipeline →
+    String →
+    IO Unit
+
+/-- A `CreateRenderPipelineAsyncCallback`, as its raw declaration takes it. -/
+abbrev Internal.CreateRenderPipelineAsyncCallback :=
+  UInt32 → Option RenderPipeline → String → IO Unit
+
+/--
+A closure C runs once, as a callback, given `status`, `type` and `message`.
+-/
+abbrev PopErrorScopeCallback :=
+  Except UInt32 PopErrorScopeStatus → Except UInt32 ErrorType → String → IO Unit
+
+/-- A `PopErrorScopeCallback`, as its raw declaration takes it. -/
+abbrev Internal.PopErrorScopeCallback :=
+  UInt32 → UInt32 → String → IO Unit
+
+/--
+A closure C runs once, as a callback, given `status`, `adapter` and `message`.
+-/
+abbrev RequestAdapterCallback :=
+  Except UInt32 RequestAdapterStatus → Option Adapter → String → IO Unit
+
+/-- A `RequestAdapterCallback`, as its raw declaration takes it. -/
+abbrev Internal.RequestAdapterCallback :=
+  UInt32 → Option Adapter → String → IO Unit
+
+/-- A closure C runs once, as a callback, given `status` and `message`. -/
+abbrev QueueWorkDoneCallback :=
+  Except UInt32 QueueWorkDoneStatus → String → IO Unit
+
+/-- A `QueueWorkDoneCallback`, as its raw declaration takes it. -/
+abbrev Internal.QueueWorkDoneCallback :=
+  UInt32 → String → IO Unit
 
 /-- The shim behind `createInstance`. -/
 @[extern "lean_wgpuCreateInstance"]
@@ -99,6 +161,34 @@ def BindGroupLayout.setLabel
     (label : String) :
     IO Unit :=
   Internal.BindGroupLayout.setLabel self label
+
+/-- The shim behind `Buffer.mapAsync`. -/
+@[extern "lean_wgpuBufferMapAsync"]
+opaque Internal.Buffer.mapAsync
+    (self         : @& Buffer)
+    (mode         : UInt64)
+    (offset       : UInt64)
+    (size         : UInt64)
+    (callbackMode : UInt32)
+    (callback     : @& Internal.BufferMapCallback) :
+    IO UInt64
+
+@[inline]
+def Buffer.mapAsync
+    (self         : Buffer)
+    (mode         : MapMode)
+    (offset       : UInt64)
+    (size         : UInt64)
+    (callbackMode : CallbackMode)
+    (callback     : BufferMapCallback) :
+    IO Future :=
+  Future.mk <$> Internal.Buffer.mapAsync
+      self
+      mode.bits
+      offset
+      size
+      (CEnum.toC callbackMode)
+      (fun status message => callback (CEnum.decode status) message)
 
 /-- The shim behind `Buffer.setLabel`. -/
 @[extern "lean_wgpuBufferSetLabel"]
@@ -810,6 +900,40 @@ def Device.createComputePipeline
   else
     throw (IO.userError "Device.createComputePipeline: a size_t too large")
 
+/-- The shim behind `Device.createComputePipelineAsync`. -/
+@[extern "lean_wgpuDeviceCreateComputePipelineAsync"]
+opaque Internal.Device.createComputePipelineAsync
+    (self              : @& Device)
+    (descriptor        : @& ComputePipelineDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf ComputePipelineDescriptor)
+    (callbackMode      : UInt32)
+    (callback          : @& Internal.CreateComputePipelineAsyncCallback)
+    (tables            : @& CurrentTablesOf) :
+    IO UInt64
+
+@[inline]
+def Device.createComputePipelineAsync
+    (self         : Device)
+    (descriptor   : ComputePipelineDescriptor)
+    (callbackMode : CallbackMode)
+    (callback     : CreateComputePipelineAsyncCallback) :
+    IO Future :=
+  if CStruct.sizesFit descriptor then
+    Future.mk <$> Internal.Device.createComputePipelineAsync
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        (CEnum.toC callbackMode)
+        (fun status pipeline message =>
+          callback (CEnum.decode status) pipeline message)
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createComputePipelineAsync: a size_t too large")
+
 /-- The shim behind `Device.createPipelineLayout`. -/
 @[extern "lean_wgpuDeviceCreatePipelineLayout"]
 opaque Internal.Device.createPipelineLayout
@@ -863,6 +987,40 @@ def Device.createQuerySet
         ⟨_, rfl⟩
   else
     throw (IO.userError "Device.createQuerySet: a size_t too large")
+
+/-- The shim behind `Device.createRenderPipelineAsync`. -/
+@[extern "lean_wgpuDeviceCreateRenderPipelineAsync"]
+opaque Internal.Device.createRenderPipelineAsync
+    (self              : @& Device)
+    (descriptor        : @& RenderPipelineDescriptor)
+    (descriptorBytes   : @& BytesOf descriptor)
+    (descriptorTargets : @& TargetsOf descriptor)
+    (descriptorTable   : @& IndexOf RenderPipelineDescriptor)
+    (callbackMode      : UInt32)
+    (callback          : @& Internal.CreateRenderPipelineAsyncCallback)
+    (tables            : @& CurrentTablesOf) :
+    IO UInt64
+
+@[inline]
+def Device.createRenderPipelineAsync
+    (self         : Device)
+    (descriptor   : RenderPipelineDescriptor)
+    (callbackMode : CallbackMode)
+    (callback     : CreateRenderPipelineAsyncCallback) :
+    IO Future :=
+  if CStruct.sizesFit descriptor then
+    Future.mk <$> Internal.Device.createRenderPipelineAsync
+        self
+        descriptor
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        (CEnum.toC callbackMode)
+        (fun status pipeline message =>
+          callback (CEnum.decode status) pipeline message)
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Device.createRenderPipelineAsync: a size_t too large")
 
 /-- The shim behind `Device.createRenderBundleEncoder`. -/
 @[extern "lean_wgpuDeviceCreateRenderBundleEncoder"]
@@ -1047,6 +1205,32 @@ Pushes an error scope to the current thread's error scope stack. See
 def Device.pushErrorScope (self : Device) (filter : ErrorFilter) : IO Unit :=
   Internal.Device.pushErrorScope self (CEnum.toC filter)
 
+/-- The shim behind `Device.popErrorScope`. -/
+@[extern "lean_wgpuDevicePopErrorScope"]
+opaque Internal.Device.popErrorScope
+    (self         : @& Device)
+    (callbackMode : UInt32)
+    (callback     : @& Internal.PopErrorScopeCallback) :
+    IO UInt64
+
+/--
+Pops an error scope to the current thread's error scope stack, asynchronously
+returning the result. See [ErrorScopes].
+
+[ErrorScopes]: https://webgpu-native.github.io/webgpu-headers/Errors.html#ErrorScopes
+-/
+@[inline]
+def Device.popErrorScope
+    (self         : Device)
+    (callbackMode : CallbackMode)
+    (callback     : PopErrorScopeCallback) :
+    IO Future :=
+  Future.mk <$> Internal.Device.popErrorScope
+      self
+      (CEnum.toC callbackMode)
+      (fun status type message =>
+        callback (CEnum.decode status) (CEnum.decode type) message)
+
 /-- The shim behind `Device.setLabel`. -/
 @[extern "lean_wgpuDeviceSetLabel"]
 opaque Internal.Device.setLabel (self : @& Device) (label : @& String) : IO Unit
@@ -1099,6 +1283,40 @@ See [Process-Events] for more information.
 def Instance.processEvents (self : Instance) : IO Unit :=
   Internal.Instance.processEvents self
 
+/-- The shim behind `Instance.requestAdapter`. -/
+@[extern "lean_wgpuInstanceRequestAdapter"]
+opaque Internal.Instance.requestAdapter
+    (self           : @& Instance)
+    (options        : @& Option RequestAdapterOptions)
+    (optionsBytes   : @& OptBytesOf options)
+    (optionsTargets : @& OptTargetsOf options)
+    (optionsTable   : @& IndexOf RequestAdapterOptions)
+    (callbackMode   : UInt32)
+    (callback       : @& Internal.RequestAdapterCallback)
+    (tables         : @& CurrentTablesOf) :
+    IO UInt64
+
+@[inline]
+def Instance.requestAdapter
+    (self         : Instance)
+    (options      : Option RequestAdapterOptions)
+    (callbackMode : CallbackMode)
+    (callback     : RequestAdapterCallback) :
+    IO Future :=
+  if CStruct.optSizesFit options then
+    Future.mk <$> Internal.Instance.requestAdapter
+        self
+        options
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        ⟨_, rfl⟩
+        (CEnum.toC callbackMode)
+        (fun status adapter message =>
+          callback (CEnum.decode status) adapter message)
+        ⟨_, rfl⟩
+  else
+    throw (IO.userError "Instance.requestAdapter: a size_t too large")
+
 /-- The shim behind `PipelineLayout.setLabel`. -/
 @[extern "lean_wgpuPipelineLayoutSetLabel"]
 opaque Internal.PipelineLayout.setLabel
@@ -1147,6 +1365,25 @@ opaque Internal.QuerySet.destroy (self : @& QuerySet) : IO Unit
 @[inline]
 def QuerySet.destroy (self : QuerySet) : IO Unit :=
   Internal.QuerySet.destroy self
+
+/-- The shim behind `Queue.onSubmittedWorkDone`. -/
+@[extern "lean_wgpuQueueOnSubmittedWorkDone"]
+opaque Internal.Queue.onSubmittedWorkDone
+    (self         : @& Queue)
+    (callbackMode : UInt32)
+    (callback     : @& Internal.QueueWorkDoneCallback) :
+    IO UInt64
+
+@[inline]
+def Queue.onSubmittedWorkDone
+    (self         : Queue)
+    (callbackMode : CallbackMode)
+    (callback     : QueueWorkDoneCallback) :
+    IO Future :=
+  Future.mk <$> Internal.Queue.onSubmittedWorkDone
+      self
+      (CEnum.toC callbackMode)
+      (fun status message => callback (CEnum.decode status) message)
 
 /-- The shim behind `Queue.setLabel`. -/
 @[extern "lean_wgpuQueueSetLabel"]
