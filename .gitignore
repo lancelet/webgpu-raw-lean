@@ -10,3 +10,6 @@
 
 # Claude Code's local state, such as agents' worktrees
 /.claude/
+
+# Editor settings, kept per person
+/.vscode/
