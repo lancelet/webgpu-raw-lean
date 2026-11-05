@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 867cec4 (clean)
-  Generated:        2026-11-05 07:02:40 UTC
+  Generator commit: 3b0f78f (clean)
+  Generated:        2026-11-05 07:27:52 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -17,6 +17,7 @@ module
 public import WebGPU.Raw.CEnum
 public import WebGPU.Raw.Enums
 public import WebGPU.Raw.Objects
+public import WebGPU.Raw.Callbacks
 public import WebGPU.Raw.Encoders
 
 /-!
@@ -34,68 +35,6 @@ them. `docs/Safety.md` gives the rules they follow.
 namespace WebGPU.Raw
 
 open Reloc
-
-/-- A closure C runs once, as a callback, given `status` and `message`. -/
-abbrev BufferMapCallback :=
-  Except UInt32 MapAsyncStatus → String → IO Unit
-
-/-- A `BufferMapCallback`, as its raw declaration takes it. -/
-abbrev Internal.BufferMapCallback :=
-  UInt32 → String → IO Unit
-
-/--
-A closure C runs once, as a callback, given `status`, `pipeline` and `message`.
--/
-abbrev CreateComputePipelineAsyncCallback :=
-  Except UInt32 CreatePipelineAsyncStatus →
-    Option ComputePipeline →
-    String →
-    IO Unit
-
-/-- A `CreateComputePipelineAsyncCallback`, as its raw declaration takes it. -/
-abbrev Internal.CreateComputePipelineAsyncCallback :=
-  UInt32 → Option ComputePipeline → String → IO Unit
-
-/--
-A closure C runs once, as a callback, given `status`, `pipeline` and `message`.
--/
-abbrev CreateRenderPipelineAsyncCallback :=
-  Except UInt32 CreatePipelineAsyncStatus →
-    Option RenderPipeline →
-    String →
-    IO Unit
-
-/-- A `CreateRenderPipelineAsyncCallback`, as its raw declaration takes it. -/
-abbrev Internal.CreateRenderPipelineAsyncCallback :=
-  UInt32 → Option RenderPipeline → String → IO Unit
-
-/--
-A closure C runs once, as a callback, given `status`, `type` and `message`.
--/
-abbrev PopErrorScopeCallback :=
-  Except UInt32 PopErrorScopeStatus → Except UInt32 ErrorType → String → IO Unit
-
-/-- A `PopErrorScopeCallback`, as its raw declaration takes it. -/
-abbrev Internal.PopErrorScopeCallback :=
-  UInt32 → UInt32 → String → IO Unit
-
-/--
-A closure C runs once, as a callback, given `status`, `adapter` and `message`.
--/
-abbrev RequestAdapterCallback :=
-  Except UInt32 RequestAdapterStatus → Option Adapter → String → IO Unit
-
-/-- A `RequestAdapterCallback`, as its raw declaration takes it. -/
-abbrev Internal.RequestAdapterCallback :=
-  UInt32 → Option Adapter → String → IO Unit
-
-/-- A closure C runs once, as a callback, given `status` and `message`. -/
-abbrev QueueWorkDoneCallback :=
-  Except UInt32 QueueWorkDoneStatus → String → IO Unit
-
-/-- A `QueueWorkDoneCallback`, as its raw declaration takes it. -/
-abbrev Internal.QueueWorkDoneCallback :=
-  UInt32 → String → IO Unit
 
 /-- The shim behind `createInstance`. -/
 @[extern "lean_wgpuCreateInstance"]
@@ -188,7 +127,7 @@ def Buffer.mapAsync
       offset
       size
       (CEnum.toC callbackMode)
-      (fun status message => callback (CEnum.decode status) message)
+      (Internal.BufferMapCallback.raw callback)
 
 /-- The shim behind `Buffer.setLabel`. -/
 @[extern "lean_wgpuBufferSetLabel"]
@@ -928,8 +867,7 @@ def Device.createComputePipelineAsync
         ⟨_, rfl⟩
         ⟨_, rfl⟩
         (CEnum.toC callbackMode)
-        (fun status pipeline message =>
-          callback (CEnum.decode status) pipeline message)
+        (Internal.CreateComputePipelineAsyncCallback.raw callback)
         ⟨_, rfl⟩
   else
     throw (IO.userError "Device.createComputePipelineAsync: a size_t too large")
@@ -1016,8 +954,7 @@ def Device.createRenderPipelineAsync
         ⟨_, rfl⟩
         ⟨_, rfl⟩
         (CEnum.toC callbackMode)
-        (fun status pipeline message =>
-          callback (CEnum.decode status) pipeline message)
+        (Internal.CreateRenderPipelineAsyncCallback.raw callback)
         ⟨_, rfl⟩
   else
     throw (IO.userError "Device.createRenderPipelineAsync: a size_t too large")
@@ -1228,8 +1165,7 @@ def Device.popErrorScope
   Future.mk <$> Internal.Device.popErrorScope
       self
       (CEnum.toC callbackMode)
-      (fun status type message =>
-        callback (CEnum.decode status) (CEnum.decode type) message)
+      (Internal.PopErrorScopeCallback.raw callback)
 
 /-- The shim behind `Device.setLabel`. -/
 @[extern "lean_wgpuDeviceSetLabel"]
@@ -1311,8 +1247,7 @@ def Instance.requestAdapter
         ⟨_, rfl⟩
         ⟨_, rfl⟩
         (CEnum.toC callbackMode)
-        (fun status adapter message =>
-          callback (CEnum.decode status) adapter message)
+        (Internal.RequestAdapterCallback.raw callback)
         ⟨_, rfl⟩
   else
     throw (IO.userError "Instance.requestAdapter: a size_t too large")
@@ -1383,7 +1318,7 @@ def Queue.onSubmittedWorkDone
   Future.mk <$> Internal.Queue.onSubmittedWorkDone
       self
       (CEnum.toC callbackMode)
-      (fun status message => callback (CEnum.decode status) message)
+      (Internal.QueueWorkDoneCallback.raw callback)
 
 /-- The shim behind `Queue.setLabel`. -/
 @[extern "lean_wgpuQueueSetLabel"]
