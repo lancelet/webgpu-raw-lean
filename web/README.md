@@ -86,6 +86,13 @@ natively, where wgpu-native calls back during the request.
   uncaptured-error callbacks are not requests: a program waiting only for
   them ends first, unless it keeps itself alive meanwhile (the self-test
   does, by `emscripten_runtime_keepalive_push`).
+- **The window library's window is the page's canvas** (`#canvas`), and
+  its frame loop (`WebGPU.Window.run`) the browser's animation frames, which
+  keep the program alive while they run. A program ends from a frame only
+  once the frames have ended (by a request's callback, after the frame that
+  ends them returns): an exit waits while they run. The browser presents a
+  frame at its end; `Surface.present` is refused (`Surface.presentFrame`
+  knows).
 - **In headless Chrome, a device's uncaptured error reached its callback
   only while a request was pending** (observed, not documented): the
   self-test keeps one pending, the queue's `onSubmittedWorkDone`.

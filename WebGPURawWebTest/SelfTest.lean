@@ -5,6 +5,7 @@ import WebGPURawTest.Internal.Family
 import WebGPURawTest.Internal.Encode
 import WebGPURawTest.Internal.Reloc
 import WebGPURawWebTest.Device
+import WebGPURawWebTest.Canvas
 
 /-!
 # The web self-test
@@ -212,7 +213,10 @@ def main : IO UInt32 := do
           IO.Process.exit (← WebGPURawWebTest.finish
             (failures + more + if ok then 0 else 1)).toUInt8
         match adapter with
-        | some adapter => WebGPURawWebTest.Device.run wgpu adapter finish
+        | some adapter =>
+          WebGPURawWebTest.Device.run wgpu adapter fun lines =>
+            WebGPURawWebTest.Canvas.run wgpu fun more =>
+              finish (lines ++ more)
         | none => finish ["note: no adapter here, so no device checked"]
     -- The program ends with this once the callbacks return, if they do not
     -- end it: so a callback that forgets to fails.

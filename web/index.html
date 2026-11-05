@@ -60,9 +60,10 @@
   <h1>webgpu-raw-lean: web self-test</h1>
   <p>
     Lean, compiled to WebAssembly, checks that it runs correctly here, then
-    calls the WebGPU bindings. A triangle comes when the bindings can draw one.
+    calls the WebGPU bindings, which draw a triangle in the canvas.
     <a href="https://github.com/lancelet/webgpu-raw-lean">Source</a>.
   </p>
+  <canvas id="canvas" width="64" height="64"></canvas>
   <pre id="out">Running…
 </pre>
   <p id="status"></p>

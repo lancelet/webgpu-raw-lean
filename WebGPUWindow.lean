@@ -76,7 +76,10 @@ opaque Window.create (title : @& String) (width height : UInt32) : IO Window
 @[extern "lean_wgpu_window_poll"]
 opaque Internal.Window.poll (self : @& Window) : IO FloatArray
 
-/-- The events since the last poll, in order. -/
+/--
+The events since the last poll, in order: the program's, of every window it
+has (as SDL gives them), not this one's alone.
+-/
 def Window.poll (self : Window) : IO (Array Event) := do
   let values := (← Internal.Window.poll self).data
   return (Array.range (values.size / 5)).filterMap fun k =>
@@ -92,27 +95,6 @@ A surface of `wgpu` on the window, which holds the window until it is gone.
 @[extern "lean_wgpu_window_create_surface"]
 opaque Window.createSurface (self : @& Window) (wgpu : @& Instance) :
     IO Surface
-
-/--
-Draw a frame: get the surface's current texture, `draw` in it, and present
-it, the texture held till presented, and released before this returns (both
-as `Surface.getCurrentTexture` says it must be). The status, if the surface
-gave no texture, nothing drawn: configure it again if `outdated`, as when
-its window was resized; `none` once presented.
--/
-def _root_.WebGPU.Raw.Surface.presentFrame (surface : Surface)
-    (draw : Texture → IO Unit) :
-    IO (Option (Except UInt32 SurfaceGetCurrentTextureStatus)) := do
-  let (status, texture) ← surface.getCurrentTexture
-  let some texture := texture | return some status
-  -- Held till presented, then let go: `draw` may well use it last.
-  let held ← IO.mkRef (some texture)
-  draw texture
-  let presented ← surface.present
-  held.set none
-  unless presented matches .ok .success do
-    throw (IO.userError s!"Surface.present: {repr presented |>.pretty}")
-  return none
 
 /-- The shim behind `run`. -/
 @[extern "lean_wgpu_window_run"]

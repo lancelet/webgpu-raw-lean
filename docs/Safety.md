@@ -476,11 +476,12 @@ family (Families, above).
 
 - **A surface is made from a window, in C, by the window library**
   (`WebGPUWindow`, `window/c/`): from the handles the window system gives of
-  it (X11's or Wayland's display and window, a Metal layer, an HWND), which
-  never reach Lean. `Instance.createSurface` is not bound: its sources are
-  such handles, which a number in Lean could pass for, for C to dereference.
-  *Checked by:* review; test (a surface made on a window, under a virtual
-  display in CI on Linux).
+  it (X11's or Wayland's display and window, a Metal layer, an HWND; in a
+  browser, the canvas's selector), which never reach Lean.
+  `Instance.createSurface` is not bound: its sources are such handles, which
+  a number in Lean could pass for, for C to dereference. *Checked by:*
+  review; test (a surface made on a window, under a virtual display in CI on
+  Linux, on Windows' desktop, and on a browser's canvas).
 - **A surface never outlives its window**: it joins a family that holds the
   Lean window (at `LEAN_WGPU_SURFACE_WINDOW`), which the family releases
   once every Lean object of the surface is gone, after the surface itself
@@ -490,10 +491,11 @@ family (Families, above).
   it destroys it, in wgpu-native, though the work drawing in it lives on, so
   that its submission ends the program, or its present fails; and releasing
   it after its surface ends the program. Memory-safe, but fatal: the raw
-  `Surface.getCurrentTexture` says so; the window library's
-  `Surface.presentFrame` holds it till presented and releases it before it
-  returns. *Checked by:* test (frames drawn by `presentFrame`, the first
-  read back); the raw function's misuse, not checked.
+  `Surface.getCurrentTexture` says so; `Surface.presentFrame` holds it till
+  presented (natively; in a browser, the frame's end does) and releases it
+  before it returns. *Checked by:* test (frames drawn by `presentFrame`:
+  natively, the first read back; in a browser, on the canvas); the raw
+  function's misuse, not checked.
 - **SDL wants a window made, polled and destroyed on the main thread**,
   natively: a program does so, but a window's finalizer runs where its last
   reference goes, which may not be. *Checked by:* not checked.
@@ -547,11 +549,14 @@ submission's errors, not checked.
   always aborts through a helper would not be found.
 - **Dawn lacks some too:** emdawnwebgpu's header, at the pinned Emscripten,
   is older than the upstream one wgpu-native pins, and does not declare
-  `setImmediates` (on every encoder). Its shims call them only when built
+  `setImmediates` (on every encoder); and the port aborts in some it does
+  (its JavaScript, `abort(...)`): `Surface.present`, as the browser presents
+  at each animation frame's end. Their shims call them only when built
   against wgpu-native, which the native build says by defining
   `WEBGPU_RAW_WGPU_NATIVE`; on the web they raise the error ("not
   implemented by dawn"). The list is `vendor/emdawnwebgpu/missing`, which
-  `missing.sh` writes from the port's header after a web build. *Checked by:*
+  `missing.sh` writes from the port's header and JavaScript after a web
+  build. *Checked by:*
   CI's web job, which runs it again and fails if the list differs; the web
   build, which would not compile a call to an undeclared function; the test
   driver, which compiles the shims against each implementation and against

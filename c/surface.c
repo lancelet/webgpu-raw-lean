@@ -71,3 +71,15 @@ LEAN_EXPORT lean_obj_res lean_wgpu_surface_get_capabilities(
     wgpuSurfaceCapabilitiesFreeMembers(capabilities);
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(result));
 }
+
+// Whether `Surface.present` presents a surface: natively; in a browser, the
+// canvas presents at each frame's end, and Dawn refuses `present`. Lean
+// passes its `Unit` argument.
+LEAN_EXPORT uint8_t lean_wgpu_surface_presents(b_lean_obj_arg unit) {
+    (void)unit;
+#ifdef WEBGPU_RAW_DAWN
+    return 0;
+#else
+    return 1;
+#endif
+}

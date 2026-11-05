@@ -255,7 +255,7 @@ target windowShim pkg : FilePath := do
       (Job.mixArray headers.toArray "headers")
     let stem := src.fileStem.getD "window"
     buildO (pkg.buildDir / "c" / "window" / s!"{stem}.o") srcJob
-      includes (#["-O2"] ++ picArgs) cc getLeanTrace
+      includes (#["-O2"] ++ picArgs ++ checkedArgs) cc getLeanTrace
   buildStaticLib (pkg.staticLibDir / nameToStaticLib "webgpuwindow") objs
 
 /-- The window library (`WebGPUWindow.lean`). -/

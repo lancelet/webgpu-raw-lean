@@ -212,12 +212,20 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_surface(
             props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, NULL);
         wayland.surface = SDL_GetPointerProperty(
             props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, NULL);
+        if (wayland.display == NULL || wayland.surface == NULL) {
+            return lean_wgpu_window_error(
+                "Window.createSurface: no Wayland surface", 1);
+        }
         descriptor.nextInChain = &wayland.chain;
     } else if (driver != NULL && strcmp(driver, "x11") == 0) {
         xlib.display = SDL_GetPointerProperty(
             props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, NULL);
         xlib.window = (uint64_t)SDL_GetNumberProperty(
             props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0);
+        if (xlib.display == NULL || xlib.window == 0) {
+            return lean_wgpu_window_error(
+                "Window.createSurface: no X11 window", 1);
+        }
         descriptor.nextInChain = &xlib.chain;
     } else {
         return lean_wgpu_window_error(

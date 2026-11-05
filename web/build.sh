@@ -222,6 +222,7 @@ export app
 {
   find WebGPU WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
+  echo WebGPUWindow.lean
   echo WebGPURawTest/Internal/Bytes.lean
   echo WebGPURawTest/Internal/Callback.lean
   echo WebGPURawTest/Internal/Device.lean
@@ -238,7 +239,7 @@ export app
 # named by its source's path, so that two sources of one name do not clash.
 port=--use-port=emdawnwebgpu
 read_flags
-for f in c/*.c c/generated/*.c WebGPURawTest/c/*.c; do
+for f in c/*.c c/generated/*.c window/c/*.c WebGPURawTest/c/*.c; do
   o=${f%.c}
   emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN "${checked[@]}" -I c \
     -I c/generated -c "$f" \

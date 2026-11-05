@@ -24,6 +24,11 @@ lean_include="$(lean --print-prefix)/include"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
+# The C types of a function's result, as Lean declares it and as C defines it:
+# an object, or a scalar (a `Bool`, as `uint8_t`, and the like).
+results='lean_object\*|uint8_t|uint16_t|uint32_t|uint64_t|double'
+exported='lean_obj_res|uint8_t|uint16_t|uint32_t|uint64_t|double'
+
 # check MODULE SOURCE NAMES WHAT: the @[extern]s of the Lean module MODULE whose
 # names match NAMES, an extended regular expression, against their definitions
 # in the C file SOURCE. A module declares every @[extern] it calls, so NAMES
@@ -36,14 +41,14 @@ check() {
   ir=.lake/build/ir/$(echo "$module" | tr . /).c
   lake build "+$module:c" >/dev/null
 
-  grep -E "^lean_object\\* $names\\(.*\\);\$" "$ir" \
+  grep -E "^($results) $names\\(.*\\);\$" "$ir" \
     > "$tmp/lean.h.inc" || true
   declared=$(wc -l < "$tmp/lean.h.inc")
   if [ "$declared" -eq 0 ]; then
     echo "FAIL: no declarations found in $ir: has Lean's format changed?" >&2
     exit 1
   fi
-  defined=$(grep -cE "^LEAN_EXPORT lean_obj_res $names\\(" \
+  defined=$(grep -cE "^LEAN_EXPORT ($exported) $names\\(" \
     "$source" || true)
   if [ "$declared" -ne "$defined" ]; then
     echo "FAIL: Lean declares $declared $what, but $source defines $defined" >&2
@@ -90,5 +95,5 @@ check WebGPU.Raw.Mapped c/mapped.c 'lean_wgpu_buffer_(read|write)_mapped' \
   "hand-written shims"
 check WebGPU.Raw.Queries c/queries.c 'lean_wgpu_[a-z_]*get_[a-z_]+' \
   "hand-written shims"
-check WebGPU.Raw.Surface c/surface.c 'lean_wgpu_surface_get_[a-z_]+' \
+check WebGPU.Raw.Surface c/surface.c 'lean_wgpu_surface_[a-z_]+' \
   "hand-written shims"

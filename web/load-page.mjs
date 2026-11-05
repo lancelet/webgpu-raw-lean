@@ -110,7 +110,15 @@ try {
     replies.get(message.id)?.(message.result?.result?.value);
     replies.delete(message.id);
   };
-  const state = await until("end of the program", () => evaluate(read));
+  // Its output so far, printed if it does not end: where it stopped.
+  const output = `document.getElementById("out").textContent`;
+  const state = await until("end of the program", async () => {
+    const value = await evaluate(read);
+    if (!value && Date.now() > deadline) {
+      process.stdout.write(await evaluate(output) ?? "");
+    }
+    return value;
+  });
   process.stdout.write(state.output);
   console.log(`Its status: ${state.status}`);
   if (!state.ok) await fail("the page did not report that all checks passed");

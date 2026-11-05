@@ -1,5 +1,7 @@
 # The webgpu.h functions the emdawnwebgpu port of Emscripten 6.0.9 does
-# not declare. Written by missing.sh; do not edit by hand.
+# not declare, or aborts in. Written by missing.sh; do not edit by hand.
 wgpuComputePassEncoderSetImmediates
 wgpuRenderBundleEncoderSetImmediates
 wgpuRenderPassEncoderSetImmediates
+wgpuGetProcAddress
+wgpuSurfacePresent

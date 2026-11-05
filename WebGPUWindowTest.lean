@@ -10,7 +10,10 @@ the first frame read back, where the surface allows copying from its
 textures, red inside the triangle and blue outside. It needs a display, and
 an adapter: with neither it says so, and checks nothing, unless
 `WEBGPU_RAW_REQUIRE_WINDOW` is set (as in CI, on Linux, under a virtual
-display), when that is a failure.
+display), or, for the adapter, `WEBGPU_RAW_REQUIRE_ADAPTER` (as in CI on
+every OS), when that is a failure. Given both, anything else that fails
+(the surface, configuring it, drawing) is a failure: making those work is
+the window library's.
 -/
 
 open WebGPU.Raw WebGPU.Window
@@ -89,7 +92,10 @@ def main : IO UInt32 := do
   let window ← try Window.create "webgpu-window-test" 64 64
     catch e => return ← skip s!"no window ({e})"
   let wgpu ← createInstance none
-  let some adapter ← adapter? wgpu | skip "no adapter"
+  let some adapter ← adapter? wgpu
+    | if (← IO.getEnv "WEBGPU_RAW_REQUIRE_ADAPTER").isSome then
+        fail "no adapter, though one is required"
+      else skip "no adapter"
   let device ← match ← device? wgpu adapter none with
     | .ok device => pure device
     | .error e   => fail e

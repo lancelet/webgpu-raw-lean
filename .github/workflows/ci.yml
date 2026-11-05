@@ -149,8 +149,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get install -y libx11-dev libxext-dev libxrandr-dev \
-            libxcursor-dev libxi-dev libxss-dev libxkbcommon-dev \
-            libwayland-dev libegl-dev xvfb
+            libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libwayland-dev libegl-dev libdrm-dev libgbm-dev \
+            xvfb
 
       # Fetch SDL3 into vendor/sdl3/<platform>/: built from source on Linux
       # and macOS (with cmake), MinGW's prebuilt release on Windows, whose
@@ -165,7 +166,8 @@ jobs:
 
       # Build the window library and its test, and run it: on Linux under a
       # virtual display, which it requires; elsewhere, it notes there is no
-      # display if the runner has none.
+      # display if the runner has none (macOS's has none; Windows's has).
+      # Given a display, any failure of a surface on it fails.
       - name: Build and test the window library
         run: |
           lake build WebGPUWindow webgpu-window-test
