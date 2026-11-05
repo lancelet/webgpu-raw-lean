@@ -53,6 +53,19 @@ opaque cShaderSourceWGSL (codeLength : USize) : ByteArray
 @[extern "lean_wgpu_test_instance_limits"]
 opaque cInstanceLimits (timedWaitAnyMaxCount : USize) : ByteArray
 
+/--
+A device descriptor C lays out: of defaults, with both callbacks if
+`withCallbacks`, else none; see `descriptors.c`.
+-/
+@[extern "lean_wgpu_test_device_descriptor"]
+opaque cDeviceDescriptor (withCallbacks : Bool) : ByteArray
+
+/-- A device descriptor with both callbacks, which do nothing. -/
+def withCallbacks : DeviceDescriptor := {
+  deviceLostCallbackInfo      := some { callback := fun _ _ => pure () }
+  uncapturedErrorCallbackInfo := some { callback := fun _ _ => pure () }
+}
+
 /-- A buffer descriptor's values for the comparison with C. -/
 def descriptor : BufferDescriptor := {
   label            := "vertices"
@@ -112,6 +125,10 @@ def checks : List (String × Bool) := [
   ("a count past 32 bits fits only on 64-bit targets",
     InstanceLimits.sizesFit { timedWaitAnyMaxCount := 0x100000000 }
       == (System.Platform.numBits == 64)),
+  ("a device descriptor encodes as C lays it out, its callbacks none",
+    same (DeviceDescriptor.toBytes {}) (cDeviceDescriptor false)),
+  ("and with both callbacks, each its trampoline and its ordinal",
+    same (DeviceDescriptor.toBytes withCallbacks) (cDeviceDescriptor true)),
   -- A regression test: `sizesFit` missed a `size_t` behind a pointer.
   ("and so does one behind a pointer",
     InstanceDescriptor.sizesFit

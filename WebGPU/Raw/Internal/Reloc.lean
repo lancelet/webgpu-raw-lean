@@ -178,6 +178,47 @@ theorem size_serialize (size : Nat) (relocs : List Reloc) :
     omega
 
 
+/-! ## Callbacks kept
+
+A struct can keep a callback, as a device descriptor keeps its device-lost
+callback: in C an info, its mode, its function and its two userdata pointers.
+In Lean it is an `Option` of the callback type's info structure, which says
+what the encoder writes of it (`KeptCallback`): its mode's code; the address
+of its trampoline, for its function; its closure, which the family being
+filled holds, for its first userdata; and its ordinal there, for its second.
+For none: mode 0, the address of the bindings' own handler, if any, or 0,
+no closure, and 0.
+-/
+
+/-- What the encoder writes of a callback info of type `α`. -/
+class KeptCallback (α : Type) where
+  /-- Its mode's code; 0 for a callback with no mode. -/
+  mode        : α → UInt32
+  /-- Its closure, as its family holds it. -/
+  closure     : α → Closure
+  /-- The address of its trampoline. -/
+  address     : UInt64
+  /-- The address for none: the bindings' own handler's, or 0. -/
+  noneAddress : UInt64
+
+/-- An info's mode's code, or 0 for none. -/
+def keptMode {α : Type} [KeptCallback α] : Option α → UInt32
+  | some i => KeptCallback.mode i
+  | none   => 0
+
+/-- The address C calls for an info, or for none. -/
+def keptAddress {α : Type} [KeptCallback α] : Option α → UInt64
+  | some _ => KeptCallback.address α
+  | none   => KeptCallback.noneAddress α
+
+/-- An info's closure, for its family to hold. -/
+def keptClosure {α : Type} [KeptCallback α] (i : Option α) : Option Closure :=
+  i.map KeptCallback.closure
+
+/-- An info's ordinal `k`, for its trampoline, or 0 for none. -/
+def keptOrdinal {α : Type} (k : Nat) (i : Option α) : UInt64 :=
+  if i.isSome then k.toUInt64 else 0
+
 /-! ## The walk
 
 Which targets `lean_wgpu_fill` takes, in which order, and of which kinds, as

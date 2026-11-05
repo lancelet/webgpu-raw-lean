@@ -176,21 +176,20 @@ where
     | .usize => some [.int (match w with
       | .bits64 => q
       | .bits32 => s!"size32 {q}")]
-    -- A callback's info: its chain, null; its mode, 0 for none; its
-    -- trampoline's address (`addressOf` gives 0, or the bindings' own
-    -- handler's, for none); its closure, which the family being filled holds
-    -- at its ordinal; and the ordinal, for the trampoline, 0 for none.
+    -- A callback's info, by its `KeptCallback` instance: its chain, null;
+    -- its mode, 0 for none; its trampoline's address (or, for none, 0 or the
+    -- bindings' own handler's); its closure, which the family being filled
+    -- holds at its ordinal; and the ordinal, for the trampoline, 0 for none.
+    -- The address and the ordinal are pointer-sized: 32 bits on wasm32.
     | .callbackInfo names hasMode k =>
-      let info := s!"Internal.{names.lean}Info"
+      let narrow (e : String) := match w with
+        | .bits64 => e
+        | .bits32 => s!"({e}).toUInt32"
       some ([.pointer .next]
-        ++ (if hasMode then [.int s!"({q}.map (CEnum.toC ·.mode)).getD 0"]
-          else [])
-        ++ [.int (match w with
-            | .bits64 => s!"{info}.addressOf {q}"
-            | .bits32 => s!"({info}.addressOf {q}).toUInt32"),
+        ++ (if hasMode then [.int s!"keptMode {q}"] else [])
+        ++ [.int (narrow s!"keptAddress {q}"),
           .pointer (.closure names k q),
-          -- Typed, as a bare numeral would be a `Nat`.
-          .int s!"if {q}.isSome then ({k} : {sizeType w}) else 0"])
+          .int (narrow s!"keptOrdinal {k} {q}")])
     | .future | .lentObject _ | .unsupported _ => none
 
 /--
@@ -486,8 +485,7 @@ def pieces (w : Width) : Pointer → List Piece
     [.target s!".block (objectsBlock {w.bytes} {e})",
       .targets s!"objectsOf {object names} {e}"]
   | .array (.structs names) e   => [.targets s!"{names.lean}.array{n} {e}"]
-  | .closure names _ e          =>
-    [.target s!".optClosure ({e}.map Internal.{names.lean}Info.closure)"]
+  | .closure _ _ e              => [.target s!".optClosure (keptClosure {e})"]
   | .array .other _             => []
 where
   /-- The width's suffix. -/

@@ -95,6 +95,13 @@ def main (args : List String) : IO Unit := do
   for (what, problem) in ← WebGPURawTest.Internal.Callback.webgpuChecks wgpu do
     unless problem.isEmpty do
       throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
+  -- And a device, if there is an adapter, its callbacks kept by its family.
+  match ← WebGPURawTest.Internal.Device.checks wgpu with
+  | none => IO.println "note: no adapter here, so no device checked"
+  | some checks =>
+    for (what, problem) in checks do
+      unless problem.isEmpty do
+        throw (IO.userError s!"FAIL: device: {what}: {problem}")
   -- And with a descriptor: a struct C fills in, its limits a struct of its
   -- own, by their tables. (wgpu-native aborts on a timed `waitAny` feature or
   -- limit it does not support, so these ask for none.)

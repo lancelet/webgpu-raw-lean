@@ -399,6 +399,8 @@ where
     | some .null             => match v with
       | .string _ => "WGPU_STRING_VIEW_INIT"
       | .nullableFloat32 => "(NAN)"
+      -- None: C's empty info.
+      | .callbackInfo names .. => (initName (names.c ++ "Info")).getD "?"
       | _ => "NULL"
     | some .empty            => "WGPU_STRING_VIEW_INIT"
     | none                   => match v with
@@ -508,8 +510,13 @@ def main : IO Unit := do
   -- Every struct member's default is the one webgpu.h's initialiser gives it.
   let inits := headerInits header
   let initName (c : String) : Option String :=
-    resolved.structs.toList.find? (WebGPUGen.Lowered.typeName ·.name == c)
-      |>.map fun s => WebGPUGen.Lowered.constantName s.name ++ "_INIT"
+    (resolved.structs.toList.find? (WebGPUGen.Lowered.typeName ·.name == c)
+      |>.map fun s => WebGPUGen.Lowered.constantName s.name ++ "_INIT")
+    -- A callback's info, `WGPU_DEVICE_LOST_CALLBACK_INFO_INIT`.
+    |>.orElse fun _ => resolved.callbacks.toList.find?
+      (WebGPUGen.Lowered.callbackInfoName ·.name == c)
+      |>.map fun cb =>
+        WebGPUGen.Lowered.constantName cb.name ++ "_CALLBACK_INFO_INIT"
   let wrongDefaults := lowered.structs.toList.flatMap fun s =>
     match inits.lookup s.names.c with
     | none => [s!"{s.names.c}: no initialiser in webgpu.h"]
@@ -549,13 +556,13 @@ def main : IO Unit := do
   unless unlike.isEmpty do
     failWith s!"bound structs whose C fields differ from webgpu.h: {unlike}"
 
-  -- Nothing C keeps beyond a call is bound: a device descriptor's callbacks
-  -- live as long as the device, a surface source's OS handles as long as the
-  -- surface. Each such struct is in the spec, unsupported for that reason,
-  -- and not bound.
+  -- Nothing C keeps beyond a call is bound but a device descriptor's
+  -- callbacks, whose closures their device's family keeps (`c/family.c`):
+  -- not a surface source's OS handles, which live as long as the surface.
+  -- Each such struct is in the spec, unsupported for that reason, and not
+  -- bound.
   let handle := "c_void (mutable pointer)"
   let kept := [
-    ("WGPUDeviceDescriptor",                 "callback"),
     ("WGPUSurfaceSourceAndroidNativeWindow", handle),
     ("WGPUSurfaceSourceMetalLayer",          handle),
     ("WGPUSurfaceSourceWaylandSurface",      handle),
@@ -600,6 +607,31 @@ def main : IO Unit := do
   unless futureless.isEmpty do
     failWith s!"functions taking a callback that return no WGPUFuture: \
       {futureless.map (·.names.c)}"
+  -- The callbacks the bound structs keep: each a trampoline, so none is
+  -- dropped, and declared in webgpu.h as lowered, an object it lends as a
+  -- pointer to its handle.
+  let heldNames := (WebGPUGen.Emit.C.heldCallbacks lowered).map (·.1.names)
+  let keptNames := (WebGPUGen.Lowered.boundStructs structs).flatMap fun s =>
+    s.members.toList.filterMap fun m => match m.value with
+      | .callbackInfo names .. => some names
+      | _                      => none
+  let dropped := keptNames.filter (!heldNames.contains ·)
+  unless dropped.isEmpty do
+    failWith s!"callbacks structs keep with no trampoline: \
+      {dropped.map (·.c)}"
+  let heldMisdeclared := (WebGPUGen.Emit.C.heldCallbacks lowered).filter
+    fun (c, _) => (header.splitOn (typedef c)).length < 2
+  unless heldMisdeclared.isEmpty do
+    failWith s!"kept callbacks declared otherwise in webgpu.h: \
+      {heldMisdeclared.map (typedef ·.1)}"
+  -- And every callback a struct keeps has a place in its family.
+  let placeless := structs.flatMap fun s => s.members.toList.filterMap fun m =>
+    if m.value == .unsupported "callback (no place in its family)"
+    then some s!"{s.names.c}.{m.names.c}" else none
+  unless placeless.isEmpty do
+    failWith s!"kept callbacks with no place in their family: {placeless}"
+  unless heldNames.length >= 2 do
+    failWith s!"kept callbacks: {heldNames.map (·.c)}, not the device's two"
   let passable := (callbacks.filter (·.unsupported.isEmpty)).map (·.names.lean)
   let expected := [
     "BufferMapCallback", "CreateComputePipelineAsyncCallback",
@@ -649,17 +681,8 @@ def main : IO Unit := do
     | .structPointer names _ => structs.any fun s =>
       s.names == names && s.needsChain structs
     | _ => false
-  -- Nor those that take a struct that is not bound, each named here: the
-  -- device descriptor holds callbacks C keeps for the device's lifetime.
-  let waiting := ["wgpuAdapterRequestDevice"]
-  let bound := (WebGPUGen.Lowered.boundStructs structs).map (·.names)
-  let takesUnbound (f : WebGPUGen.Lowered.Function) := f.args.any fun a =>
-    match a.value with
-    | .structPointer names _ => !bound.contains names
-    | _ => false
   let lost := (WebGPUGen.Emit.C.allFunctions lowered).filter fun f =>
     f.unsupported.isEmpty && !shimmed.contains f.names.c && !needsChain f
-      && !(takesUnbound f && waiting.contains f.names.c)
   unless lost.isEmpty do
     failWith s!"bindable functions with no shim: {lost.map (·.names.c)}"
 

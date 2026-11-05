@@ -200,6 +200,105 @@ def elementValue : ArrayElement → Value
   | .float64 => .float64
   | .string  => .unsupported "array<string>"
 
+/-! ## Callbacks -/
+
+/--
+How a callback's argument crosses into Lean, as a result does: an enum by its
+code, a string copied (`out_string`, which C passes for the call only), and an
+object C gives its reference to (`passed_with_ownership`), which the Lean
+value takes, as an `Option` whatever the spec says, as C may pass NULL. An
+object C lends, behind a pointer, without its reference, is not passed to
+Lean (`Value.lentObject`): it may be gone, as a device a buffer outlives. A
+struct is not passed yet.
+-/
+def callbackArgValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
+  let unsupported := Value.unsupported (describe p.type p.pointer)
+  match p.pointer, p.type, p.passedWithOwnership with
+  | some .immutable, .named (.object id), some false =>
+    if p.optional then unsupported else named r (.object id) .lentObject
+  | _, _, _ =>
+  if p.pointer.isSome || p.optional then unsupported else
+  match p.type with
+  | .named (.enum id)   => named r (.enum id) .enum
+  | .primitive (.scalar .outString) =>
+    if p.passedWithOwnership == some true then unsupported else .string false
+  | .named (.object id) =>
+    if p.passedWithOwnership == some true then
+      named r (.object id) (.object · true)
+    else unsupported
+  | _ => unsupported
+
+/--
+Every object a callback passes Lean is an `Option`: so a callback C passes
+NULL is never given a Lean value of nothing.
+-/
+theorem nullable_of_callbackArgValue {r : Resolved.Spec}
+    {p : Parameter Paragraph} {names : Names} {nullable : Bool}
+    (h : callbackArgValue r p = .object names nullable) : nullable = true := by
+  unfold callbackArgValue named at h
+  -- An object C lends, never an object; then each case of the type, then of
+  -- ownership and the lookup in range.
+  split at h
+  · repeat (first | split at h | simp_all)
+  · split at h
+    · simp at h
+    · split at h <;> (try split at h) <;> (try split at h) <;> simp_all
+
+/--
+A callback type, named on both sides, with how each of its arguments
+crosses.
+-/
+def lowerCallback (ctx : DocContext) (r : Resolved.Spec)
+    (c : Resolved.Callback) : Lowered.Callback where
+  names := bothNames callbackTypeName leanCallbackTypeName c.name
+  doc   := translateDoc ctx c.doc
+  style := c.style
+  args  := c.args.map fun a => {
+    names := bothNames memberName leanName a.name
+    doc   := translateDoc ctx a.doc.text
+    value := callbackArgValue r a
+  }
+
+/-- The callback `id` names, lowered, if it is in range. -/
+def callbackNamed (ctx : DocContext) (r : Resolved.Spec) (id : Id .callback) :
+    Option Lowered.Callback :=
+  r.callbacks[id.idx]?.map (lowerCallback ctx r)
+
+/--
+The callbacks the structs keep, as members of callback type, each once, in the
+order the structs first keep them: a callback's ordinal, where its family
+holds its closure, is its place among them.
+-/
+def keptCallbacks (r : Resolved.Spec) : List (Id .callback) :=
+  (r.structs.toList.flatMap fun s => s.members.toList.filterMap fun m =>
+    match m.type with
+    | .callback id => some id
+    | _            => none).eraseDups
+
+/--
+How many closures a family holds, each at an ordinal below it: the bindings'
+`Reloc.closures` and C's `LEAN_WGPU_FAMILY_CLOSURES`, which a test of theirs
+checks agree; the test driver checks the spec's callbacks fit.
+-/
+def familyClosures : Nat := 4
+
+/--
+A struct member of the callback type `id`: its info, with a mode if it is
+registered with one, if the bindings can pass each of its arguments and a
+family has a place for its closure (`familyClosures`).
+-/
+def keptValue (r : Resolved.Spec) (id : Id .callback) : Value :=
+  match r.callbacks[id.idx]? with
+  | none   => .unsupported "a reference out of range"
+  | some c =>
+    let ordinal := (keptCallbacks r).idxOf id
+    if c.args.any (fun a => (callbackArgValue r a).unsupported?.isSome) then
+      .unsupported "callback (an argument it cannot pass)"
+    else if ordinal ≥ familyClosures then
+      .unsupported "callback (no place in its family)"
+    else .callbackInfo (bothNames callbackTypeName leanCallbackTypeName c.name)
+      (c.style == .callbackMode) ordinal
+
 /--
 How a struct member crosses. As for an argument, only the shapes the bindings
 handle are passed, and a member with ownership stated is not; beyond those, a
@@ -222,6 +321,8 @@ def memberValue (r : Resolved.Spec) (p : Parameter String) : Value :=
   | none, .named (.object id) => named r (.object id) (.object · p.optional)
   | none, .named (.struct id) =>
     if p.optional then unsupported else structNamed r id .struct
+  | none, .callback id =>
+    if p.optional then unsupported else keptValue r id
   | some .immutable, .named (.struct id) =>
     structNamed r id (.structPointer · p.optional)
   | some .immutable, .arrayOf (.enum id) =>
@@ -339,61 +440,6 @@ def lowerStruct (ctx : DocContext) (r : Resolved.Spec) (s : Resolved.Struct) :
         | _, _ => (m.default.bind (lowerDefault r)).orElse fun _ =>
           implicitDefault r m value
     }
-
-/-! ## Callbacks -/
-
-/--
-How a callback's argument crosses into Lean, as a result does: an enum by its
-code, a string copied (`out_string`, which C passes for the call only), and an
-object C gives its reference to (`passed_with_ownership`), which the Lean
-value takes, as an `Option` whatever the spec says, as C may pass NULL. An
-object C lends, behind a pointer, and a struct are not passed yet.
--/
-def callbackArgValue (r : Resolved.Spec) (p : Parameter Paragraph) : Value :=
-  let unsupported := Value.unsupported (describe p.type p.pointer)
-  if p.pointer.isSome || p.optional then unsupported else
-  match p.type with
-  | .named (.enum id)   => named r (.enum id) .enum
-  | .primitive (.scalar .outString) =>
-    if p.passedWithOwnership == some true then unsupported else .string false
-  | .named (.object id) =>
-    if p.passedWithOwnership == some true then
-      named r (.object id) (.object · true)
-    else unsupported
-  | _ => unsupported
-
-/--
-Every object a callback passes Lean is an `Option`: so a callback C passes
-NULL is never given a Lean value of nothing.
--/
-theorem nullable_of_callbackArgValue {r : Resolved.Spec}
-    {p : Parameter Paragraph} {names : Names} {nullable : Bool}
-    (h : callbackArgValue r p = .object names nullable) : nullable = true := by
-  unfold callbackArgValue named at h
-  -- Each case of the type, then of ownership and the lookup in range.
-  split at h
-  · simp at h
-  · split at h <;> (try split at h) <;> (try split at h) <;> simp_all
-
-/--
-A callback type, named on both sides, with how each of its arguments
-crosses.
--/
-def lowerCallback (ctx : DocContext) (r : Resolved.Spec)
-    (c : Resolved.Callback) : Lowered.Callback where
-  names := bothNames callbackTypeName leanCallbackTypeName c.name
-  doc   := translateDoc ctx c.doc
-  style := c.style
-  args  := c.args.map fun a => {
-    names := bothNames memberName leanName a.name
-    doc   := translateDoc ctx a.doc.text
-    value := callbackArgValue r a
-  }
-
-/-- The callback `id` names, lowered, if it is in range. -/
-def callbackNamed (ctx : DocContext) (r : Resolved.Spec) (id : Id .callback) :
-    Option Lowered.Callback :=
-  r.callbacks[id.idx]?.map (lowerCallback ctx r)
 
 /-! ## Functions and objects -/
 
@@ -623,6 +669,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
   let mark := markStubs stubs
   settleStructDefaults <| markHeldInfos <| markRequiredChains
     <| keepPassableExtensions {
+    callbacks := r.callbacks.map (lowerCallback ctx r)
     constants := r.constants.map (lowerConstant ctx)
     enums     := r.enums.map (lowerEnum ctx r)
     bitflags  := r.bitflags.map (lowerBitflag ctx)

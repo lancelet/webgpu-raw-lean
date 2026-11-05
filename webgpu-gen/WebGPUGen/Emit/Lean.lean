@@ -291,10 +291,10 @@ def callbackDecl (c : Lowered.Callback) (held : Bool := false) : Option Doc :=
 /--
 What a struct keeps of a callback of type `c` (`Value.callbackInfo`): its info,
 a structure of the closure and, if `hasMode`, the mode it is registered with,
-`allowSpontaneous` unless given, as the web needs; and, under `Internal`, what
-the encoder writes of it. Its closure, as the `Closure` its family holds
-(`closure`); and the address C calls (`addressOf`), its trampoline's, or, for
-none, 0, or the bindings' own handler's (`Emit.C.defaultHandled`).
+`allowSpontaneous` unless given, as the web needs; and what the encoder writes
+of it (`KeptCallback`): its mode's code, its closure, as the `Closure` its
+family holds, and the address C calls, its trampoline's, or, for none, 0 or
+the bindings' own handler's (`Emit.C.defaultHandled`).
 -/
 def callbackInfoDecl (c : Lowered.Callback) (hasMode : Bool) : Doc :=
   let name := c.names.lean
@@ -328,16 +328,16 @@ def callbackInfoDecl (c : Lowered.Callback) (hasMode : Bool) : Doc :=
       (some s!"@[extern \"lean_{c.names.c}_default_address\"]")
       (typed "opaque" s!"Internal.{name}.defaultAddress" "Unit → UInt64")
   ] else []) ++ [
-    decl s!"The closure of an info, for its family to hold." none
-      (group (nest 4 (text s!"def Internal.{info}.closure" ++ space
-        ++ text s!"(i : {info}) :" ++ space ++ text "Closure :="))
-        ++ indented 2 (text s!"Internal.{name}.toClosure" ++ nest 4
-          (space ++ text s!"(Internal.{name}.raw i.callback)"))),
-    decl s!"The address C calls for an info, or for none." none
-      (typed "def" s!"Internal.{info}.addressOf" s!"Option {info} → UInt64"
-        ++ hardline ++ text s!"  | some _ => Internal.{name}.address ()"
-        ++ hardline ++ text ("  | none   => " ++ if defaulted
-          then s!"Internal.{name}.defaultAddress ()" else "0"))
+    decl s!"What the encoder writes of {article info |>.toLower} `{info}`." none
+      (text s!"instance : KeptCallback {info} where"
+        ++ indented 2 (Doc.lines [
+          if hasMode then "mode i      := CEnum.toC i.mode"
+            else "mode _      := 0",
+          s!"closure i   := Internal.{name}.toClosure",
+          s!"  (Internal.{name}.raw i.callback)",
+          s!"address     := Internal.{name}.address ()",
+          "noneAddress := " ++ if defaulted
+            then s!"Internal.{name}.defaultAddress ()" else "0"]))
   ])
 
 /--
@@ -484,6 +484,17 @@ def wrapperDecl (f : Lowered.Function) : Option Doc := do
   let body := if fits.isEmpty then decoded else
     condition ++ indented 2 decoded ++ hardline ++ text "else"
       ++ indented 2 refusal
+  -- A struct that keeps callbacks is given for none as one of defaults, `{}`
+  -- (each of its members has a default, or this does not elaborate), the
+  -- same to WebGPU: so the bindings' own handlers are installed for those it
+  -- is not given (`Emit.C.defaultHandled`), where C's NULL would install the
+  -- implementation's, which may end the program (wgpu-native's does).
+  let defaulted := f.args.toList.filterMap fun a => match a.value with
+    | .structPointer _ true =>
+      if f.heldInfos.any (·.arg == a.names.c) then some a.names.lean else none
+    | _ => none
+  let body := defaulted.foldr (init := body) fun x body =>
+    text s!"let {x} := some ({x}.getD \{})" ++ hardline ++ body
   -- A struct of no use without its chain must be given one: an `IO` error if
   -- not, as an implementation may abort.
   let body := f.requiredChains.foldr (init := body) fun x body =>

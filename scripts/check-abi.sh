@@ -4,7 +4,8 @@
 # in the C it compiles a module to; this compiles those declarations together
 # with the C that defines them, so any disagreement is a "conflicting types"
 # error. It also checks that the two declare the same number of functions. It
-# checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c).
+# checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c),
+# and the addresses of callbacks' trampolines (WebGPU.Raw.Callbacks).
 # (The byte writers' C is pasted into Lean's own, so its compiler checks it.)
 set -eu
 cd "$(dirname "$0")/.."
@@ -43,6 +44,25 @@ check() {
   if [ "$declared" -ne "$defined" ]; then
     echo "FAIL: Lean declares $declared $what, but $source defines $defined" >&2
     exit 1
+  fi
+
+  # The functions that give the addresses of callbacks' trampolines, which
+  # the callbacks module declares (each returning a `UInt64`), with the shims;
+  # not the bindings' own handler's, `_default_address`, which c/callback.c
+  # defines, and so no ``.
+  if [ "$module" = WebGPU.Raw.Functions ]; then
+    callbacks=.lake/build/ir/WebGPU/Raw/Callbacks.c
+    lake build "+WebGPU.Raw.Callbacks:c" >/dev/null
+    grep -E '^uint64_t lean_WGPU[A-Za-z]*_address\(.*\);$' "$callbacks" \
+      > "$tmp/addresses.h.inc" || true
+    addresses=$(wc -l < "$tmp/addresses.h.inc")
+    given=$(grep -cE '^LEAN_EXPORT uint64_t lean_WGPU[A-Za-z]*_address\(' \
+      "$source" || true)
+    if [ "$addresses" -ne "$given" ]; then
+      echo "FAIL: Lean declares $addresses addresses, $source gives $given" >&2
+      exit 1
+    fi
+    cat "$tmp/addresses.h.inc" >> "$tmp/lean.h.inc"
   fi
 
   {

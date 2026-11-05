@@ -305,10 +305,11 @@ after the device's release; in Dawn, "lost" can come after the release. So
 their closures are kept by the device's family, the objects made from it,
 directly or not, until the last of them is gone (`c/family.c`). The walker
 holds a callback's closure in the family the shim filling the struct sets,
-which a shim taking a struct that keeps callbacks makes; no struct is bound
-that does yet. The families are tested on their own
-(`WebGPURawTest/Internal/Family.lean`), natively and on the web, a closure
-filled in among them.
+which a shim taking a struct that keeps callbacks makes: a device
+descriptor, which `Adapter.requestDevice` takes. The families are tested on
+their own (`WebGPURawTest/Internal/Family.lean`), natively and on the web,
+a closure filled in among them; and a device's, natively, where there is an
+adapter (`WebGPURawTest/Internal/Device.lean`).
 
 - **A family keeps its closures while anything keeps it, and releases them
   exactly once, when the last thing is gone**: its maker, and each Lean
@@ -356,6 +357,39 @@ filled in among them.
   is gone will be dropped. *Checked by:* review.
 - **The families are safe from any thread**, behind one lock. *Checked by:*
   test (members joining and leaving from many tasks at once, natively).
+
+## A device's callbacks
+
+A device descriptor keeps two callbacks: device lost, and uncaptured error,
+each an `Option` of an info, its closure and, for lost, its mode
+(`allowSpontaneous` unless given). Their closures are kept by the device's
+family (Families, above).
+
+- **Neither closure is given the device**, though C passes it: in wgpu-native
+  a device's objects report their errors through it after its release, when
+  the device C passes is freed memory; in Dawn it is NULL after release. So
+  the bindings never make a Lean value of it (`Value.lentObject`). *Checked
+  by:* test (the trampolines take it and leave it unused; and each is
+  declared in `webgpu.h` as lowered).
+- **A closure that holds its device keeps it alive**, as its family holds
+  the closure: the device is never released, as in C with a userdata
+  holding a reference of its own. *Checked by:* not checked; documented.
+- **A device's callback must not call into its device** where an error can
+  be reported (wgpu-native calls them holding the device's error lock, so
+  such a call deadlocks). *Checked by:* not checked; documented.
+- **Lost can be called from a finalizer**: in wgpu-native, releasing the last
+  object of a device can drop the device, which calls lost (reason dropped)
+  then, at the depth of no call, where an error the closure raises ends the
+  program. *Checked by:* review.
+- **With no uncaptured-error callback, the bindings install their own**:
+  wgpu-native's default ends the program at once; theirs raises an `IO`
+  error of the call that made the error, if that call is bracketed (every
+  shim is to be; until then, the program ends, the error printed). A device
+  requested with no descriptor is given one of defaults, the same to
+  WebGPU, so that it gets the handler too. On the web, Dawn's default logs
+  the error, and the bindings install nothing. *Checked by:* test (a
+  descriptor of defaults encodes as C's with the handler; the uncaptured-
+  error callback given its call's error, natively, with an adapter).
 
 ## Functions an implementation does not implement
 

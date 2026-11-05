@@ -966,8 +966,9 @@ def lost : Lowered.Callback := {
       ")
 
 -- What a struct keeps of a callback: its info, the closure and its mode,
--- `allowSpontaneous` unless given; its closure as a `Closure`; and the
--- address C calls, its trampoline's, or 0 for none.
+-- `allowSpontaneous` unless given; and what the encoder writes of it: its
+-- mode's code, its closure as a `Closure`, and the address C calls, its
+-- trampoline's, or 0 for none.
 #guard
   render (callbackInfoDecl lost true) == dedent "
     /-- A `DeviceLostCallback` C keeps, in a struct. -/
@@ -986,18 +987,13 @@ def lost : Lowered.Callback := {
     @[extern \"lean_WGPUDeviceLostCallback_address\"]
     opaque Internal.DeviceLostCallback.address : Unit → UInt64
 
-    /-- The closure of an info, for its family to hold. -/
-    def Internal.DeviceLostCallbackInfo.closure
-        (i : DeviceLostCallbackInfo) :
-        Closure :=
-      Internal.DeviceLostCallback.toClosure
-          (Internal.DeviceLostCallback.raw i.callback)
-
-    /-- The address C calls for an info, or for none. -/
-    def Internal.DeviceLostCallbackInfo.addressOf :
-        Option DeviceLostCallbackInfo → UInt64
-      | some _ => Internal.DeviceLostCallback.address ()
-      | none   => 0
+    /-- What the encoder writes of a `DeviceLostCallbackInfo`. -/
+    instance : KeptCallback DeviceLostCallbackInfo where
+      mode i      := CEnum.toC i.mode
+      closure i   := Internal.DeviceLostCallback.toClosure
+        (Internal.DeviceLostCallback.raw i.callback)
+      address     := Internal.DeviceLostCallback.address ()
+      noneAddress := 0
     "
 
 -- An uncaptured error's, with no mode; and for none, the address of the
@@ -1007,11 +1003,23 @@ def lost : Lowered.Callback := {
     names := ⟨"WGPUUncapturedErrorCallback", "UncapturedErrorCallback"⟩
     style := .immediate }
   let text := render (callbackInfoDecl error false)
-  (text.splitOn "mode").length == 1
-    && (text.splitOn "| none   => Internal.UncapturedErrorCallback.\
+  (text.splitOn "mode :").length == 1
+    && (text.splitOn "mode _      := 0").length == 2
+    && (text.splitOn "noneAddress := Internal.UncapturedErrorCallback.\
       defaultAddress ()").length == 2
     && (text.splitOn
       "@[extern \"lean_WGPUUncapturedErrorCallback_default_address\"]").length
       == 2
+
+-- A function whose struct keeps callbacks is given one of defaults for none,
+-- the same to WebGPU: so the bindings' own uncaptured-error handler is
+-- installed, where C's NULL would leave wgpu-native's, which ends the program.
+#guard
+  let descriptor : Names := ⟨"WGPUDescriptor", "Descriptor"⟩
+  let f := { function "wgpuDoIt" "doIt" none
+    #[arg "desc" (.structPointer descriptor true)] none with
+    heldInfos := [⟨"desc", "lost", true, 0⟩] }
+  ((wrapperDecl f).map render).any fun text =>
+    (text.splitOn "  let desc := some (desc.getD {})\n").length == 2
 
 end WebGPUGenTest.Emit.Lean

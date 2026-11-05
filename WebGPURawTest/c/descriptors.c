@@ -75,3 +75,35 @@ LEAN_EXPORT lean_obj_res lean_wgpu_test_instance_limits(
     limits.timedWaitAnyMaxCount = timedWaitAnyMaxCount;
     return lean_wgpu_test_bytes(&limits, sizeof limits);
 }
+
+// The addresses the generated bindings give of the device's callbacks'
+// trampolines, and of their own uncaptured-error handler (0 on the web).
+uint64_t lean_WGPUDeviceLostCallback_address(b_lean_obj_arg unit);
+uint64_t lean_WGPUUncapturedErrorCallback_address(b_lean_obj_arg unit);
+uint64_t lean_WGPUUncapturedErrorCallback_default_address(b_lean_obj_arg unit);
+
+// A device descriptor of defaults, its labels empty, no chain, with both
+// callbacks if `withCallbacks` (lost registered `allowSpontaneous`), as the
+// encoder writes it, its pointers NULL: each callback's function its
+// trampoline, its second userdata its ordinal (lost 0, uncaptured error 1);
+// with none, the uncaptured error's function the bindings' own handler.
+LEAN_EXPORT lean_obj_res lean_wgpu_test_device_descriptor(
+        uint8_t withCallbacks) {
+    WGPUDeviceDescriptor descriptor;
+    memset(&descriptor, 0, sizeof descriptor);
+    if (withCallbacks) {
+        descriptor.deviceLostCallbackInfo.mode =
+            WGPUCallbackMode_AllowSpontaneous;
+        descriptor.deviceLostCallbackInfo.callback = (WGPUDeviceLostCallback)
+            (uintptr_t)lean_WGPUDeviceLostCallback_address(lean_box(0));
+        descriptor.uncapturedErrorCallbackInfo.callback =
+            (WGPUUncapturedErrorCallback)(uintptr_t)
+                lean_WGPUUncapturedErrorCallback_address(lean_box(0));
+        descriptor.uncapturedErrorCallbackInfo.userdata2 = (void *)1;
+    } else {
+        descriptor.uncapturedErrorCallbackInfo.callback =
+            (WGPUUncapturedErrorCallback)(uintptr_t)
+                lean_WGPUUncapturedErrorCallback_default_address(lean_box(0));
+    }
+    return lean_wgpu_test_bytes(&descriptor, sizeof descriptor);
+}

@@ -439,9 +439,10 @@ def methodCallback (callbacks : String) : Option Lowered.Callback :=
     == some (⟨"WGPUFoundCallback", "FoundCallback"⟩, .callbackMode,
       [.enum mode, .object device true, .string false])
 
--- What a callback cannot pass yet: an object C lends without its reference,
--- behind a pointer, as a device's lost callback's device; and a struct, as
--- shader compilation's info. Its function is not bound, for each.
+-- What a callback cannot pass yet: a struct, as shader compilation's info,
+-- for which its function is not bound. An object C lends without its
+-- reference, behind a pointer, as a device's lost callback's device, is not
+-- passed to Lean, and does not stop it.
 #guard
   let input := dedent "
     - name: found
@@ -462,9 +463,12 @@ def methodCallback (callbacks : String) : Option Lowered.Callback :=
   let method := (lowerText (callbackSpec input)).bind fun l =>
     l.objects[0]?.bind (·.methods[0]?)
   method.map (·.unsupported) == some [
-    "callback device: object (immutable pointer)",
     "callback info: struct (immutable pointer)"
   ]
+    && (methodCallback input).map (·.args.toList.map (·.value)) == some [
+      .lentObject ⟨"WGPUDevice", "Device"⟩,
+      .unsupported "struct (immutable pointer)"
+    ]
 
 -- Nor, though the spec has none, an optional argument, a string C gives its
 -- memory to, or an object C does not give its reference to; and an enum
@@ -1329,5 +1333,71 @@ def bareStruct (name : String) (kind : Common.StructKind)
     functions := #[f], structs := #[wgsl, module, labelled]
   }
   (markRequiredChains spec).functions.map (·.requiredChains) == #[["module"]]
+
+-- A struct member of callback type: its info, with a mode if the callback is
+-- registered with one, at the ordinal that is its place among the callbacks
+-- the structs keep; an object it lends is not passed. Not one whose argument
+-- cannot be passed.
+#guard
+  let callbacks := dedent "
+    - name: lost
+      doc: x
+      style: callback_mode
+      args:
+        - name: device
+          doc: x
+          type: object.device
+          pointer: immutable
+          passed_with_ownership: false
+        - name: message
+          doc: x
+          type: out_string
+          passed_with_ownership: false
+    - name: error
+      doc: x
+      style: immediate
+      args:
+        - name: message
+          doc: x
+          type: out_string
+          passed_with_ownership: false
+    - name: bad
+      doc: x
+      style: immediate
+      args:
+        - name: info
+          doc: x
+          type: struct.info
+          pointer: immutable
+    "
+  let structs := dedent "
+    - name: info
+      doc: x
+      type: standalone
+    - name: descriptor
+      doc: x
+      type: standalone
+      members:
+        - name: lost
+          doc: x
+          type: callback.lost
+        - name: error
+          doc: x
+          type: callback.error
+        - name: bad
+          doc: x
+          type: callback.bad
+    "
+  let input := spec (structs := structs) (callbacks := callbacks)
+    (objects := "- name: device\n  doc: x\n")
+  let lowered := lowerText input
+  let descriptor := lowered.bind fun l =>
+    l.structs.toList.find? (·.names.lean == "Descriptor")
+  descriptor.map (·.members.toList.map (·.value)) == some [
+        .callbackInfo ⟨"WGPULostCallback", "LostCallback"⟩ true 0,
+        .callbackInfo ⟨"WGPUErrorCallback", "ErrorCallback"⟩ false 1,
+        .unsupported "callback (an argument it cannot pass)"
+      ]
+    && lowered.map (·.callbacks.size) == some 3
 
 end WebGPUGenTest.Lowered.Lower

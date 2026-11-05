@@ -382,7 +382,8 @@ def member (name : String) (value : Value) : Member :=
 -- A callback a struct keeps: its info's chain, null; its mode, 0 for none;
 -- its trampoline's address; its closure, which the family being filled holds
 -- at the ordinal; and the ordinal, for the trampoline, 0 for none. The
--- address and the ordinal are pointer-sized numbers on each width.
+-- address and the ordinal are pointer-sized numbers on each width. Each is by
+-- the info's `KeptCallback` instance.
 #guard
   let lost : Names := ⟨"WGPUDeviceLostCallback", "DeviceLostCallback"⟩
   let input := struct "WGPUDescriptor" "Descriptor" .standalone
@@ -391,17 +392,16 @@ def member (name : String) (value : Value) : Member :=
     (size, es.map fun (o, _, i) => (o, i))
   laid .bits64 == some (40, [
       (0,  .pointer .next),
-      (8,  .int "(d.lost.map (CEnum.toC ·.mode)).getD 0"),
-      (16, .int "Internal.DeviceLostCallbackInfo.addressOf d.lost"),
+      (8,  .int "keptMode d.lost"),
+      (16, .int "keptAddress d.lost"),
       (24, .pointer (.closure lost 1 "d.lost")),
-      (32, .int "if d.lost.isSome then (1 : UInt64) else 0")
+      (32, .int "keptOrdinal 1 d.lost")
     ])
     && (laid .bits32).map (·.1) == some 20
     && kind (fun _ => none) (.closure lost 1 "d.lost")
       == some (".optClosure 1", 6, 1)
-    && piecesLines 2 (pieces .bits64 (.closure lost 1 "d.lost")) == [
-      "#[.optClosure (d.lost.map Internal.DeviceLostCallbackInfo.closure)]"
-    ]
+    && piecesLines 2 (pieces .bits64 (.closure lost 1 "d.lost"))
+      == ["#[.optClosure (keptClosure d.lost)]"]
 
 /-! ## Walks -/
 
