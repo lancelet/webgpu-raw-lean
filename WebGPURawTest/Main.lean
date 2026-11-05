@@ -98,7 +98,7 @@ def main (args : List String) : IO Unit := do
   -- And a device, if there is an adapter, its callbacks kept by its family.
   match ← WebGPURawTest.Internal.Device.checks wgpu with
   | none =>
-    -- Where a software adapter is installed (CI's Linux), there must be one.
+    -- Where one is required (in CI, whose runners all have one), a failure.
     if (← IO.getEnv "WEBGPU_RAW_REQUIRE_ADAPTER").isSome then
       throw (IO.userError "FAIL: no adapter, though one is required")
     IO.println "note: no adapter here, so no device checked"

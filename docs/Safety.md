@@ -279,7 +279,7 @@ runs callbacks as WebGPU does (`WebGPURawTest/Internal/Callback.lean`), and
   the program. *Checked by:* test,
   of the shims printed; under Node, where `requestAdapter`'s callback runs
   in `processEvents` (a regression test: it ran outside every call, ending
-  the program); and natively, with an adapter (in CI, on Linux, lavapipe),
+  the program); and natively, with an adapter (in CI, on every OS),
   where an uncaptured-error closure's error, and the bindings' own
   handler's, are `createBuffer`'s, and a map callback's, the call's that
   ran it (wgpu-native completes a map with nothing pending on the buffer in
@@ -319,7 +319,7 @@ which a shim taking a struct that keeps callbacks makes: a device
 descriptor, which `Adapter.requestDevice` takes. The families are tested on
 their own (`WebGPURawTest/Internal/Family.lean`), natively and on the web,
 a closure filled in among them; and a device's, natively, where there is an
-adapter, as in CI on Linux, Mesa's software one, lavapipe
+adapter, as in CI on every OS (on Linux, Mesa's software one, lavapipe)
 (`WebGPURawTest/Internal/Device.lean`): its callbacks, mapping a buffer, a
 queue's work done, and an error scope.
 

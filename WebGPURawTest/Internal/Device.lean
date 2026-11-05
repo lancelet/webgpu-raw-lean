@@ -8,9 +8,9 @@ A device requested of an adapter, with its own callbacks: the uncaptured-error
 callback given each error a call on the device makes, and both kept by the
 device's family until the device and every object made from it are gone,
 when their closures are released (`c/family.c`). These need an adapter, which
-a machine with no GPU has none of (as CI's runners, but for a software one):
-then each says so, and checks nothing. They run natively; in a browser, the
-web self-test requests its own.
+a machine with no GPU may have none of (CI's runners each have one, if only
+in software): then they check nothing. They run natively; in a browser, the
+web self-test runs its own (`WebGPURawWebTest/Device.lean`).
 -/
 
 namespace WebGPURawTest.Internal.Device
@@ -137,8 +137,9 @@ def defaulted (wgpu : Instance) (adapter : Adapter) : IO String := do
 
 /--
 Run `wgpu`'s events until `done` holds, at most `tries` times: whether it did.
-wgpu-native completes a buffer's map, or a queue's work, only when events
-are processed after the GPU is done.
+These tests submit no work, so wgpu-native completes what they wait for in
+the call or in the next `processEvents`; a test that submits work would wait
+for the GPU by a blocking poll, `wgpuDevicePoll`, not bound yet.
 -/
 def pumpUntil (wgpu : Instance) (done : IO Bool) (tries : Nat := 1000) :
     IO Bool := do
@@ -168,7 +169,8 @@ def mapped (wgpu : Instance) (adapter : Adapter) : IO String := do
 An error a buffer's map callback raises is the error of the call that ran it:
 `mapAsync` itself, as wgpu-native completes a map with nothing pending on
 the buffer in the call, or the `processEvents` that does. Never the end of
-the program, as every call is bracketed.
+the program, as every call is bracketed. (Of a map that succeeds: a failed
+one raises another error.)
 -/
 def mapRaised (wgpu : Instance) (adapter : Adapter) : IO String := do
   match ← device? wgpu adapter none with
@@ -176,8 +178,9 @@ def mapRaised (wgpu : Instance) (adapter : Adapter) : IO String := do
   | .ok device =>
     let some buffer ← readable device | pure "no buffer"
     let e ← errorOf do
-      let _ ← buffer.mapAsync .read 0 4 .allowProcessEvents fun _ _ =>
-        throw (IO.userError "map refused")
+      let _ ← buffer.mapAsync .read 0 4 .allowProcessEvents fun status m =>
+        throw (IO.userError (if status matches .ok .success then "map refused"
+          else s!"map failed: {m}"))
       let _ ← pumpUntil wgpu (return false) (tries := 100)
     pure (problemUnless (e == "map refused") s!"raised {repr e}")
 
