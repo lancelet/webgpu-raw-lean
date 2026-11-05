@@ -169,8 +169,9 @@ def resultValue (r : Resolved.Spec) (ret : Return) : Value :=
   -- A future by value (`getLostFuture`'s): its ID, as a callback's future.
   | .named (.struct id) =>
     if ret.optional || ret.passedWithOwnership.isSome then unsupported
-    else structNamed r id fun names =>
-      if names.c == "WGPUFuture" then .future else unsupported
+    else match r.structs[id.idx]? with
+      | some s => if s.name.text == "future" then .future else unsupported
+      | none   => .unsupported "a reference out of range"
   | _ => unsupported
 
 /-! ## Constants -/
