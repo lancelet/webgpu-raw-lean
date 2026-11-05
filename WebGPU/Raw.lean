@@ -8,6 +8,7 @@ public import WebGPU.Raw.Callbacks
 public import WebGPU.Raw.Structs
 public import WebGPU.Raw.Functions
 public import WebGPU.Raw.Wait
+public import WebGPU.Raw.Mapped
 
 /-!
 # WebGPU, raw

@@ -362,6 +362,70 @@ def written (wgpu : Instance) (adapter : Adapter) : IO String := do
         && over.startsWith "WebGPU validation error: " && texels.isEmpty)
       s!"{repr fits}; {repr over}; {repr texels}")
 
+/-! ### Mapped memory -/
+
+/-- Map `buffer`'s first `size` bytes for `mode`, waiting: whether it did. -/
+def mapNow (wgpu : Instance) (buffer : Buffer) (mode : MapMode)
+    (size : UInt64) : IO Bool := do
+  let status ← IO.mkRef none
+  let _ ← buffer.mapAsync mode 0 size .allowProcessEvents fun s _ =>
+    status.set (some (s matches .ok .success))
+  let _ ← pumpUntil wgpu (return (← status.get).isSome)
+  return (← status.get) == some true
+
+/-- 16 bytes, each different. -/
+def sixteen : ByteArray := ByteArray.mk ((Array.range 16).map (·.toUInt8 * 3))
+
+/--
+Bytes written to a buffer by its queue are read back from its mapped memory,
+as they were; and bytes written into a buffer's memory, mapped at creation,
+copied to another, are read back from that. A range outside the buffer, or
+misaligned, is an `IO` error, not a read or write past it. (Not a buffer
+not mapped: wgpu-native ends the program, `docs/Safety.md`.)
+-/
+def mappedMemory (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let held ← IO.mkRef (some device)
+    let queue ← device.getQueue
+    let readBack (size : UInt64) := device.createBuffer
+      { size := size, usage := .mapRead ||| .copyDst }
+    -- Written by the queue, then read.
+    let some target ← readBack 16 | pure "no buffer"
+    queue.writeBuffer target 0 sixteen
+    queue.submit #[]
+    let mapped ← mapNow wgpu target .read 16
+    let back ← target.readMapped 0 16
+    -- Natively, a range is given again, and a write into a read mapping is
+    -- accepted (and lost): as `WebGPU.Raw.Mapped` says, not as in a browser.
+    let again ← target.readMapped 0 16
+    let intoRead ← errorOf (target.writeMapped 0 (ByteArray.mk #[0, 0, 0, 0]))
+    let outside ← errorOf (target.readMapped 8 16)
+    let misaligned ← errorOf (target.readMapped 4 4)
+    target.unmap
+    -- Written into memory mapped at creation, then copied.
+    let some source ← device.createBuffer
+        { size := 16, usage := .copySrc, mappedAtCreation := true }
+      | pure "no buffer"
+    source.writeMapped 0 sixteen
+    let tooFar ← errorOf (source.writeMapped 8 sixteen)
+    source.unmap
+    let some copy ← readBack 16 | pure "no buffer"
+    let encoder ← device.createCommandEncoder none
+    encoder.copyBufferToBuffer source 0 copy 0 16
+    queue.submit #[← encoder.finish none]
+    let copied ← mapNow wgpu copy .read 16
+    let through ← copy.readMapped 0 16
+    held.set none
+    let outside? (e : String) := e.endsWith "a range outside the buffer"
+    pure (problemUnless (mapped && back == sixteen && again == sixteen
+        && intoRead.isEmpty && outside? outside
+        && misaligned.endsWith "a size not of 4" && outside? tooFar
+        && copied && through == sixteen)
+      s!"mapped {mapped}, {back.toList}; {repr outside}; {repr misaligned}; \
+        {repr tooFar}; copied {copied}, {through.toList}")
+
 /--
 `setImmediates`, which Dawn lacks, reaches wgpu-native, which the native
 build says it is built against: whatever wgpu-native makes of it (with no
@@ -429,7 +493,9 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
     ("a render pass's bundles, each", bundles wgpu adapter),
     ("bytes written to a buffer and a texture, by their size",
       written wgpu adapter),
-    ("setImmediates, which Dawn lacks, called", immediates wgpu adapter)
+    ("setImmediates, which Dawn lacks, called", immediates wgpu adapter),
+    ("mapped memory read and written, by copies, within it",
+      mappedMemory wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

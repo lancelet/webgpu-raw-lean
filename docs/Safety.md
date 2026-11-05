@@ -81,6 +81,30 @@ it could call unimplemented.)
   (`Emit/Agreement.lean`); test, with an adapter, that their size reaches C
   (4 bytes written into a buffer of 4; 8 refused) and a texture's are
   written.
+- **A buffer's mapped memory is copied out of, or into, never given Lean as
+  a pointer** (`Buffer.readMapped`, `writeMapped`, written by hand in
+  `c/mapped.c`; `getMappedRange` and `getConstMappedRange` are not bound): a
+  range is valid only until the buffer is unmapped, when C may free it. Each
+  copy asks C for exactly the range it copies, and copies only if C gives
+  one. First the shim refuses, as an `IO` error, a range WebGPU forbids
+  that wgpu-native would end the program over: misaligned (an offset not a
+  multiple of 8, a size not of 4), or outside the buffer (its size from
+  `wgpuBufferGetSize`). Whether the buffer is mapped there, wgpu-native
+  cannot be asked first (`getMapState` is one of its stubs): a buffer not
+  mapped, its mapping pending, or destroyed, or a range outside what is
+  mapped, ends the program natively, where Dawn gives no range, which the
+  shim raises. In a browser, each byte of a mapping can be given once, till
+  the buffer is unmapped (WebGPU forbids overlapping ranges), and only a
+  mapping for writing is written; natively, a range is given again, and a
+  write into a mapping for reading is accepted, and lost. A range of no
+  bytes is not asked for; on wasm32, one too large for a `size_t` is
+  refused. *Checked by:* test, with an adapter: bytes the queue wrote read
+  back, and bytes written into memory mapped at creation read back after a
+  copy, natively and in a browser; a range outside the buffer, or
+  misaligned, refused; natively, a range given again, and a write into a
+  read mapping accepted; in a browser, a buffer not mapped, a range asked
+  for again, and a write into a read mapping, refused. A buffer not mapped,
+  natively: not checked.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
@@ -522,8 +546,6 @@ Rules that later parts of the bindings must follow, decided in advance:
 - Strings from C are copied into new Lean strings at once, with Lean's
   validating constructor, as a callback's are: they are only valid during the
   call or callback, and may not be valid UTF-8.
-- Mapped buffer memory is copied in and out, never exposed as a pointer; each
-  copy asks C for the mapped range and checks its bounds.
 - Chained structs C returns may hold entries the bindings do not know; those
   are skipped.
 - A struct's string is passed as a view of its bytes, so `""` is `{ptr, 0}`,

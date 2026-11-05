@@ -10,10 +10,12 @@ event loop, after the call that registered it has returned: so each step goes
 on in the callback of the step before (as `main` goes on in `requestAdapter`'s),
 and the last gives every check's line to `finish`, which ends the program.
 
-The steps: a device is requested, with both its callbacks; a call on it makes
-a validation error, which its uncaptured-error callback is given; that
-destroys it, so that its device-lost callback is called; and a later turn of
-the event loop checks it was called once, that its lost future completed
+The steps: a device is requested, with both its callbacks; a buffer's mapped
+memory is written, copied to another, mapped and read back, by the map's
+callback; a call on the device makes a validation error, which its
+uncaptured-error callback is given; that destroys it, so that its
+device-lost callback is called; and a later turn of the event loop checks it
+was called once, that its lost future completed
 then and not before, as `waitAny` finds, and that the device's family kept
 both closures until the device was dropped. Last, a request registered
 `waitAnyOnly` has its callback run by `waitAny`, in a later turn.
@@ -23,7 +25,7 @@ namespace WebGPURawWebTest.Device
 open WebGPU.Raw
 open WebGPURawTest.Internal.Callback
   (token touch tokensReleased problemUnless errorOf)
-open WebGPURawTest.Internal.Device (badBuffer)
+open WebGPURawTest.Internal.Device (badBuffer sixteen)
 
 /-- What the device's callbacks were given, in order. -/
 structure Seen where
@@ -158,6 +160,21 @@ def run (wgpu : Instance) (adapter : Adapter)
           errors := s.errors.push (type matches .ok .validation, message) }
         if (← seen.get).errors.size == 1 then
           (← device.get).forM (·.destroy)
+    -- Whether `e` says C gave no mapped range.
+    let noRange (e : String) := (e.splitOn "no mapped range there").length > 1
+    -- A validation error, which the uncaptured-error callback is given, and
+    -- so the device destroyed, and lost.
+    let provoke (d : Device) : IO Unit := do
+      let _ ← d.createBuffer badBuffer
+      -- In headless Chrome, the buffer's error reached its callback only
+      -- while a request was pending (observed, not documented): so one is,
+      -- the queue's work done; the work, an empty command buffer, whose
+      -- handle C passes in an array, a 4-byte pointer on wasm32 (were it
+      -- not passed, an error would be one more given its callback).
+      let queue ← d.getQueue
+      queue.submit #[← (← d.createCommandEncoder none).finish none]
+      let _ ← queue.onSubmittedWorkDone .allowSpontaneous
+        fun _ _ => do workDone.set true; proceed
     let _ ← adapter.requestDevice (some {
         -- Spontaneous, as the checks assume: `waitAny` would run it otherwise.
         deviceLostCallbackInfo      := some {
@@ -177,16 +194,46 @@ def run (wgpu : Instance) (adapter : Adapter)
           along.modify (· ++ [line "setImmediates, which Dawn lacks, refused"
             (problemUnless (e.endsWith "not implemented by dawn")
               s!"raised {repr e}")])
-          let _ ← d.createBuffer badBuffer
-          -- In headless Chrome, the buffer's error reached its callback only
-          -- while a request was pending (observed, not documented): so one is,
-          -- the queue's work done; the work, an empty command buffer, whose
-          -- handle C passes in an array, a 4-byte pointer on wasm32 (were it
-          -- not passed, an error would be one more given its callback).
-          let queue ← d.getQueue
-          queue.submit #[← (← d.createCommandEncoder none).finish none]
-          let _ ← queue.onSubmittedWorkDone .allowSpontaneous
-            fun _ _ => do workDone.set true; proceed
+          -- A buffer not mapped: no range, which Dawn says.
+          let unmapped ← errorOf do
+            let some b ← d.createBuffer
+                { size := 16, usage := .mapRead ||| .copyDst }
+              | throw (IO.userError "no buffer")
+            let _ ← b.readMapped 0 4
+          along.modify (· ++ [line "a buffer not mapped, read: refused"
+            (problemUnless (noRange unmapped)
+              s!"raised {repr unmapped}")])
+          -- Bytes written into memory mapped at creation, copied, mapped and
+          -- read back, the map's callback from the event loop; then on.
+          let some source ← d.createBuffer
+              { size := 16, usage := .copySrc, mappedAtCreation := true }
+            | finish [line "a buffer made" "none"]
+          source.writeMapped 0 sixteen
+          source.unmap
+          let some copy ← d.createBuffer
+              { size := 16, usage := .mapRead ||| .copyDst }
+            | finish [line "a buffer made" "none"]
+          let encoder ← d.createCommandEncoder none
+          encoder.copyBufferToBuffer source 0 copy 0 16
+          (← d.getQueue).submit #[← encoder.finish none]
+          let _ ← copy.mapAsync .read 0 16 .allowSpontaneous
+            fun status _ => guarded finish do
+              let back ← copy.readMapped 0 16
+              -- In a browser, a mapping's bytes are given once, and only
+              -- a mapping for writing is written.
+              let again ← errorOf (copy.readMapped 8 8)
+              let intoRead ←
+                errorOf (copy.writeMapped 0 (ByteArray.mk #[0, 0, 0, 0]))
+              along.modify (· ++ [
+                line "bytes written into mapped memory, copied, read back"
+                  (problemUnless
+                    (status matches .ok .success && back == sixteen)
+                    s!"{repr status |>.pretty}, {back.toList}"),
+                line "a mapping's bytes asked for again, or written, refused"
+                  (problemUnless (noRange again && noRange intoRead)
+                    s!"{repr again}; {repr intoRead}")
+              ])
+              provoke d
         | _, _ => finish [line "a device requested" s!"none: {message}"]
 
 end WebGPURawWebTest.Device

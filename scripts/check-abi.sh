@@ -6,9 +6,10 @@
 # error. It also checks that the two declare the same number of functions. It
 # checks the generated shims (WebGPU.Raw.Functions, c/generated/functions.c),
 # the addresses of callbacks' trampolines (WebGPU.Raw.Callbacks), and the
-# shim written by hand (WebGPU.Raw.Wait, c/wait.c); each as built against
-# wgpu-native (-DWEBGPU_RAW_WGPU_NATIVE), against Dawn (-DWEBGPU_RAW_DAWN),
-# and against neither, as each calls what the other leaves unimplemented.
+# shims written by hand (WebGPU.Raw.Wait, c/wait.c; WebGPU.Raw.Mapped,
+# c/mapped.c); each as built against wgpu-native (-DWEBGPU_RAW_WGPU_NATIVE),
+# against Dawn (-DWEBGPU_RAW_DAWN), and against neither, as each calls what
+# the other leaves unimplemented.
 # (The byte writers' C is pasted into Lean's own, so its compiler checks it.)
 set -eu
 cd "$(dirname "$0")/.."
@@ -85,3 +86,5 @@ check() {
 check WebGPU.Raw.Functions c/generated/functions.c \
   'lean_wgpu[A-Z][A-Za-z0-9]*' shims
 check WebGPU.Raw.Wait c/wait.c 'lean_wgpuInstanceWaitAny' "hand-written shims"
+check WebGPU.Raw.Mapped c/mapped.c 'lean_wgpu_buffer_(read|write)_mapped' \
+  "hand-written shims"
