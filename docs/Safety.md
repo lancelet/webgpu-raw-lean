@@ -207,6 +207,55 @@ The checked build's test that an array is held by nothing else
 as shared between threads, though nothing else holds it: so a test that hands
 encoded structs between tasks would stop the checked build without cause.
 
+## Callbacks
+
+A callback is a Lean closure, run by C through a trampoline and the callback
+runtime (`c/callback.c`). No WebGPU function takes one yet: the runtime is
+tested with a fake library that runs callbacks as WebGPU does
+(`WebGPURawTest/Internal/Callback.lean`), natively and on the web.
+
+- **A callback's closure is held by C until it runs, then released, exactly
+  once.** C takes its own reference to the closure (`lean_wgpu_closure_hold`)
+  as the callback's userdata; the trampoline applies it, which consumes that
+  reference. *Checked by:* test (a callback run during its call, in a pump
+  and in a finalizer, each once; and its closure released once it has run,
+  not before).
+- **Every callback is called exactly once**, with a cancelled status if it
+  cannot complete, so every closure is released, whatever the status:
+  upstream's contract (`webgpu.h`), assumed. *Checked by:* not yet: a test
+  of each implementation comes with the first WebGPU function bound that
+  takes a callback.
+- **A callback can run inside a finalizer**, as releasing an instance runs
+  its waiting callbacks, cancelled: the Lean runtime allows Lean code in an
+  external object's finalizer (`lean_dec_ref_cold` frees each object after
+  its finalizer returns). *Checked by:* review, and test (a callback a
+  finalizer runs).
+- **A closure may run on another thread than the one that made it**, as a
+  Lean `Task` may run `processEvents`: so it is marked as shared between
+  threads when C takes it (`lean_mark_mt`), and its reference counts are
+  atomic. *Checked by:* review.
+- **An error a callback raises is the error of the call into WebGPU that ran
+  it**: the call that takes it, if it runs it before returning, as
+  wgpu-native's `requestAdapter` does, or `processEvents` or `waitAny`. Each
+  such call keeps, on its thread, the first error any callback in it raised,
+  and raises it once WebGPU returns; the rest still run, their errors
+  dropped. If a callback calls into WebGPU in turn, that call keeps its own,
+  and its caller's are kept apart (whether an implementation allows such a
+  call is its own: wgpu-native may hold locks while it runs callbacks).
+  *Checked by:* test. So every shim of a call that can run callbacks must
+  bracket the call (`lean_wgpu_callbacks_enter` and `_leave`), releases
+  included, which run cancelled callbacks: a callback run in one that does
+  not is outside every call. *Checked by:* not yet: no shim runs callbacks.
+- **An error a callback raises outside every call ends the program**, printed,
+  as an error `main` raises does: a callback the browser's event loop runs,
+  or one a finalizer runs outside every call, has no caller to raise it to.
+  *Checked by:* test, natively, in a process of its own; on the web, review
+  (`exit` with `-sEXIT_RUNTIME=1` ends the program from the event loop).
+- **A string C passes a callback is copied at once** into a new Lean string,
+  as it is valid only during the callback: valid UTF-8, each invalid byte
+  U+FFFD; sized, or NUL-terminated (`WGPU_STRLEN`); the null view `""`.
+  *Checked by:* test.
+
 ## Functions an implementation does not implement
 
 wgpu-native v29.0.1.1 leaves 40 `webgpu.h` functions unimplemented: calling one
@@ -261,15 +310,10 @@ layer can validate such inputs.
 Rules that later parts of the bindings must follow, decided in advance:
 
 - Strings from C are copied into new Lean strings at once, with Lean's
-  validating constructor: they are only valid during the call or callback, and
-  may not be valid UTF-8.
+  validating constructor, as a callback's are: they are only valid during the
+  call or callback, and may not be valid UTF-8.
 - Mapped buffer memory is copied in and out, never exposed as a pointer; each
   copy asks C for the mapped range and checks its bounds.
-- A callback is a Lean closure held by its C userdata, released exactly once
-  when the callback runs. Upstream calls every callback exactly once, with a
-  cancelled status if its instance is released first; that call can then run
-  inside a finalizer, which the Lean runtime allows. An error thrown by a
-  callback is re-raised from the `waitAny` or `processEvents` that ran it.
 - Chained structs C returns may hold entries the bindings do not know; those
   are skipped.
 - A struct's string is passed as a view of its bytes, so `""` is `{ptr, 0}`,

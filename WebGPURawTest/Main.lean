@@ -15,6 +15,7 @@ declarations of them; this checks that calls through them run.
 -/
 
 open WebGPU.Raw
+open WebGPURawTest.Internal.Callback (defer raising runOutside)
 
 /--
 Check that calling `action`, the Lean function `name`, raises the IO error for
@@ -29,7 +30,36 @@ def expectNotImplemented {α : Type} (name : String) (action : IO α) :
     unless toString e == expected do
       throw (IO.userError s!"FAIL: {name} raised {e}, not {expected}")
 
-def main : IO Unit := do
+/--
+Run a callback that raises an error outside every call: the program ends,
+printing it, as an error `main` raises does. Run by `main` as a process of its
+own.
+-/
+def spontaneousError : IO Unit := do
+  defer (raising "spontaneous") 0 .empty
+  runOutside
+  IO.println "FAIL: the program went on"
+
+/-- Check that `spontaneousError` ends its process, printing the error. -/
+def checkSpontaneousError : IO Unit := do
+  let out ← IO.Process.output {
+    cmd  := (← IO.appPath).toString
+    args := #["spontaneous-error"]
+  }
+  -- Whether the error was printed: its message is in what the process wrote.
+  let printed := (out.stderr.splitOn "spontaneous").length > 1
+  unless out.exitCode == 1 && printed && out.stdout.isEmpty do
+    throw (IO.userError s!"FAIL: a callback's error outside every call: \
+      exit {out.exitCode}, {repr out.stderr}, {repr out.stdout}")
+
+def main (args : List String) : IO Unit := do
+  if args == ["spontaneous-error"] then
+    return ← spontaneousError
+  -- Lean closures run as callbacks: once, released, their errors raised.
+  for (what, problem) in ← WebGPURawTest.Internal.Callback.checks do
+    unless problem.isEmpty do
+      throw (IO.userError s!"FAIL: callbacks: {what}: {problem}")
+  checkSpontaneousError
   let wgpu ← createInstance none
   -- And with a descriptor: a struct C fills in, its limits a struct of its
   -- own, by their tables. (wgpu-native aborts on a timed `waitAny` feature or

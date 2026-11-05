@@ -145,7 +145,8 @@ lean_lib WebGPURaw where
 /--
 C helpers for the tests only, every `.c` file in `WebGPURawTest/c/`: structs
 as C lays them out, to compare encoding with; pointers filled in and read back;
-and, for the web self-test, whether the page has WebGPU.
+a fake library that runs callbacks as WebGPU does; and, for the web self-test,
+whether the page has WebGPU.
 -/
 target testHelpers pkg : FilePath := do
   let dir := pkg.dir / "WebGPURawTest" / "c"
@@ -161,6 +162,7 @@ target testHelpers pkg : FilePath := do
   let headers ← [
     pkg.dir / "c" / "generated" / "objects.h",
     pkg.dir / "c" / "reloc.h",
+    pkg.dir / "c" / "callback.h",
     wgpuDir pkg.dir / "include" / "webgpu" / "webgpu.h"
   ].mapM fun h => inputTextFile h
   let cc ← cCompiler
