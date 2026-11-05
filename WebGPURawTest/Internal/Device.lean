@@ -426,6 +426,101 @@ def mappedMemory (wgpu : Instance) (adapter : Adapter) : IO String := do
       s!"mapped {mapped}, {back.toList}; {repr outside}; {repr misaligned}; \
         {repr tooFar}; copied {copied}, {through.toList}")
 
+/-! ### Drawing -/
+
+/--
+A red triangle over the lower-left half of what it is drawn to: its vertices
+the corners of clip space at the bottom left, bottom right and top left.
+-/
+def triangleWGSL : String :=
+  "@vertex fn vs(@builtin(vertex_index) i : u32) -> @builtin(position) vec4f {
+     var corners = array<vec2f, 3>(
+       vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0));
+     return vec4f(corners[i], 0.0, 1.0);
+   }
+   @fragment fn fs() -> @location(0) vec4f {
+     return vec4f(1.0, 0.0, 0.0, 1.0);
+   }"
+
+/-- A side of the texture drawn to, in texels: a row of it is 256 bytes. -/
+def side : Nat := 64
+
+/--
+Draw the triangle on `device` into a texture cleared to blue, copied into a
+buffer, submitted: the buffer, to map, and its size. Its texels, a row of
+256 bytes each, are red where it was drawn.
+-/
+def encodeTriangle (device : Device) : IO (Option (Buffer × UInt64)) := do
+  let module ← device.createShaderModule {
+    chain := #[.shaderSourceWGSL { code := triangleWGSL }]
+  }
+  let pipeline ← device.createRenderPipeline {
+    vertex   := { module := module, entryPoint := some "vs" }
+    fragment := some {
+      module     := module
+      entryPoint := some "fs"
+      targets    := #[{ format := .rgba8Unorm }]
+    }
+  }
+  let texture ← device.createTexture {
+    usage  := .renderAttachment ||| .copySrc
+    size   := { width := side.toUInt32, height := side.toUInt32 }
+    format := .rgba8Unorm
+  }
+  let view ← texture.createView none
+  let size := (256 * side).toUInt64
+  let some texels ← device.createBuffer
+      { size := size, usage := .mapRead ||| .copyDst }
+    | return none
+  let encoder ← device.createCommandEncoder none
+  let pass ← encoder.beginRenderPass { colorAttachments := #[{
+    view       := some view
+    loadOp     := .clear
+    storeOp    := .store
+    clearValue := { r := 0, g := 0, b := 1, a := 1 }
+  }] }
+  pass.setPipeline pipeline
+  pass.draw 3 1 0 0
+  pass.«end»
+  encoder.copyTextureToBuffer { texture := texture }
+    { layout := { bytesPerRow := 256, rowsPerImage := side.toUInt32 },
+      buffer := texels }
+    { width := side.toUInt32, height := side.toUInt32 }
+  (← device.getQueue).submit #[← encoder.finish none]
+  return some (texels, size)
+
+/-- Draw the triangle on `device`, waiting: its texels, if mapped. -/
+def drawTriangle (wgpu : Instance) (device : Device) : IO (Option ByteArray) :=
+  do
+  let some (texels, size) ← encodeTriangle device | return none
+  unless ← mapNow wgpu texels .read size do return none
+  some <$> texels.readMapped 0 size
+
+/-- The texel at column `x`, row `y` (from the top), of a copy's texels. -/
+def texel (texels : ByteArray) (x y : Nat) : List UInt8 :=
+  (texels.extract (y * 256 + x * 4) (y * 256 + x * 4 + 4)).toList
+
+/--
+A triangle drawn, by a render pipeline of a WGSL module, into a texture, and
+read back: red inside it (near the bottom left), the clear colour, blue,
+outside it (near the top right).
+-/
+def triangle (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let held ← IO.mkRef (some device)
+    let texels ← drawTriangle wgpu device
+    held.set none
+    match texels with
+    | none => pure "not drawn, or not mapped"
+    | some texels =>
+      let inside := texel texels 2 (side - 3)
+      let outside := texel texels (side - 3) 2
+      pure (problemUnless
+        (inside == [255, 0, 0, 255] && outside == [0, 0, 255, 255])
+        s!"inside {inside}, outside {outside}")
+
 /-! ### What is supported -/
 
 /--
@@ -542,7 +637,8 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
     ("setImmediates, which Dawn lacks, called", immediates wgpu adapter),
     ("mapped memory read and written, by copies, within it",
       mappedMemory wgpu adapter),
-    ("limits, features and information read", supported wgpu adapter)
+    ("limits, features and information read", supported wgpu adapter),
+    ("a triangle drawn, and read back", triangle wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

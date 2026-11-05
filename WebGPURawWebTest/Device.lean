@@ -12,20 +12,22 @@ and the last gives every check's line to `finish`, which ends the program.
 
 The steps: a device is requested, with both its callbacks; a buffer's mapped
 memory is written, copied to another, mapped and read back, by the map's
-callback; a call on the device makes a validation error, which its
-uncaptured-error callback is given; that destroys it, so that its
-device-lost callback is called; and a later turn of the event loop checks it
-was called once, that its lost future completed
-then and not before, as `waitAny` finds, and that the device's family kept
-both closures until the device was dropped. Last, a request registered
-`waitAnyOnly` has its callback run by `waitAny`, in a later turn.
+callback; a triangle is drawn into a texture, and read back likewise; a call
+on the device makes a validation error, which its uncaptured-error callback
+is given; that destroys it, so that its device-lost callback is called; and
+a later turn of the event loop checks it was called once, that its lost
+future completed then and not before, as `waitAny` finds, and that the
+device's family kept both closures until the device was dropped. Last, a
+request registered `waitAnyOnly` has its callback run by `waitAny`, in a
+later turn.
 -/
 
 namespace WebGPURawWebTest.Device
 open WebGPU.Raw
 open WebGPURawTest.Internal.Callback
   (token touch tokensReleased problemUnless errorOf)
-open WebGPURawTest.Internal.Device (badBuffer sixteen)
+open WebGPURawTest.Internal.Device
+  (badBuffer sixteen encodeTriangle texel side)
 
 /-- What the device's callbacks were given, in order. -/
 structure Seen where
@@ -250,7 +252,21 @@ def run (wgpu : Instance) (adapter : Adapter)
                   (problemUnless (noRange again && noRange intoRead)
                     s!"{repr again}; {repr intoRead}")
               ])
-              provoke d
+              -- A triangle drawn, and read back, by the map's callback.
+              match ← encodeTriangle d with
+              | none => finish [line "a triangle drawn" "no buffer"]
+              | some (texels, size) =>
+                let _ ← texels.mapAsync .read 0 size .allowSpontaneous
+                  fun status _ => guarded finish do
+                    let bytes ← texels.readMapped 0 size
+                    let inside := texel bytes 2 (side - 3)
+                    let outside := texel bytes (side - 3) 2
+                    along.modify (· ++ [line "a triangle drawn, and read back"
+                      (problemUnless (status matches .ok .success
+                          && inside == [255, 0, 0, 255]
+                          && outside == [0, 0, 255, 255])
+                        s!"inside {inside}, outside {outside}")])
+                    provoke d
         | _, _ => finish [line "a device requested" s!"none: {message}"]
 
 end WebGPURawWebTest.Device
