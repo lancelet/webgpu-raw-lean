@@ -657,14 +657,39 @@ def zeroValues (structs : List Lowered.Struct) :
   firstOfEach (structs.flatMap fun s => s.members.toList.flatMap fun m =>
     (m.default.map (·.zeroValues)).getD [])
 
-/-- The bound structs' declarations, each followed by its zero value if used. -/
+/--
+A word struct C fills, from its members as C gives them, in order
+(`Emit.C.wordsFunction`, of the same members), each a word: its chain, if it
+has one, empty.
+-/
+def ofWordsDecl (s : Lowered.Struct) : Doc :=
+  let field (m : Lowered.Member) (k : Nat) : List String :=
+    let word := s!"words.getD {k} 0"
+    [m.names.lean, ":=", match m.value with
+      | .bool   => s!"{word} != 0"
+      | .uint16 => s!"({word}).toUInt16"
+      | .uint32 => s!"({word}).toUInt32"
+      | _       => word]
+  docBefore 0 s!"`{s.names.lean}` made of its members as C gives them, in \
+      order (`{Emit.C.wordsName s}`), each a word; its chain, if any, empty."
+    ++ text s!"def {s.names.lean}.ofWords (words : Array UInt64) : \
+      {s.names.lean} where"
+    ++ indented 2 (Doc.lines (columns
+      (s.members.toList.zipIdx.map fun (m, k) => field m k)))
+
+/--
+The bound structs' declarations, each followed by its zero value if used,
+and, if C fills it with words, its `ofWords`.
+-/
 def structDecls (spec : Lowered.Spec) : List Doc :=
   let bound := boundStructs spec.structs.toList
   let zeros := zeroValues bound
+  let words := (Emit.C.wordStructs spec).map (·.names)
   bound.flatMap fun s =>
     let zero := zeros.find? (·.1.c == s.names.c)
     (chainedDecl bound s).toList ++ [structDecl s]
-      ++ zero.toList.map fun (_, f) => zeroDecl s f
+      ++ zero.toList.map (fun (_, f) => zeroDecl s f)
+      ++ (if words.contains s.names then [ofWordsDecl s] else [])
 
 /-! ## Files -/
 

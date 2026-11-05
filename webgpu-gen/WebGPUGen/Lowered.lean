@@ -221,6 +221,11 @@ def Value.isObject : Value → Bool
   | .array .. | .bytes => true
   | _           => false
 
+/-- Whether the value is an integer, or a `WGPUBool`: a word. -/
+def Value.isWord : Value → Bool
+  | .bool | .uint16 | .uint32 | .uint64 | .usize => true
+  | _                                           => false
+
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
   -- Not one raw type: a struct behind a pointer, or an array, is several
@@ -599,6 +604,11 @@ structure Spec where
   trampolines and types, which no function's callback may give.
   -/
   callbacks : Array Callback := #[]
+  /--
+  The structs a function fills: one behind a mutable pointer, with no
+  ownership stated, as `getLimits` fills a `Limits`.
+  -/
+  filled    : Array Names := #[]
   deriving Repr, BEq
 
 /--

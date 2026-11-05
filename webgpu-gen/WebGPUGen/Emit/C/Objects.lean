@@ -131,18 +131,63 @@ def unboxOptionFunction (o : Lowered.Object) : Function where
       [.call "lean_ctor_get" [.name "option", .lit "0"]]))
   ]
 
+/-! ## Structs C fills, read as words
+
+A struct a function fills (`Lowered.Spec.filled`) whose members are all
+integers, as `Limits`, C gives Lean as its members in order, each a word,
+which Lean makes the struct of (`ofWords`, emitted from the same members):
+so neither side needs the other's layout.
+-/
+
+/--
+The structs C fills that are words alone: bound (so Lean has the struct to
+make), and with no members C allocates (`FreeMembers`), which a reader would
+leave unfreed.
+-/
+def wordStructs (spec : Lowered.Spec) : List Lowered.Struct :=
+  (boundStructs spec.structs.toList).filter fun s =>
+    spec.filled.contains s.names && !s.freeMembers && !s.members.isEmpty
+      && s.members.all (·.value.isWord)
+
+/-- The C function that gives a word struct's members, as words. -/
+def wordsName (s : Lowered.Struct) : String :=
+  "lean_wgpu_" ++ s.names.lean ++ "_words"
+
+/-- That function: the members of `s`, in order, each a `uint64_t`. -/
+def wordsFunction (s : Lowered.Struct) : Function :=
+  let count := Expr.lit (toString s.members.size)
+  let set (m : Lowered.Member) (k : Nat) : Stmt :=
+    .expr (.call "lean_array_set_core" [.name "words", .lit (toString k),
+      .call "lean_box_uint64"
+        [.cast "uint64_t" (.arrow (.name "s") m.names.c)]])
+  {
+    doc    := s!"`{s.names.c}`'s members, in order, each a word: for \
+      Lean's `{s.names.lean}.ofWords`."
+    attrs  := []
+    result := "lean_obj_res"
+    name   := wordsName s
+    params := [⟨s.names.c ++ " const *", "s"⟩]
+    body   := [.decl "lean_object *" "words"
+        (some (.call "lean_alloc_array" [count, count]))]
+      ++ s.members.toList.zipIdx.map (fun (m, k) => set m k)
+      ++ [.ret (some (.name "words"))]
+  }
+
 /-- The header: the functions other shims use to box and unbox objects. -/
-def objectsHeader (objects : List Lowered.Object) : List Decl :=
+def objectsHeader (objects : List Lowered.Object)
+    (words : List Lowered.Struct := []) : List Decl :=
   [.pragma "once", .include "lean/lean.h", .include "webgpu/webgpu.h"]
-    ++ objects.flatMap fun o => [
+    ++ objects.flatMap (fun o => [
       .prototype (boxFunction o),
       .prototype (unboxFunction o),
       .prototype (boxOptionFunction o),
       .prototype (unboxOptionFunction o)
-    ]
+    ])
+    ++ words.map (.prototype ∘ wordsFunction)
 
 /-- The source: each object type's class and finalizer, the start-up, and the functions. -/
-def objectsSource (objects : List Lowered.Object) : List Decl :=
+def objectsSource (objects : List Lowered.Object)
+    (words : List Lowered.Struct := []) : List Decl :=
   let visit : Function := {
     doc    := "An object holds no Lean values, so there are none to visit."
     attrs  := ["static"]
@@ -174,12 +219,13 @@ def objectsSource (objects : List Lowered.Object) : List Decl :=
   [.includeLocal "family.h", .includeLocal "objects.h", .function visit]
     ++ classes ++ objects.map finalizer
     ++ [.function (initFunction objects)]
-    ++ objects.flatMap fun o => [
+    ++ objects.flatMap (fun o => [
       .function (boxFunction o),
       .function (unboxFunction o),
       .function (boxOptionFunction o),
       .function (unboxOptionFunction o)
-    ]
+    ])
+    ++ words.map (.function ∘ wordsFunction)
 
 /-! ## Files -/
 
@@ -190,8 +236,10 @@ def cFile (p : Provenance) (decls : List Decl) : String :=
 /-- The object shims' header and source, `objects.h` and `objects.c`. -/
 def objectsFiles (p : Provenance) (spec : Lowered.Spec) : List (String × String) :=
   [
-    ("objects.h", cFile p (objectsHeader spec.objects.toList)),
-    ("objects.c", cFile p (objectsSource spec.objects.toList))
+    ("objects.h",
+      cFile p (objectsHeader spec.objects.toList (wordStructs spec))),
+    ("objects.c",
+      cFile p (objectsSource spec.objects.toList (wordStructs spec)))
   ]
 
 end WebGPUGen.Emit.C

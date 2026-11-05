@@ -160,4 +160,32 @@ def queue : Lowered.Object := {
     "
   (file (objectsSource [device, queue])).splitOn "\n\n" |>.any (· ++ "\n" == expected)
 
+-- A struct C fills with words: its members, in order, each boxed as a word,
+-- by name; each object type's functions come once, then it.
+#guard
+  let limits : Lowered.Struct := {
+    names           := ⟨"WGPULimits", "Limits"⟩
+    doc             := ""
+    kind            := .standalone
+    extendedStructs := #[]
+    sType           := none
+    freeMembers     := false
+    members         := #[
+      ⟨⟨"maxA", "maxA"⟩, "", .uint32, none⟩,
+      ⟨⟨"maxB", "maxB"⟩, "", .uint64, none⟩
+    ]
+  }
+  let expected := dedent "
+    // `WGPULimits`'s members, in order, each a word: for Lean's `Limits.ofWords`.
+    lean_obj_res lean_wgpu_Limits_words(WGPULimits const * s) {
+        lean_object * words = lean_alloc_array(2, 2);
+        lean_array_set_core(words, 0, lean_box_uint64((uint64_t)s->maxA));
+        lean_array_set_core(words, 1, lean_box_uint64((uint64_t)s->maxB));
+        return words;
+    }
+    "
+  let source := file (objectsSource [device, queue] [limits])
+  source.endsWith expected
+    && (source.splitOn "lean_wgpu_Limits_words(").length == 2
+
 end WebGPUGenTest.Emit.C.Objects

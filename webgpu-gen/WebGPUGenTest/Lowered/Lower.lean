@@ -466,6 +466,38 @@ def resultValue? (methods : String) : Option (Option Value) :=
       ("count", .usize)
     ]
 
+-- The structs a function fills: one behind a mutable pointer, with no
+-- ownership stated, as `getLimits` fills a `Limits`; not one with it, whose
+-- members C allocates, as `getFeatures` fills.
+#guard
+  let structs := dedent "
+    - name: limits
+      doc: x
+      type: standalone
+    - name: owned
+      doc: x
+      type: standalone
+    "
+  let methods := dedent "
+    - name: get_limits
+      doc: x
+      args:
+        - name: limits
+          doc: x
+          type: struct.limits
+          pointer: mutable
+    - name: get_owned
+      doc: x
+      args:
+        - name: owned
+          doc: x
+          type: struct.owned
+          pointer: mutable
+          passed_with_ownership: true
+    "
+  (lowerText (spec (structs := structs) (objects := deviceWith methods))).map
+      (·.filled) == some #[⟨"WGPULimits", "Limits"⟩]
+
 -- A method that takes a callback whose arguments can all be passed can be
 -- bound.
 #guard

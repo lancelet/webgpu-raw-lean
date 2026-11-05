@@ -1061,4 +1061,23 @@ def lost : Lowered.Callback := {
   ((wrapperDecl f).map render).any fun text =>
     (text.splitOn "  let desc := some (desc.getD {})\n").length == 2
 
+-- A struct C fills with words: made from them, in its members' order, each
+-- converted to the member's type.
+#guard
+  let limits := struct "WGPULimits" "Limits" [
+    member "a" .uint32 none,
+    member "b" .uint64 none,
+    member "c" .bool none
+  ]
+  render (ofWordsDecl limits) == dedent "
+    /--
+    `Limits` made of its members as C gives them, in order
+    (`lean_wgpu_Limits_words`), each a word; its chain, if any, empty.
+    -/
+    def Limits.ofWords (words : Array UInt64) : Limits where
+      a := (words.getD 0 0).toUInt32
+      b := words.getD 1 0
+      c := words.getD 2 0 != 0
+    "
+
 end WebGPUGenTest.Emit.Lean

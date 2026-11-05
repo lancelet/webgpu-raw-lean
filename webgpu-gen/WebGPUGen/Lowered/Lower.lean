@@ -696,6 +696,20 @@ theorem structs_markHeldInfos (spec : Lowered.Spec) :
   rfl
 
 /--
+The structs a function of `r` fills: one behind a mutable pointer, with no
+ownership stated, each once. (Upstream states ownership of most whose
+members C allocates, not all: `Emit.C.wordStructs` checks `freeMembers`.)
+-/
+def filledStructs (r : Resolved.Spec) : Array Names :=
+  let functions := r.functions ++ r.objects.flatMap (·.methods)
+  let ids := functions.flatMap fun f => f.args.filterMap fun p =>
+    match p.pointer, p.type, p.passedWithOwnership with
+    | some .mutable, .named (.struct id), none => some id
+    | _, _, _                                  => none
+  (ids.toList.filterMap fun id => r.structs[id.idx]?.map fun s =>
+    bothNames typeName leanTypeName s.name).eraseDups.toArray
+
+/--
 Lower a resolved spec. `sections` are the documentation sections its docs may
 refer to, each with its page (`articleSections` reads them from upstream's
 articles); `stubs` are the functions each implementation leaves unimplemented
@@ -719,6 +733,7 @@ def lower (r : Resolved.Spec) (sections : List (String × String) := [])
       let lowered := lowerObject ctx r o
       { lowered with methods := lowered.methods.map mark }
     functions := r.functions.map (mark ∘ lowerFunction ctx r none)
+    filled    := filledStructs r
   }
 
 end WebGPUGen.Lowered
