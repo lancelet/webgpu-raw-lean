@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 14888c0 (clean)
-  Generated:        2026-11-05 11:34:27 UTC
+  Generator commit: aa0c435 (clean)
+  Generated:        2026-11-05 12:01:46 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -1027,6 +1027,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderSetPipeline(
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
 
+// Lean's `ComputePassEncoder.setBindGroup`: calls
+// `wgpuComputePassEncoderSetBindGroup`.
+LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderSetBindGroup(
+    b_lean_obj_arg self,
+    uint32_t       groupIndex,
+    b_lean_obj_arg group,
+    b_lean_obj_arg dynamicOffsets,
+    b_lean_obj_arg dynamicOffsets_block
+) {
+    void const * dynamicOffsets_data = lean_wgpu_u32s_arg(
+        dynamicOffsets_block,
+        dynamicOffsets
+    );
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuComputePassEncoderSetBindGroup(
+        lean_wgpu_compute_pass_encoder_unbox(self),
+        groupIndex,
+        lean_wgpu_bind_group_unbox_option(group),
+        lean_array_size(dynamicOffsets),
+        dynamicOffsets_data
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
 // Lean's `ComputePassEncoder.dispatchWorkgroups`: calls
 // `wgpuComputePassEncoderDispatchWorkgroups`.
 LEAN_EXPORT lean_obj_res lean_wgpuComputePassEncoderDispatchWorkgroups(
@@ -1971,6 +1995,25 @@ LEAN_EXPORT lean_obj_res lean_wgpuQuerySetDestroy(b_lean_obj_arg self) {
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
 
+// Lean's `Queue.submit`: calls `wgpuQueueSubmit`.
+LEAN_EXPORT lean_obj_res lean_wgpuQueueSubmit(
+    b_lean_obj_arg self,
+    b_lean_obj_arg commands,
+    b_lean_obj_arg commands_block
+) {
+    void const * commands_data = lean_wgpu_fill_objects(
+        commands_block,
+        commands
+    );
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuQueueSubmit(
+        lean_wgpu_queue_unbox(self),
+        lean_array_size(commands),
+        commands_data
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
 // Lean's `Queue.onSubmittedWorkDone`: calls `wgpuQueueOnSubmittedWorkDone`.
 LEAN_EXPORT lean_obj_res lean_wgpuQueueOnSubmittedWorkDone(
     b_lean_obj_arg self,
@@ -2047,6 +2090,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetPipeline(
     wgpuRenderBundleEncoderSetPipeline(
         lean_wgpu_render_bundle_encoder_unbox(self),
         lean_wgpu_render_pipeline_unbox(pipeline)
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `RenderBundleEncoder.setBindGroup`: calls
+// `wgpuRenderBundleEncoderSetBindGroup`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderBundleEncoderSetBindGroup(
+    b_lean_obj_arg self,
+    uint32_t       groupIndex,
+    b_lean_obj_arg group,
+    b_lean_obj_arg dynamicOffsets,
+    b_lean_obj_arg dynamicOffsets_block
+) {
+    void const * dynamicOffsets_data = lean_wgpu_u32s_arg(
+        dynamicOffsets_block,
+        dynamicOffsets
+    );
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuRenderBundleEncoderSetBindGroup(
+        lean_wgpu_render_bundle_encoder_unbox(self),
+        groupIndex,
+        lean_wgpu_bind_group_unbox_option(group),
+        lean_array_size(dynamicOffsets),
+        dynamicOffsets_data
     );
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
@@ -2277,6 +2344,30 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetPipeline(
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }
 
+// Lean's `RenderPassEncoder.setBindGroup`: calls
+// `wgpuRenderPassEncoderSetBindGroup`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderSetBindGroup(
+    b_lean_obj_arg self,
+    uint32_t       groupIndex,
+    b_lean_obj_arg group,
+    b_lean_obj_arg dynamicOffsets,
+    b_lean_obj_arg dynamicOffsets_block
+) {
+    void const * dynamicOffsets_data = lean_wgpu_u32s_arg(
+        dynamicOffsets_block,
+        dynamicOffsets
+    );
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuRenderPassEncoderSetBindGroup(
+        lean_wgpu_render_pass_encoder_unbox(self),
+        groupIndex,
+        lean_wgpu_bind_group_unbox_option(group),
+        lean_array_size(dynamicOffsets),
+        dynamicOffsets_data
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
 // Lean's `RenderPassEncoder.draw`: calls `wgpuRenderPassEncoderDraw`.
 LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderDraw(
     b_lean_obj_arg self,
@@ -2346,6 +2437,23 @@ LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderDrawIndexedIndirect(
         lean_wgpu_render_pass_encoder_unbox(self),
         lean_wgpu_buffer_unbox(indirectBuffer),
         indirectOffset
+    );
+    return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
+}
+
+// Lean's `RenderPassEncoder.executeBundles`: calls
+// `wgpuRenderPassEncoderExecuteBundles`.
+LEAN_EXPORT lean_obj_res lean_wgpuRenderPassEncoderExecuteBundles(
+    b_lean_obj_arg self,
+    b_lean_obj_arg bundles,
+    b_lean_obj_arg bundles_block
+) {
+    void const * bundles_data = lean_wgpu_fill_objects(bundles_block, bundles);
+    lean_object * saved = lean_wgpu_callbacks_enter();
+    wgpuRenderPassEncoderExecuteBundles(
+        lean_wgpu_render_pass_encoder_unbox(self),
+        lean_array_size(bundles),
+        bundles_data
     );
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(lean_box(0)));
 }

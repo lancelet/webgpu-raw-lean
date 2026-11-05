@@ -139,16 +139,19 @@ def defaulted (wgpu : Instance) (adapter : Adapter) : IO String := do
       s!"raised {repr e}")
 
 /--
-Run `wgpu`'s events until `done` holds, at most `tries` times: whether it did.
-These tests submit no work, so wgpu-native completes what they wait for in
-the call or in the next `processEvents`; a test that submits work would wait
-for the GPU by a blocking poll, `wgpuDevicePoll`, not bound yet.
+Run `wgpu`'s events until `done` holds, at most `tries` times, a millisecond
+apart: whether it did. What waits on no work, wgpu-native completes in the
+call or the next `processEvents`; what waits on submitted work, once the GPU
+is done with it, which `processEvents` does not wait for (a blocking poll,
+`wgpuDevicePoll`, is not bound).
 -/
-def pumpUntil (wgpu : Instance) (done : IO Bool) (tries : Nat := 1000) :
+def pumpUntil (wgpu : Instance) (done : IO Bool) (tries : Nat := 5000) :
     IO Bool := do
   for _ in [0:tries] do
     if ← done then return true
     wgpu.processEvents
+    if ← done then return true
+    IO.sleep 1
   done
 
 /-- A buffer of 4 bytes of `device`, to map for reading. -/
@@ -225,6 +228,111 @@ def inScope (wgpu : Instance) (adapter : Adapter) : IO String := do
     pure (problemUnless (done && got == #[(true, true)] && missed == 0)
       s!"popped {got}; uncaptured {missed}")
 
+/-! ### Arrays passed to C -/
+
+/-- A command buffer of `device`, recording nothing. -/
+def emptyCommands (device : Device) : IO CommandBuffer := do
+  (← device.createCommandEncoder none).finish none
+
+/--
+A queue runs the command buffers submitted to it, and calls back when it is
+done; and none at all may be submitted. (Not one submitted twice: wgpu-native
+ends the program on any error in a submission, `docs/Safety.md`.)
+-/
+def submitted (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    -- Held to the end: releasing a device's last reference destroys it, so
+    -- the work never completes, though its queue lives.
+    let held ← IO.mkRef (some device)
+    let queue ← device.getQueue
+    queue.submit #[← emptyCommands device, ← emptyCommands device]
+    let calls ← IO.mkRef #[]
+    let _ ← queue.onSubmittedWorkDone .allowProcessEvents fun status _ =>
+      calls.modify (·.push (status matches .ok .success))
+    let done ← pumpUntil wgpu (return !(← calls.get).isEmpty)
+    let nothing ← errorOf (queue.submit #[])
+    held.set none
+    let got ← calls.get
+    pure (problemUnless (done && got == #[true] && nothing.isEmpty)
+      s!"called back {got}; nothing {repr nothing}")
+
+/--
+A compute pass's dynamic offsets reach C, each: a bind group of two uniform
+buffers, each with a dynamic offset, takes two offsets, multiples of 256;
+one, or a second of 4, is a validation error.
+-/
+def dynamicOffsets (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let some buffer ← device.createBuffer { size := 512, usage := .uniform }
+      | pure "no buffer"
+    let entry (binding : UInt32) : BindGroupLayoutEntry := {
+      binding    := binding
+      visibility := .compute
+      buffer     := { type := .uniform, hasDynamicOffset := true }
+    }
+    let layout ← device.createBindGroupLayout {
+      entries := #[entry 0, entry 1]
+    }
+    let group ← device.createBindGroup {
+      layout  := layout
+      entries := #[0, 1].map fun binding =>
+        { binding := binding, buffer := some buffer, size := 256 }
+    }
+    let run (offsets : Array UInt32) : IO Unit := do
+      let encoder ← device.createCommandEncoder none
+      let pass ← encoder.beginComputePass none
+      pass.setBindGroup 0 (some group) offsets
+      pass.«end»
+      let _ ← encoder.finish none
+    let aligned ← errorOf (run #[256, 0])
+    let missing ← errorOf (run #[256])
+    let misaligned ← errorOf (run #[256, 4])
+    let refused (e : String) := e.startsWith "WebGPU validation error: "
+    pure (problemUnless
+      (aligned.isEmpty && refused missing && refused misaligned)
+      s!"{repr aligned}; {repr missing}; {repr misaligned}")
+
+/--
+A render pass is given the bundles it executes, each: those of its
+attachment's format are accepted; with one of another after them, the pass
+is refused, a validation error, when its encoder is finished.
+-/
+def bundles (wgpu : Instance) (adapter : Adapter) : IO String := do
+  match ← device? wgpu adapter none with
+  | .error e => pure e
+  | .ok device =>
+    let texture ← device.createTexture {
+      usage  := .renderAttachment
+      size   := { width := 4, height := 4 }
+      format := .rgba8Unorm
+    }
+    let view ← texture.createView none
+    let bundleOf (format : TextureFormat) : IO RenderBundle := do
+      let encoder ← device.createRenderBundleEncoder {
+        colorFormats := #[format]
+      }
+      encoder.finish none
+    let run (bundles : Array RenderBundle) : IO Unit := do
+      let encoder ← device.createCommandEncoder none
+      let pass ← encoder.beginRenderPass { colorAttachments := #[{
+        view    := some view
+        loadOp  := .clear
+        storeOp := .store
+      }] }
+      pass.executeBundles bundles
+      pass.«end»
+      let _ ← encoder.finish none
+    let same ← errorOf (run #[← bundleOf .rgba8Unorm])
+    let other ←
+      errorOf (run #[← bundleOf .rgba8Unorm, ← bundleOf .bgra8Unorm])
+    pure (problemUnless
+      (same.isEmpty && other.startsWith "WebGPU validation error: ")
+      s!"{repr same}; {repr other}")
+
 /--
 A device's lost future, which wgpu-native leaves unimplemented: an IO error,
 not an abort.
@@ -267,7 +375,10 @@ def checks (wgpu : Instance) : IO (Option (List (String × String))) := do
     ("a queue's work done, by processEvents", workDone wgpu adapter),
     ("an error scope catching a validation error", inScope wgpu adapter),
     ("a device's lost future, unimplemented, an IO error",
-      lostFuture wgpu adapter)
+      lostFuture wgpu adapter),
+    ("command buffers submitted, each", submitted wgpu adapter),
+    ("a compute pass's dynamic offsets, each", dynamicOffsets wgpu adapter),
+    ("a render pass's bundles, each", bundles wgpu adapter)
   ]
   some <$> named.mapM fun (what, check) => do pure (what, ← check)
 

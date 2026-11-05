@@ -169,8 +169,12 @@ def run (wgpu : Instance) (adapter : Adapter)
           let _ ← d.createBuffer badBuffer
           -- In headless Chrome, the buffer's error reached its callback only
           -- while a request was pending (observed, not documented): so one is,
-          -- the queue's work done.
-          let _ ← (← d.getQueue).onSubmittedWorkDone .allowSpontaneous
+          -- the queue's work done; the work, an empty command buffer, whose
+          -- handle C passes in an array, a 4-byte pointer on wasm32 (were it
+          -- not passed, an error would be one more given its callback).
+          let queue ← d.getQueue
+          queue.submit #[← (← d.createCommandEncoder none).finish none]
+          let _ ← queue.onSubmittedWorkDone .allowSpontaneous
             fun _ _ => do workDone.set true; proceed
         | _, _ => finish [line "a device requested" s!"none: {message}"]
 

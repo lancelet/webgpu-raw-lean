@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 14888c0 (clean)
-  Generated:        2026-11-05 11:34:27 UTC
+  Generator commit: aa0c435 (clean)
+  Generated:        2026-11-05 12:01:46 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -640,6 +640,30 @@ def ComputePassEncoder.setPipeline
     (pipeline : ComputePipeline) :
     IO Unit :=
   Internal.ComputePassEncoder.setPipeline self pipeline
+
+/-- The shim behind `ComputePassEncoder.setBindGroup`. -/
+@[extern "lean_wgpuComputePassEncoderSetBindGroup"]
+opaque Internal.ComputePassEncoder.setBindGroup
+    (self                : @& ComputePassEncoder)
+    (groupIndex          : UInt32)
+    (group               : @& Option BindGroup)
+    (dynamicOffsets      : @& Array UInt32)
+    (dynamicOffsetsBlock : @& U32sOf dynamicOffsets) :
+    IO Unit
+
+@[inline]
+def ComputePassEncoder.setBindGroup
+    (self           : ComputePassEncoder)
+    (groupIndex     : UInt32)
+    (group          : Option BindGroup)
+    (dynamicOffsets : Array UInt32) :
+    IO Unit :=
+  Internal.ComputePassEncoder.setBindGroup
+      self
+      groupIndex
+      group
+      dynamicOffsets
+      ⟨_, rfl⟩
 
 /-- The shim behind `ComputePassEncoder.dispatchWorkgroups`. -/
 @[extern "lean_wgpuComputePassEncoderDispatchWorkgroups"]
@@ -1343,6 +1367,18 @@ opaque Internal.QuerySet.destroy (self : @& QuerySet) : IO Unit
 def QuerySet.destroy (self : QuerySet) : IO Unit :=
   Internal.QuerySet.destroy self
 
+/-- The shim behind `Queue.submit`. -/
+@[extern "lean_wgpuQueueSubmit"]
+opaque Internal.Queue.submit
+    (self          : @& Queue)
+    (commands      : @& Array CommandBuffer)
+    (commandsBlock : @& ObjectsBlockOf commands) :
+    IO Unit
+
+@[inline]
+def Queue.submit (self : Queue) (commands : Array CommandBuffer) : IO Unit :=
+  Internal.Queue.submit self commands ⟨_, rfl⟩
+
 /-- The shim behind `Queue.onSubmittedWorkDone`. -/
 @[extern "lean_wgpuQueueOnSubmittedWorkDone"]
 opaque Internal.Queue.onSubmittedWorkDone
@@ -1394,6 +1430,30 @@ def RenderBundleEncoder.setPipeline
     (pipeline : RenderPipeline) :
     IO Unit :=
   Internal.RenderBundleEncoder.setPipeline self pipeline
+
+/-- The shim behind `RenderBundleEncoder.setBindGroup`. -/
+@[extern "lean_wgpuRenderBundleEncoderSetBindGroup"]
+opaque Internal.RenderBundleEncoder.setBindGroup
+    (self                : @& RenderBundleEncoder)
+    (groupIndex          : UInt32)
+    (group               : @& Option BindGroup)
+    (dynamicOffsets      : @& Array UInt32)
+    (dynamicOffsetsBlock : @& U32sOf dynamicOffsets) :
+    IO Unit
+
+@[inline]
+def RenderBundleEncoder.setBindGroup
+    (self           : RenderBundleEncoder)
+    (groupIndex     : UInt32)
+    (group          : Option BindGroup)
+    (dynamicOffsets : Array UInt32) :
+    IO Unit :=
+  Internal.RenderBundleEncoder.setBindGroup
+      self
+      groupIndex
+      group
+      dynamicOffsets
+      ⟨_, rfl⟩
 
 /-- The shim behind `RenderBundleEncoder.draw`. -/
 @[extern "lean_wgpuRenderBundleEncoderDraw"]
@@ -1621,6 +1681,30 @@ def RenderPassEncoder.setPipeline
     IO Unit :=
   Internal.RenderPassEncoder.setPipeline self pipeline
 
+/-- The shim behind `RenderPassEncoder.setBindGroup`. -/
+@[extern "lean_wgpuRenderPassEncoderSetBindGroup"]
+opaque Internal.RenderPassEncoder.setBindGroup
+    (self                : @& RenderPassEncoder)
+    (groupIndex          : UInt32)
+    (group               : @& Option BindGroup)
+    (dynamicOffsets      : @& Array UInt32)
+    (dynamicOffsetsBlock : @& U32sOf dynamicOffsets) :
+    IO Unit
+
+@[inline]
+def RenderPassEncoder.setBindGroup
+    (self           : RenderPassEncoder)
+    (groupIndex     : UInt32)
+    (group          : Option BindGroup)
+    (dynamicOffsets : Array UInt32) :
+    IO Unit :=
+  Internal.RenderPassEncoder.setBindGroup
+      self
+      groupIndex
+      group
+      dynamicOffsets
+      ⟨_, rfl⟩
+
 /-- The shim behind `RenderPassEncoder.draw`. -/
 @[extern "lean_wgpuRenderPassEncoderDraw"]
 opaque Internal.RenderPassEncoder.draw
@@ -1708,6 +1792,21 @@ def RenderPassEncoder.drawIndexedIndirect
       self
       indirectBuffer
       indirectOffset
+
+/-- The shim behind `RenderPassEncoder.executeBundles`. -/
+@[extern "lean_wgpuRenderPassEncoderExecuteBundles"]
+opaque Internal.RenderPassEncoder.executeBundles
+    (self         : @& RenderPassEncoder)
+    (bundles      : @& Array RenderBundle)
+    (bundlesBlock : @& ObjectsBlockOf bundles) :
+    IO Unit
+
+@[inline]
+def RenderPassEncoder.executeBundles
+    (self    : RenderPassEncoder)
+    (bundles : Array RenderBundle) :
+    IO Unit :=
+  Internal.RenderPassEncoder.executeBundles self bundles ⟨_, rfl⟩
 
 /-- The shim behind `RenderPassEncoder.insertDebugMarker`. -/
 @[extern "lean_wgpuRenderPassEncoderInsertDebugMarker"]

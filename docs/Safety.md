@@ -61,6 +61,19 @@ it could call unimplemented.)
   a constant descriptor too, a regression test); and CI runs the tests in the
   checked build, where every argument's bytes are checked unshared and one
   struct.
+- **An array argument crosses as the array and its block**, typed as exactly
+  the array's own (`ObjectsBlockOf xs`, `U32sOf xs`); C passes the array's
+  size and a pointer to the block, NULL if it is empty. An array of
+  `UInt32`s' block is them as C lays them out, which C only reads. An array
+  of objects' block is zeros, a pointer wide each on this target, which C
+  fills with their handles in place, before the call
+  (`lean_wgpu_fill_objects`): fresh, as what makes it is `@[never_extract]`
+  and `@[noinline]`, and held by the call alone; the array holds the objects
+  for the call. *Checked by:* proof (the types); test, with an adapter, that
+  each element reaches C (a render pass's bundles, one of a wrong format
+  last, refused; a compute pass's dynamic offsets, a misaligned one last,
+  refused; and in a browser, a command buffer submitted, on wasm32); and
+  the checked build checks each block unshared and of the array's size.
 - **`Option`**: `none` is the scalar `lean_box(0)`; `some x` is a constructor
   object whose only field, at index 0, is `x`. The reference leaves the layout
   of constructor objects to the compiler, but with one field there is only one
@@ -426,15 +439,22 @@ implements them. wgpu-native also aborts on values it does not support: a timed
 is not memory-unsafe, but ends the program; the bindings do not check for it
 yet. Dawn, in turn, refuses that feature without Asyncify or JSPI, which the
 web build lacks: so `waitAny` waits only with a timeout of 0 there, and a
-longer one gives the status `error`. And wgpu-native aborts on a descriptor
-without the chain it needs, which the bindings refuse: a struct that
-describes nothing but by its chain (`Struct.chainRequired`, as a shader
-module descriptor), passed with an empty one, raises an `IO` error instead
-(`createShaderModule`: "nothing chained to descriptor"); and a function
-taking one whose extensions cannot be passed yet is not bound
-(`createSurface`, whose surface sources hold OS handles).
-*Checked by:* test (of the generated check, and that `createSurface` is not
-bound).
+longer one gives the status `error`. wgpu-native ends the program, too, on
+any error in a submission (`Queue.submit`), an error any other call reports
+to the uncaptured-error callback: a command buffer submitted twice, or one
+whose encoding failed. The bindings raise that failure at
+`CommandEncoder.finish`, so that no such buffer is made, unless an error
+scope is catching errors: then `finish` returns the invalid buffer, and
+submitting it ends the program. The bindings do not check for these yet.
+And wgpu-native aborts
+on a descriptor without the chain it needs, which the bindings refuse: a
+struct that describes nothing but by its chain (`Struct.chainRequired`, as a
+shader module descriptor), passed with an empty one, raises an `IO` error
+instead (`createShaderModule`: "nothing chained to descriptor"); and a
+function taking one whose extensions cannot be passed yet is not bound
+(`createSurface`, whose surface sources hold OS handles). *Checked by:* test
+(of the generated check, and that `createSurface` is not bound); a
+submission's errors, not checked.
 
 - **Their shims call them only when built against an implementation known to
   implement them**, which the build says by defining a macro: the web build

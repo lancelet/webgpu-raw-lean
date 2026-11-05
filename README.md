@@ -64,7 +64,8 @@ bindings prove, in Lean:
   one struct, the size its table is for, and the tables C reads proved to be
   those the walk reads. A function that takes a struct passes it to its shim
   as its bytes, targets and table's index, each typed as exactly its own:
-  so the walk the proofs are of is the one C makes.
+  so the walk the proofs are of is the one C makes. One that takes an array
+  passes it with its block, typed likewise (`ObjectsBlockOf`, `U32sOf`).
 
 ## Performance
 
@@ -98,4 +99,4 @@ Every shim also brackets its call into WebGPU, so that an error a callback
 raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
 benchmark reports too.
 
-Status: WIP: approximately 90% complete.
+Status: WIP: approximately 91% complete.
