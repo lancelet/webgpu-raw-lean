@@ -3,8 +3,8 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: 1eb4c97 (clean)
-  Generated:        2026-11-05 13:00:37 UTC
+  Generator commit: f0fb8e3 (clean)
+  Generated:        2026-11-05 13:41:16 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
@@ -2970,12 +2970,17 @@ LEAN_EXPORT lean_obj_res lean_wgpuSurfaceConfigure(
 
 // Lean's `Surface.present`: calls `wgpuSurfacePresent`.
 LEAN_EXPORT lean_obj_res lean_wgpuSurfacePresent(b_lean_obj_arg self) {
+    #ifdef WEBGPU_RAW_WGPU_NATIVE
     lean_object * saved = lean_wgpu_callbacks_enter();
     WGPUStatus result = wgpuSurfacePresent(lean_wgpu_surface_unbox(self));
     return lean_wgpu_callbacks_leave(
         saved,
         lean_io_result_mk_ok(lean_box_uint32((uint32_t)result))
     );
+    #else
+    (void)self;
+    return lean_wgpu_io_error("Surface.present: not implemented by dawn");
+    #endif
 }
 
 // Lean's `Surface.unconfigure`: calls `wgpuSurfaceUnconfigure`.
