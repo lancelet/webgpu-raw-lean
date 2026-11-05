@@ -283,7 +283,9 @@ def implicitDefault (r : Resolved.Spec) (p : Parameter String) :
   | .object _ nullable          => if nullable then some .null else none
   | .structPointer _ nullable   => if nullable then some .null else none
   | .struct _                   => some .nested
-  | .nullableFloat32 | .future  => none
+  | .nullableFloat32 | .future | .lentObject _ => none
+  -- A callback's info: none, C's empty info.
+  | .callbackInfo ..            => some .null
   | .enum _ => match p.type with
     | .named (.enum id) => do
       let e ← r.enums[id.idx]?

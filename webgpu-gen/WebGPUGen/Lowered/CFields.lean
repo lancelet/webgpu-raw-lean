@@ -77,7 +77,14 @@ where
       let nested ← structs.find? (·.names.c == names.c)
       let fields ← cFields structs nested fuel
       pure (.struct (fields.map (·.2)))
-    | .array .. | .future | .unsupported _ => none
+    -- A callback's info: its chain, its mode if it has one, its function
+    -- pointer, and its two userdata pointers. The function pointer and the
+    -- second userdata, an ordinal, are written as integers: `size`, which is
+    -- a pointer's size and alignment on both widths.
+    | .callbackInfo _ hasMode _      => some (.struct ([.scalar .ptr]
+      ++ (if hasMode then [.scalar .u32] else [])
+      ++ [.scalar .size, .scalar .ptr, .scalar .size]))
+    | .array .. | .future | .lentObject _ | .unsupported _ => none
 
 /-- A struct's fields in C, among `structs`. -/
 def Struct.cFields (structs : List Struct) (s : Struct) :

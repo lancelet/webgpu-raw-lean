@@ -237,6 +237,10 @@ takes an enum as its code, which the function decodes; the closure is
 borrowed, and the shim takes its own reference.
 -/
 
+/-- "A", or "An" before a vowel. -/
+def article (word : String) : String :=
+  if "AEIOUaeiou".contains (word.front) then "An" else "A"
+
 /-- `xs` as English lists them: `a`, `a and b`, `a, b and c`. -/
 def listing : List String → String
   | []      => ""
@@ -245,23 +249,96 @@ def listing : List String → String
   | x :: xs => s!"{x}, {listing xs}"
 
 /--
-A callback type, as an `abbrev` of the closure's type; and, under
-`Internal`, the type of the closure its raw declaration takes. Its doc says
-what the closure is given, if the spec's says nothing, as each says `TODO`.
+A callback type, as an `abbrev` of the closure's type; under `Internal`, the
+type of the closure its raw declaration takes, which takes an enum as its
+code; and the conversion of one to the other, `Internal.X.raw`, decoding each
+enum. Each is of the arguments the callback passes Lean (`Callback.passed`).
+Its doc says what the closure is given, if the spec's says nothing, as each
+says `TODO`, and whether C may call it again (`held`).
 -/
-def callbackDecl (c : Lowered.Callback) : Option Doc := do
-  let types ← c.args.toList.mapM (·.value.resultLeanType)
-  let rawTypes ← c.args.toList.mapM (·.value.callbackRawType)
-  let given := listing (c.args.toList.map (s!"`{·.names.lean}`"))
+def callbackDecl (c : Lowered.Callback) (held : Bool := false) : Option Doc :=
+  do
+  let types ← c.passed.mapM (·.value.resultLeanType)
+  let rawTypes ← c.passed.mapM (·.value.callbackRawType)
+  let given := listing (c.passed.map (s!"`{·.names.lean}`"))
+  let runs := if held then "C runs as a callback, perhaps more than once,"
+    else "C runs once, as a callback,"
   let doc := if !(docLines 0 c.doc).isEmpty then c.doc else
-    s!"A closure C runs once, as a callback, given {given}."
+    s!"A closure {runs} given {given}."
   let alias (name : String) (types : List String) : Doc :=
     text s!"abbrev {name} :=" ++ indented 2 (group (nest 2
       (join (text " →" ++ space) ((types ++ ["IO Unit"]).map text))))
-  pure <| docBefore 0 doc ++ alias c.names.lean types ++ hardline
-    ++ hardline
-    ++ text s!"/-- A `{c.names.lean}`, as its raw declaration takes it. -/"
-    ++ hardline ++ alias s!"Internal.{c.names.lean}" rawTypes
+  let xs := c.passed.map (·.names.lean)
+  let given := c.passed.map fun a => match a.value with
+    | .enum _ => s!"(CEnum.decode {a.names.lean})"
+    | _       => a.names.lean
+  let raw := if c.passed.any (·.value matches .enum _)
+    then group (text s!"fun {" ".intercalate xs} =>"
+      ++ nest 2 (space ++ text s!"f {" ".intercalate given}"))
+    else text "f"
+  let name := c.names.lean
+  pure <| docBefore 0 doc ++ alias name types ++ hardline ++ hardline
+    ++ text s!"/-- {article name} `{name}`, as its raw declaration takes it. -/"
+    ++ hardline ++ alias s!"Internal.{name}" rawTypes ++ hardline ++ hardline
+    ++ text s!"/-- `f`, as its raw declaration takes it: each enum decoded. -/"
+    ++ hardline ++ text "@[inline]" ++ hardline
+    -- The public type in full: in `Internal.X.raw`, `X` names `Internal.X`.
+    ++ group (nest 4 (text s!"def Internal.{name}.raw" ++ space
+      ++ text s!"(f : WebGPU.Raw.{name}) :" ++ space
+      ++ text s!"Internal.{name} :="))
+    ++ indented 2 raw
+
+/--
+What a struct keeps of a callback of type `c` (`Value.callbackInfo`): its info,
+a structure of the closure and, if `hasMode`, the mode it is registered with,
+`allowSpontaneous` unless given, as the web needs; and, under `Internal`, what
+the encoder writes of it. Its closure, as the `Closure` its family holds
+(`closure`); and the address C calls (`addressOf`), its trampoline's, or, for
+none, 0, or the bindings' own handler's (`Emit.C.defaultHandled`).
+-/
+def callbackInfoDecl (c : Lowered.Callback) (hasMode : Bool) : Doc :=
+  let name := c.names.lean
+  let info := name ++ "Info"
+  let defaulted := Emit.C.defaultHandled.contains c.names.c
+  let fields := (if hasMode then
+      [("The mode it is registered with.",
+        ["mode", ":", "CallbackMode", ":=", ".allowSpontaneous"])]
+    else []) ++ [("The closure.", ["callback", ":", name])]
+  -- `kw lhs : type`, broken after the colon if it does not fit.
+  let typed (kw lhs type : String) : Doc :=
+    group (nest 4 (text s!"{kw} {lhs} :" ++ space ++ text type))
+  let decl (doc : String) (attr : Option String) (body : Doc) : Doc :=
+    docBefore 0 doc
+      ++ (match attr with | some a => text a ++ hardline | none => nil)
+      ++ body
+  join (hardline ++ hardline) ([
+    docBefore 0 s!"{article name} `{name}` C keeps, in a struct."
+      ++ text s!"structure {info} where"
+      ++ indented 2 (documentedRows 2 fields),
+    decl s!"An `Internal.{name}`, as the `Closure` its family holds."
+      (some "@[extern c inline \"#1\"]")
+      (typed "opaque" s!"Internal.{name}.toClosure"
+        s!"Internal.{name} → Closure"),
+    decl s!"The address of the trampoline of `{name}`, for C to call."
+      (some s!"@[extern \"{Emit.C.addressName c}\"]")
+      (typed "opaque" s!"Internal.{name}.address" "Unit → UInt64")
+  ] ++ (if defaulted then [
+    decl s!"The address of the bindings' own handler, for no `{name}`: 0 \
+      where there is none."
+      (some s!"@[extern \"lean_{c.names.c}_default_address\"]")
+      (typed "opaque" s!"Internal.{name}.defaultAddress" "Unit → UInt64")
+  ] else []) ++ [
+    decl s!"The closure of an info, for its family to hold." none
+      (group (nest 4 (text s!"def Internal.{info}.closure" ++ space
+        ++ text s!"(i : {info}) :" ++ space ++ text "Closure :="))
+        ++ indented 2 (text s!"Internal.{name}.toClosure" ++ nest 4
+          (space ++ text s!"(Internal.{name}.raw i.callback)"))),
+    decl s!"The address C calls for an info, or for none." none
+      (typed "def" s!"Internal.{info}.addressOf" s!"Option {info} → UInt64"
+        ++ hardline ++ text s!"  | some _ => Internal.{name}.address ()"
+        ++ hardline ++ text ("  | none   => " ++ if defaulted
+          then s!"Internal.{name}.defaultAddress ()" else "0"))
+  ])
 
 /--
 The raw declaration's parameters for `f`'s callback, as its shim takes them
@@ -274,7 +351,7 @@ def callbackBinders (f : Lowered.Function) : Option (List Binder) :=
   | none   => some []
   | some c => do
     -- Each argument's type, which `callbackDecl` declares the closure's of.
-    let _ ← c.args.toList.mapM (·.value.callbackRawType)
+    let _ ← c.passed.mapM (·.value.callbackRawType)
     pure ((if c.style == .callbackMode then [⟨"callbackMode", "UInt32"⟩]
       else []) ++ [⟨"callback", s!"@& Internal.{c.names.lean}"⟩])
 
@@ -289,22 +366,13 @@ def callbackWrapperBinders (f : Lowered.Function) : List Binder :=
 
 /--
 `f`'s callback, converted for its raw declaration: its mode as its code, and
-the closure, which decodes each enum argument before calling `callback`: broken
-after its `=>` if it does not fit.
+the closure, by `Internal.X.raw`.
 -/
 def callbackRawArgs (f : Lowered.Function) : List Doc :=
   f.callback.toList.flatMap fun c =>
     let mode := if c.style == .callbackMode
       then [text "(CEnum.toC callbackMode)"] else []
-    let closure := if c.args.any (·.value matches .enum _) then
-      let xs := c.args.toList.map (·.names.lean)
-      let given := c.args.toList.map fun a => match a.value with
-        | .enum _ => s!"(CEnum.decode {a.names.lean})"
-        | _       => a.names.lean
-      group (text s!"(fun {" ".intercalate xs} =>"
-        ++ nest 2 (space ++ text s!"callback {" ".intercalate given})"))
-    else text "callback"
-    mode ++ [closure]
+    mode ++ [text s!"(Internal.{c.names.lean}.raw callback)"]
 
 /-- A type as an argument of `IO`: in parentheses if it has spaces. -/
 def ioOf (type : String) : String :=
@@ -654,6 +722,35 @@ def objectsFile (p : Provenance) (spec : Lowered.Spec) : String :=
     ]
     (spec.objects.toList.map objectDecl ++ [objectsStartup])
 
+/--
+The module of callback types: those the bound functions take, and those the
+bound structs keep, with their infos.
+-/
+def callbacksFile (p : Provenance) (spec : Lowered.Spec) : String :=
+  let held := Emit.C.heldCallbacks spec
+  moduleFile p
+    [
+      "public import WebGPU.Raw.CEnum",
+      "public import WebGPU.Raw.Enums",
+      "public import WebGPU.Raw.Objects",
+      "public import WebGPU.Raw.Internal.Reloc"
+    ]
+    [
+      "# Callbacks",
+      "",
+      "The callback types of `webgpu.h` the bindings can pass so far: each the",
+      "type of a Lean closure C runs as a callback, given each argument as C",
+      "passes it, and the type of the closure the raw declarations take. Those a",
+      "struct keeps, as a device descriptor keeps its device-lost callback, have",
+      "an info structure too: the closure, and the mode it is registered with."
+    ]
+    (text "open Reloc" ::
+      (Emit.C.boundCallbacks spec).filterMap (callbackDecl ·)
+      ++ held.flatMap fun (c, hasMode) =>
+        -- Its info only beside its types, which it uses.
+        (callbackDecl c (held := true)).toList.flatMap fun d =>
+          [d, callbackInfoDecl c hasMode])
+
 /-- The module of functions and methods. -/
 def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
   moduleFile p
@@ -661,6 +758,7 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "public import WebGPU.Raw.CEnum",
       "public import WebGPU.Raw.Enums",
       "public import WebGPU.Raw.Objects",
+      "public import WebGPU.Raw.Callbacks",
       "public import WebGPU.Raw.Encoders"
     ]
     [
@@ -673,8 +771,7 @@ def functionsFile (p : Provenance) (spec : Lowered.Spec) : String :=
       "them. `docs/Safety.md` gives the rules they follow."
     ]
     (text "open Reloc" ::
-      (Emit.C.boundCallbacks spec).filterMap callbackDecl
-      ++ (Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
+      (Emit.C.boundFunctions spec).flatMap fun (f, _) => functionDecls f)
 
 /-- The module of constants. -/
 def constantsFile (p : Provenance) (spec : Lowered.Spec) : String :=
@@ -693,7 +790,8 @@ def structsFile (p : Provenance) (spec : Lowered.Spec) : String :=
     [
       "public import WebGPU.Raw.Constants",
       "public import WebGPU.Raw.Enums",
-      "public import WebGPU.Raw.Objects"
+      "public import WebGPU.Raw.Objects",
+      "public import WebGPU.Raw.Callbacks"
     ]
     [
       "# Structs",

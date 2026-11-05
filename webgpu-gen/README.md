@@ -41,7 +41,8 @@ It consists of the following stages:
 6. **Generate.** Print the C shims and the Lean bindings (`Emit/`): among them,
    each bound struct's encoders, and its table of where C fills in its
    pointers, with the proofs Lean checks as the bindings build
-   (`Emit/Encoders.lean`).
+   (`Emit/Encoders.lean`); and each callback type, with the C trampoline that
+   runs its Lean closure, and, for one a struct keeps, its info.
 
 ## Proofs
 

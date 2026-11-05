@@ -113,6 +113,18 @@ inductive Value where
   (`getLostFuture`'s, a result of struct type, is not one yet.)
   -/
   | future
+  /--
+  A callback C keeps, in a struct: its info, in Lean an `Option` of the
+  callback type's info structure (with its mode, if `hasMode`); in C, the
+  callback type's info, whose closure the family being filled holds at
+  `ordinal` (`c/family.c`), for its trampoline to run.
+  -/
+  | callbackInfo (names : Names) (hasMode : Bool) (ordinal : Nat)
+  /--
+  An object C lends a callback behind a pointer, without its reference: not
+  passed to Lean, as it may be gone by then (a device a buffer outlives).
+  -/
+  | lentObject (names : Names)
   | unsupported (what : String)
   deriving Repr, DecidableEq
 
@@ -141,6 +153,8 @@ def Value.leanType : Value → Option String
   | .array element _   => element.leanType.map fun t =>
     if t.contains ' ' then s!"Array ({t})" else s!"Array {t}"
   | .future            => "Future"
+  | .callbackInfo names .. => s!"Option {names.lean}Info"
+  | .lentObject _      => none
   | .unsupported _     => none
 
 /--
@@ -174,6 +188,8 @@ def Value.cType : Value → Option String
   | .structPointer names _ => s!"{names.c} const *"
   | .array element _   => element.cType.map (· ++ " const *")
   | .future            => "WGPUFuture"
+  | .callbackInfo names .. => names.c ++ "Info"
+  | .lentObject names  => s!"{names.c} const *"
   | .unsupported _     => none
 
 /-! ### Across the boundary
@@ -196,8 +212,10 @@ def Value.isObject : Value → Bool
 
 /-- The value's type in the raw `@[extern]` declaration, without `@&`. -/
 def Value.rawLeanType : Value → Option String
-  -- Not passed to functions yet: their shims come with descriptors.
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. => none
+  -- Not passed to functions yet: their shims come with descriptors. A
+  -- callback's info is only ever in a struct.
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array ..
+  | .callbackInfo .. => none
   | .enum _    => "UInt32"
   | .bitflag _ => "UInt64"
   -- A future as its ID, which the function makes a `Future` of.
@@ -233,8 +251,8 @@ def Value.abiCType : Value → Option String
   | .bitflag _       => "uint64_t"
   | .object ..       => "b_lean_obj_arg"
   | .string _        => "b_lean_obj_arg"
-  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future =>
-    none
+  | .nullableFloat32 | .struct _ | .structPointer .. | .array .. | .future
+  | .callbackInfo .. | .lentObject _ => none
   | .unsupported _   => none
 
 /-- What the bindings cannot pass yet, if anything. -/
@@ -280,6 +298,13 @@ for each, naming it. None if they can.
 def Callback.unsupported (c : Callback) : List String :=
   c.args.toList.filterMap fun a =>
     a.value.unsupported?.map (s!"callback {a.names.lean}: " ++ ·)
+
+/--
+The arguments a callback passes Lean: all but the objects C lends it
+(`Value.lentObject`), which may be gone.
+-/
+def Callback.passed (c : Callback) : List Arg :=
+  c.args.toList.filter fun a => !(a.value matches .lentObject _)
 
 /-! ## Functions -/
 
@@ -538,6 +563,11 @@ structure Spec where
   objects   : Array Object
   /-- The functions that belong to no object type, such as `createInstance`. -/
   functions : Array Function
+  /--
+  The callback types structs keep (`Value.callbackInfo`), for their
+  trampolines and types, which no function's callback may give.
+  -/
+  callbacks : Array Callback := #[]
   deriving Repr, BEq
 
 /--

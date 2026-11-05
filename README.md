@@ -92,4 +92,4 @@ each pointer, and the arrays that hold them. An array of structs is one block,
 each element poked into it at its offset.
 Making the Lean value is not counted, as C's struct on the stack is free.
 
-Status: WIP: approximately 80% complete.
+Status: WIP: approximately 81% complete.

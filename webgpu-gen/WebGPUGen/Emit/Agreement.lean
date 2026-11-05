@@ -124,21 +124,25 @@ theorem resultLeanType_of_callbackArgExpr {objects : List Lowered.Object}
   unfold C.callbackArgExpr at h
   split at h <;> simp_all [Value.resultLeanType, Value.leanType]
 
-/-- What a trampoline needs of its callback's arguments: each boxed. -/
+/--
+What a trampoline needs of the arguments its callback passes Lean: each
+boxed.
+-/
 theorem args_of_trampoline {objects : List Lowered.Object}
-    {c : Lowered.Callback} (h : (C.trampoline objects c).isSome) :
-    ∀ a ∈ c.args.toList,
+    {c : Lowered.Callback} {held : Bool}
+    (h : (C.trampoline objects c held).isSome) :
+    ∀ a ∈ c.passed,
       (C.callbackArgExpr objects a.names.c a.value).isSome := by
   obtain ⟨t, ht⟩ := Option.isSome_iff_exists.1 h
   simp [C.trampoline, Option.bind_eq_some_iff] at ht
   -- One part for each guard and bind of `trampoline`, in order.
-  obtain ⟨_, _, _, boxed, hboxed, _⟩ := ht
+  obtain ⟨_, _, _, _, boxed, hboxed, _⟩ := ht
   exact isSome_mapM.1 (by rw [hboxed]; rfl)
 
 /-- The raw declaration's callback parameters exist if each argument's do. -/
 theorem callbackBinders_isSome {f : Lowered.Function}
     (h : ∀ c, f.callback = some c →
-      ∀ a ∈ c.args.toList, a.value.callbackRawType.isSome) :
+      ∀ a ∈ c.passed, a.value.callbackRawType.isSome) :
     (Lean.callbackBinders f).isSome := by
   unfold Lean.callbackBinders
   split
@@ -152,10 +156,10 @@ theorem callbackBinders_isSome {f : Lowered.Function}
 A callback's types are declared if each argument has a Lean type, and a type
 in the raw closure.
 -/
-theorem callbackDecl_isSome {c : Lowered.Callback}
-    (h : ∀ a ∈ c.args.toList, a.value.resultLeanType.isSome)
-    (hraw : ∀ a ∈ c.args.toList, a.value.callbackRawType.isSome) :
-    (Lean.callbackDecl c).isSome := by
+theorem callbackDecl_isSome {c : Lowered.Callback} {held : Bool}
+    (h : ∀ a ∈ c.passed, a.value.resultLeanType.isSome)
+    (hraw : ∀ a ∈ c.passed, a.value.callbackRawType.isSome) :
+    (Lean.callbackDecl c held).isSome := by
   obtain ⟨types, htypes⟩ := Option.isSome_iff_exists.1 (isSome_mapM.2 h)
   obtain ⟨raw, hraw⟩ := Option.isSome_iff_exists.1 (isSome_mapM.2 hraw)
   simp [Lean.callbackDecl, htypes, hraw]

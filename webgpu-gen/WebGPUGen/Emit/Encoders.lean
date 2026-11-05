@@ -82,6 +82,11 @@ inductive Pointer where
   | struct    (names : Names) (expr : String) (nullable : Bool)
   /-- An array's elements. -/
   | array     (of : ArrayOf) (expr : String)
+  /--
+  A callback's closure, of the type with these names, held by the family
+  being filled at `ordinal`: its info, an `Option`, at `expr`.
+  -/
+  | closure   (names : Names) (ordinal : Nat) (expr : String)
   deriving Repr, BEq
 
 /-- What an encoder writes for one scalar of a struct. -/
@@ -171,7 +176,22 @@ where
     | .usize => some [.int (match w with
       | .bits64 => q
       | .bits32 => s!"size32 {q}")]
-    | .future | .unsupported _ => none
+    -- A callback's info: its chain, null; its mode, 0 for none; its
+    -- trampoline's address (`addressOf` gives 0, or the bindings' own
+    -- handler's, for none); its closure, which the family being filled holds
+    -- at its ordinal; and the ordinal, for the trampoline, 0 for none.
+    | .callbackInfo names hasMode k =>
+      let info := s!"Internal.{names.lean}Info"
+      some ([.pointer .next]
+        ++ (if hasMode then [.int s!"({q}.map (CEnum.toC ·.mode)).getD 0"]
+          else [])
+        ++ [.int (match w with
+            | .bits64 => s!"{info}.addressOf {q}"
+            | .bits32 => s!"({info}.addressOf {q}).toUInt32"),
+          .pointer (.closure names k q),
+          -- Typed, as a bare numeral would be a `Nat`.
+          .int s!"if {q}.isSome then ({k} : {sizeType w}) else 0"])
+    | .future | .lentObject _ | .unsupported _ => none
 
 /--
 The checks that each `size_t` of a value of kind `v`, at `q`, fits the target:
@@ -405,6 +425,7 @@ def kind (index : Names → Option Nat) : Pointer → Option (String × Nat × N
   | .array (.words _) _        => some (".block 0", 4, 0)
   | .array (.objects _) _      => some (".block 1", 4, 1)
   | .array (.structs names) _  => block names
+  | .closure _ k _              => some (s!".optClosure {k}", 6, k)
   | .array .other _            => none
 where
   /-- A block of the struct with these names, by its table. -/
@@ -465,6 +486,8 @@ def pieces (w : Width) : Pointer → List Piece
     [.target s!".block (objectsBlock {w.bytes} {e})",
       .targets s!"objectsOf {object names} {e}"]
   | .array (.structs names) e   => [.targets s!"{names.lean}.array{n} {e}"]
+  | .closure names _ e          =>
+    [.target s!".optClosure ({e}.map Internal.{names.lean}Info.closure)"]
   | .array .other _             => []
 where
   /-- The width's suffix. -/
@@ -782,6 +805,9 @@ def walkDecls (s : Struct) (w : Width) (size : Nat) (entries : List Entry)
   let relocs := entries.filter fun (_, _, it) => it.isPointer
   let lemmas := ["element", s!"relocs{n}", s!"targets{n}"]
     ++ (if relocs.isEmpty then [] else ["step"])
+    -- A closure's ordinal is below `closures`, which `simp` decides.
+    ++ (if entries.any (fun (_, _, it) => it matches .pointer (.closure ..))
+      then ["closures"] else [])
     ++ (if optional.isEmpty then [] else ["optBlock"])
     ++ (optional.zipIdx.map fun (_, k) => hyp k)
     ++ (pointeeLemmas ++ empties ++ arrayLemmas ++ chainLemmas).eraseDups

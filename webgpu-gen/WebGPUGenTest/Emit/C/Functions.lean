@@ -328,6 +328,100 @@ def found : Lowered.Callback := {
         && (shimText (method c lean)).map
           (·.splitOn "lean_wgpu_callbacks_enter()" |>.length) == some 2
 
+/-- A device's lost callback: an object C lends it, a reason and a message. -/
+def lost : Lowered.Callback := {
+  names := {
+    c    := "WGPUDeviceLostCallback"
+    lean := "DeviceLostCallback"
+  }
+  doc   := ""
+  style := .callbackMode
+  args  := #[
+    arg "device" (.lentObject ⟨"WGPUDevice", "Device"⟩),
+    arg "reason" (.enum ⟨"WGPUReason", "Reason"⟩),
+    arg "message" (.string false)
+  ]
+}
+
+-- The trampoline of a callback a struct keeps: the closure the family holds,
+-- found by its ID and the ordinal, applied keeping the family's; nothing if
+-- the family is gone; the object C lends unused. And its address, for Lean
+-- to write into the struct.
+#guard
+  let expected := dedent "
+    // Calls the closure the family `userdata1` holds at `userdata2`, as a
+    // `DeviceLostCallback`, keeping it, as C may call it again; nothing if the
+    // family is gone.
+    LEAN_WGPU_HELPER void lean_WGPUDeviceLostCallback(
+        WGPUDevice const * device,
+        WGPUReason         reason,
+        WGPUStringView     message,
+        void *             userdata1,
+        void *             userdata2
+    ) {
+        (void)device;
+        lean_object * closure = lean_wgpu_family_closure(
+            (lean_wgpu_family)((uintptr_t)userdata1),
+            (size_t)((uintptr_t)userdata2)
+        );
+        if (closure == NULL) {
+            return;
+        }
+        lean_wgpu_callback_done(
+            lean_apply_3(
+                closure,
+                lean_box_uint32((uint32_t)reason),
+                lean_wgpu_string_of_view(message),
+                lean_io_mk_world()
+            )
+        );
+    }
+
+    // The address of `DeviceLostCallback`'s trampoline, for Lean to write into a
+    // struct.
+    LEAN_EXPORT uint64_t lean_WGPUDeviceLostCallback_address(b_lean_obj_arg unit) {
+        (void)unit;
+        return (uint64_t)((uintptr_t)lean_WGPUDeviceLostCallback);
+    }
+    "
+  (trampoline [buffer] lost (held := true)).map (fun t =>
+      file [.function t, .function (addressFunction lost)])
+    == some expected
+
+-- A callback a struct keeps takes no object with its reference, which it
+-- would leak were the family gone.
+#guard
+  let owning :=
+    { lost with args := #[arg "buffer" (.object buffer.names true)] }
+  (trampoline [buffer] owning (held := true)).isNone
+    && (trampoline [buffer] owning).isSome
+
+-- The callbacks the bound structs keep, each once, with whether it has a mode.
+#guard
+  let info : Lowered.Struct := {
+    names           := ⟨"WGPUDescriptor", "Descriptor"⟩
+    doc             := ""
+    kind            := .standalone
+    extendedStructs := #[]
+    sType           := none
+    freeMembers     := false
+    members         := #[
+      ⟨⟨"lost", "lost"⟩, "", .callbackInfo lost.names true 0, some .null⟩,
+      ⟨⟨"again", "again"⟩, "", .callbackInfo lost.names true 0, some .null⟩
+    ]
+  }
+  let spec : Lowered.Spec := {
+    constants := #[]
+    enums     := #[]
+    bitflags  := #[]
+    structs   := #[info]
+    objects   := #[]
+    functions := #[]
+    callbacks := #[lost]
+  }
+  (heldCallbacks spec).map (fun (c, m) => (c.names.c, m))
+    == [("WGPUDeviceLostCallback", true)]
+
 /-! ## Not bound -/
 
 -- A function the bindings cannot pass every value of has no shim.

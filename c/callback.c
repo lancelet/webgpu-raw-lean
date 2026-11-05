@@ -63,3 +63,50 @@ lean_obj_res lean_wgpu_string_of_view(WGPUStringView view) {
         ? strlen(view.data) : view.length;
     return lean_mk_string_from_bytes(view.data, length);
 }
+
+#ifndef WEBGPU_RAW_DAWN
+// The bindings' own handler of an uncaptured error, for a device whose
+// descriptor gives none, as wgpu-native's default ends the program at once:
+// an IO error, saying the error's type and message, of the call that made it,
+// if that call is bracketed (`lean_wgpu_callbacks_enter`), as every shim is
+// to be; otherwise, as for any callback outside every call, it is printed and
+// the program ends.
+static void lean_wgpu_uncaptured_error_default(
+        WGPUDevice const * device, WGPUErrorType type, WGPUStringView message,
+        void * userdata1, void * userdata2) {
+    (void)device;
+    (void)userdata1;
+    (void)userdata2;
+    char const * kind = "WebGPU error: ";
+    switch (type) {
+    case WGPUErrorType_Validation:
+        kind = "WebGPU validation error: ";
+        break;
+    case WGPUErrorType_OutOfMemory:
+        kind = "WebGPU out-of-memory error: ";
+        break;
+    case WGPUErrorType_Internal:
+        kind = "WebGPU internal error: ";
+        break;
+    default:
+        break;
+    }
+    lean_object * text = lean_mk_string(kind);
+    lean_object * view = lean_wgpu_string_of_view(message);
+    text = lean_string_append(text, view);
+    lean_dec(view);
+    lean_wgpu_callback_done(
+        lean_io_result_mk_error(lean_mk_io_user_error(text)));
+}
+#endif
+
+LEAN_EXPORT uint64_t lean_WGPUUncapturedErrorCallback_default_address(
+        b_lean_obj_arg unit) {
+    (void)unit;
+#ifdef WEBGPU_RAW_DAWN
+    // Dawn's own default logs the error: there is nothing to end.
+    return 0;
+#else
+    return (uint64_t)(uintptr_t)lean_wgpu_uncaptured_error_default;
+#endif
+}

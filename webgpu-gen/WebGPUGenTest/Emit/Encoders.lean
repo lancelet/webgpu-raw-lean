@@ -377,6 +377,32 @@ def member (name : String) (value : Value) : Member :=
     && has "theorem walk_chain64 {table : Nat}"
     && has "Module.walk_chain64 (table := 3) (by decide)"
 
+/-! ## Callbacks kept -/
+
+-- A callback a struct keeps: its info's chain, null; its mode, 0 for none;
+-- its trampoline's address; its closure, which the family being filled holds
+-- at the ordinal; and the ordinal, for the trampoline, 0 for none. The
+-- address and the ordinal are pointer-sized numbers on each width.
+#guard
+  let lost : Names := ⟨"WGPUDeviceLostCallback", "DeviceLostCallback"⟩
+  let input := struct "WGPUDescriptor" "Descriptor" .standalone
+    [member "lost" (.callbackInfo lost true 1)]
+  let laid (w : Width) := (structEntries [input] w input).map fun (size, es) =>
+    (size, es.map fun (o, _, i) => (o, i))
+  laid .bits64 == some (40, [
+      (0,  .pointer .next),
+      (8,  .int "(d.lost.map (CEnum.toC ·.mode)).getD 0"),
+      (16, .int "Internal.DeviceLostCallbackInfo.addressOf d.lost"),
+      (24, .pointer (.closure lost 1 "d.lost")),
+      (32, .int "if d.lost.isSome then (1 : UInt64) else 0")
+    ])
+    && (laid .bits32).map (·.1) == some 20
+    && kind (fun _ => none) (.closure lost 1 "d.lost")
+      == some (".optClosure 1", 6, 1)
+    && piecesLines 2 (pieces .bits64 (.closure lost 1 "d.lost")) == [
+      "#[.optClosure (d.lost.map Internal.DeviceLostCallbackInfo.closure)]"
+    ]
+
 /-! ## Walks -/
 
 -- `simp` on one line if it fits, else its lemmas filled below it.

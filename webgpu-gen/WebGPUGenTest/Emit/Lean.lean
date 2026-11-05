@@ -878,8 +878,9 @@ def found : Lowered.Callback := {
 }
 
 -- A callback type: the closure's, each argument as C passes it, an enum
--- keeping a code no value has, its doc saying what it is given; and the
--- closure's its raw declaration takes, an enum as its code.
+-- keeping a code no value has, its doc saying what it is given; the
+-- closure's its raw declaration takes, an enum as its code; and the one made
+-- of the other, decoding each enum.
 #guard
   (callbackDecl found).map render == some (dedent "
     /--
@@ -891,11 +892,18 @@ def found : Lowered.Callback := {
     /-- A `FoundCallback`, as its raw declaration takes it. -/
     abbrev Internal.FoundCallback :=
       UInt32 → Option Buffer → String → IO Unit
+
+    /-- `f`, as its raw declaration takes it: each enum decoded. -/
+    @[inline]
+    def Internal.FoundCallback.raw
+        (f : WebGPU.Raw.FoundCallback) :
+        Internal.FoundCallback :=
+      fun status buffer message => f (CEnum.decode status) buffer message
     ")
 
 -- A function that takes a callback: its raw declaration takes the mode's
 -- code and the closure, borrowed (`Internal.FoundCallback`); the function
--- takes the mode and the closure, decoding each enum for it, and makes a
+-- takes the mode and the closure, which it makes the raw one, and makes a
 -- `Future` of the ID the shim returns.
 #guard
   let f := { function "wgpuDoIt" "doIt" none #[arg "label" (.string false)]
@@ -918,8 +926,7 @@ def found : Lowered.Callback := {
       Future.mk <$> Internal.doIt
           label
           (CEnum.toC callbackMode)
-          (fun status buffer message =>
-            callback (CEnum.decode status) buffer message)
+          (Internal.FoundCallback.raw callback)
     "
 
 -- A callback the spec leaves undocumented, as it does each (its doc is
@@ -928,11 +935,83 @@ def found : Lowered.Callback := {
   ((callbackDecl { found with doc := "TODO" }).map render).any
     (·.startsWith "/--\nA closure C runs once, as a callback, given")
 
--- A callback with no enum argument is passed as it is.
+-- A callback with no enum argument is its own raw closure.
 #guard
   let done := { found with args := #[arg "message" (.string false)] }
-  let f := { function "wgpuDoIt" "doIt" none #[] (some .future) with
-    callback := some done }
-  (printFunction f).endsWith "(CEnum.toC callbackMode) callback\n"
+  ((callbackDecl done).map render).any (·.endsWith "  f\n")
+
+/-- A device's lost callback: an object C lends it, a reason and a message. -/
+def lost : Lowered.Callback := {
+  names := ⟨"WGPUDeviceLostCallback", "DeviceLostCallback"⟩
+  doc   := ""
+  style := .callbackMode
+  args  := #[
+    arg "device" (.lentObject ⟨"WGPUDevice", "Device"⟩),
+    arg "reason" (.enum ⟨"WGPUReason", "Reason"⟩),
+    arg "message" (.string false)
+  ]
+}
+
+-- A callback a struct keeps may be called again; the object C lends it is
+-- not given to the closure.
+#guard
+  ((callbackDecl lost (held := true)).map render).any fun text =>
+    text.startsWith (dedent "
+      /--
+      A closure C runs as a callback, perhaps more than once, given `reason` and
+      `message`.
+      -/
+      abbrev DeviceLostCallback :=
+        Except UInt32 Reason → String → IO Unit
+      ")
+
+-- What a struct keeps of a callback: its info, the closure and its mode,
+-- `allowSpontaneous` unless given; its closure as a `Closure`; and the
+-- address C calls, its trampoline's, or 0 for none.
+#guard
+  render (callbackInfoDecl lost true) == dedent "
+    /-- A `DeviceLostCallback` C keeps, in a struct. -/
+    structure DeviceLostCallbackInfo where
+      /-- The mode it is registered with. -/
+      mode     : CallbackMode       := .allowSpontaneous
+      /-- The closure. -/
+      callback : DeviceLostCallback
+
+    /-- An `Internal.DeviceLostCallback`, as the `Closure` its family holds. -/
+    @[extern c inline \"#1\"]
+    opaque Internal.DeviceLostCallback.toClosure :
+        Internal.DeviceLostCallback → Closure
+
+    /-- The address of the trampoline of `DeviceLostCallback`, for C to call. -/
+    @[extern \"lean_WGPUDeviceLostCallback_address\"]
+    opaque Internal.DeviceLostCallback.address : Unit → UInt64
+
+    /-- The closure of an info, for its family to hold. -/
+    def Internal.DeviceLostCallbackInfo.closure
+        (i : DeviceLostCallbackInfo) :
+        Closure :=
+      Internal.DeviceLostCallback.toClosure
+          (Internal.DeviceLostCallback.raw i.callback)
+
+    /-- The address C calls for an info, or for none. -/
+    def Internal.DeviceLostCallbackInfo.addressOf :
+        Option DeviceLostCallbackInfo → UInt64
+      | some _ => Internal.DeviceLostCallback.address ()
+      | none   => 0
+    "
+
+-- An uncaptured error's, with no mode; and for none, the address of the
+-- bindings' own handler, as wgpu-native's default ends the program.
+#guard
+  let error := { lost with
+    names := ⟨"WGPUUncapturedErrorCallback", "UncapturedErrorCallback"⟩
+    style := .immediate }
+  let text := render (callbackInfoDecl error false)
+  (text.splitOn "mode").length == 1
+    && (text.splitOn "| none   => Internal.UncapturedErrorCallback.\
+      defaultAddress ()").length == 2
+    && (text.splitOn
+      "@[extern \"lean_WGPUUncapturedErrorCallback_default_address\"]").length
+      == 2
 
 end WebGPUGenTest.Emit.Lean

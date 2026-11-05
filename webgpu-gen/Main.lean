@@ -121,6 +121,7 @@ def generate : IO Unit := do
   let files := [
     (lean / "Enums.lean",   Emit.Lean.enumsFile p spec),
     (lean / "Objects.lean", Emit.Lean.objectsFile p spec),
+    (lean / "Callbacks.lean", Emit.Lean.callbacksFile p spec),
     (lean / "Functions.lean", Emit.Lean.functionsFile p spec),
     (lean / "Constants.lean", Emit.Lean.constantsFile p spec),
     (lean / "Structs.lean", Emit.Lean.structsFile p spec),
