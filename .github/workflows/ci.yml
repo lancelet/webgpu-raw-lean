@@ -164,15 +164,17 @@ jobs:
               >> "$GITHUB_PATH"
           fi
 
-      # Build the window library and its test, and run it: on Linux under a
-      # virtual display, which it requires; elsewhere, it notes there is no
-      # display if the runner has none (macOS's has none; Windows's has).
-      # Given a display, any failure of a surface on it fails.
+      # Build the window library and its test, and run it, a window
+      # required: on Linux under a virtual display; on Windows on the
+      # runner's desktop; on macOS, whose runner has no display, a headless
+      # window (a Metal layer of its own).
       - name: Build and test the window library
+        env:
+          WEBGPU_RAW_REQUIRE_WINDOW: 1
         run: |
           lake build WebGPUWindow webgpu-window-test
           if [ "$RUNNER_OS" = Linux ]; then
-            WEBGPU_RAW_REQUIRE_WINDOW=1 SDL_VIDEO_DRIVER=x11 \
+            SDL_VIDEO_DRIVER=x11 \
               xvfb-run -a .lake/build/bin/webgpu-window-test
           else
             .lake/build/bin/webgpu-window-test

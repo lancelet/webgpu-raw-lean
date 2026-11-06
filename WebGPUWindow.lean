@@ -72,6 +72,15 @@ the page's canvas, `width` by `height` pixels.
 @[extern "lean_wgpu_window_create"]
 opaque Window.create (title : @& String) (width height : UInt32) : IO Window
 
+/--
+A window with no window, `width` by `height` pixels, to draw in with no
+display (as on CI's macOS runners): on macOS, a Metal layer of its own, a
+surface on which presents to nothing; it has no events. Elsewhere, an `IO`
+error.
+-/
+@[extern "lean_wgpu_window_create_headless"]
+opaque Window.createHeadless (width height : UInt32) : IO Window
+
 /-- The shim behind `Window.poll`: five values for each event. -/
 @[extern "lean_wgpu_window_poll"]
 opaque Internal.Window.poll (self : @& Window) : IO FloatArray

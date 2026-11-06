@@ -481,7 +481,8 @@ family (Families, above).
   `Instance.createSurface` is not bound: its sources are such handles, which
   a number in Lean could pass for, for C to dereference. *Checked by:*
   review; test (a surface made on a window, under a virtual display in CI on
-  Linux, on Windows' desktop, and on a browser's canvas).
+  Linux, on Windows' desktop, on a browser's canvas, and on macOS, with no
+  display, on a Metal layer of its own, `Window.createHeadless`).
 - **A surface never outlives its window**: it joins a family that holds the
   Lean window (at `LEAN_WGPU_SURFACE_WINDOW`), which the family releases
   once every Lean object of the surface is gone, after the surface itself

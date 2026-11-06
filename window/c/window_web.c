@@ -167,6 +167,14 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
         lean_alloc_external(lean_wgpu_window_class, NULL));
 }
 
+// A window with no window, on macOS only: here an IO error.
+LEAN_EXPORT lean_obj_res lean_wgpu_window_create_headless(
+        uint32_t width, uint32_t height) {
+    (void)width;
+    (void)height;
+    return lean_wgpu_window_error("Window.createHeadless: only on macOS");
+}
+
 // The events since the last poll, five values each.
 LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
     (void)window;

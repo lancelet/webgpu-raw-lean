@@ -22,7 +22,44 @@
 typedef struct {
     SDL_Window * window;
     SDL_MetalView view;
+    // A headless window's (`Window.createHeadless`, on macOS): no window,
+    // a Metal layer of its own (retained), and its size.
+    void * layer;
+    int width;
+    int height;
 } lean_wgpu_window;
+
+#ifdef __APPLE__
+#include <dlfcn.h>
+
+// The Objective-C runtime's functions, found where SDL has loaded them (it
+// links the runtime, and QuartzCore, whose CAMetalLayer this makes), so
+// that nothing more need be linked.
+typedef void * (*lean_wgpu_objc_get_class)(char const *);
+typedef void * (*lean_wgpu_sel_register_name)(char const *);
+typedef void * (*lean_wgpu_objc_send)(void *, void *);
+
+static void * lean_wgpu_objc_send_named(void * receiver, char const * name) {
+    lean_wgpu_sel_register_name selector =
+        (lean_wgpu_sel_register_name)dlsym(RTLD_DEFAULT, "sel_registerName");
+    lean_wgpu_objc_send send =
+        (lean_wgpu_objc_send)dlsym(RTLD_DEFAULT, "objc_msgSend");
+    if (selector == NULL || send == NULL || receiver == NULL) {
+        return NULL;
+    }
+    return send(receiver, selector(name));
+}
+
+// A new CAMetalLayer, retained (`+new`); NULL if there is none.
+static void * lean_wgpu_metal_layer_new(void) {
+    lean_wgpu_objc_get_class get_class =
+        (lean_wgpu_objc_get_class)dlsym(RTLD_DEFAULT, "objc_getClass");
+    if (get_class == NULL) {
+        return NULL;
+    }
+    return lean_wgpu_objc_send_named(get_class("CAMetalLayer"), "new");
+}
+#endif
 
 static lean_external_class * lean_wgpu_window_class = NULL;
 
@@ -31,7 +68,14 @@ static void lean_wgpu_window_finalize(void * data) {
     if (w->view != NULL) {
         SDL_Metal_DestroyView(w->view);
     }
-    SDL_DestroyWindow(w->window);
+    if (w->window != NULL) {
+        SDL_DestroyWindow(w->window);
+    }
+#ifdef __APPLE__
+    if (w->layer != NULL) {
+        lean_wgpu_objc_send_named(w->layer, "release");
+    }
+#endif
     free(w);
 }
 
@@ -86,8 +130,47 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
     }
     w->window = window;
     w->view = NULL;
+    w->layer = NULL;
+    w->width = 0;
+    w->height = 0;
     return lean_io_result_mk_ok(
         lean_alloc_external(lean_wgpu_window_class, w));
+}
+
+// A window with no window: on macOS, a Metal layer of its own, `width` by
+// `height` pixels, to make a surface on with no display (as on CI's
+// runners), and no events; elsewhere, an IO error.
+LEAN_EXPORT lean_obj_res lean_wgpu_window_create_headless(
+        uint32_t width, uint32_t height) {
+#ifdef __APPLE__
+    void * layer = lean_wgpu_metal_layer_new();
+    if (layer == NULL) {
+        return lean_wgpu_window_error(
+            "Window.createHeadless: no Metal layer", 0);
+    }
+    if (lean_wgpu_window_class == NULL) {
+        lean_wgpu_window_class = lean_register_external_class(
+            lean_wgpu_window_finalize, lean_wgpu_window_visit);
+    }
+    lean_wgpu_window * w = malloc(sizeof *w);
+    if (w == NULL) {
+        lean_wgpu_objc_send_named(layer, "release");
+        return lean_wgpu_window_error(
+            "Window.createHeadless: out of memory", 0);
+    }
+    w->window = NULL;
+    w->view = NULL;
+    w->layer = layer;
+    w->width = (int)width;
+    w->height = (int)height;
+    return lean_io_result_mk_ok(
+        lean_alloc_external(lean_wgpu_window_class, w));
+#else
+    (void)width;
+    (void)height;
+    return lean_wgpu_window_error(
+        "Window.createHeadless: only on macOS", 0);
+#endif
 }
 
 // The events since the last poll, five floats each: a kind, then its values
@@ -98,7 +181,10 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
     size_t capacity = 16;
     double * values = malloc(capacity * 5 * sizeof *values);
     SDL_Event event;
-    while (values != NULL && SDL_PollEvent(&event)) {
+    // With no window made yet (a headless one only), SDL is not started,
+    // and there are no events.
+    while (values != NULL && SDL_WasInit(SDL_INIT_VIDEO)
+            && SDL_PollEvent(&event)) {
         double v[5] = {0, 0, 0, 0, 0};
         switch (event.type) {
         case SDL_EVENT_QUIT:
@@ -163,10 +249,12 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
 
 // The window's size in pixels: what a surface on it is configured to.
 LEAN_EXPORT lean_obj_res lean_wgpu_window_size(b_lean_obj_arg window) {
-    int width = 0;
-    int height = 0;
-    SDL_GetWindowSizeInPixels(
-        lean_wgpu_window_of(window)->window, &width, &height);
+    lean_wgpu_window * w = lean_wgpu_window_of(window);
+    int width = w->width;
+    int height = w->height;
+    if (w->window != NULL) {
+        SDL_GetWindowSizeInPixels(w->window, &width, &height);
+    }
     lean_object * pair = lean_alloc_ctor(0, 2, 0);
     lean_ctor_set(pair, 0, lean_box_uint32((uint32_t)width));
     lean_ctor_set(pair, 1, lean_box_uint32((uint32_t)height));
@@ -180,11 +268,12 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_surface(
     lean_wgpu_window * w = lean_wgpu_window_of(window);
     WGPUSurfaceDescriptor descriptor = WGPU_SURFACE_DESCRIPTOR_INIT;
 #if defined(__APPLE__)
-    if (w->view == NULL) {
+    if (w->window != NULL && w->view == NULL) {
         w->view = SDL_Metal_CreateView(w->window);
     }
     WGPUSurfaceSourceMetalLayer source = WGPU_SURFACE_SOURCE_METAL_LAYER_INIT;
-    source.layer = w->view == NULL ? NULL : SDL_Metal_GetLayer(w->view);
+    source.layer = w->layer != NULL ? w->layer
+        : w->view == NULL ? NULL : SDL_Metal_GetLayer(w->view);
     if (source.layer == NULL) {
         return lean_wgpu_window_error("Window.createSurface: no layer", 1);
     }

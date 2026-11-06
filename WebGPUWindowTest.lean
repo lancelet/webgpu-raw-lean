@@ -89,8 +89,12 @@ def main : IO UInt32 := do
     if required then fail s!"{why}, though a window is required"
     IO.println s!"note: {why}, so no window checked"
     return 0
-  let window ← try Window.create "webgpu-window-test" 64 64
-    catch e => return ← skip s!"no window ({e})"
+  -- With no display: on macOS, a headless window, a Metal layer of its own.
+  let (window, kind) ← try
+      pure (← Window.create "webgpu-window-test" 64 64, "A window")
+    catch e =>
+      try pure (← Window.createHeadless 64 64, "A headless window")
+      catch _ => return ← skip s!"no window ({e})"
   let wgpu ← createInstance none
   let some adapter ← adapter? wgpu
     | if (← IO.getEnv "WEBGPU_RAW_REQUIRE_ADAPTER").isSome then
@@ -140,8 +144,8 @@ def main : IO UInt32 := do
     return (← frames.get) < 3
   match ← checked.get with
   | some what =>
-    IO.println s!"A window drew a triangle, read back ({what})."
+    IO.println s!"{kind} drew a triangle, read back ({what})."
   | none =>
-    IO.println s!"A window drew a triangle ({repr format |>.pretty}; its \
+    IO.println s!"{kind} drew a triangle ({repr format |>.pretty}; its \
       textures not copied from)."
   return 0
