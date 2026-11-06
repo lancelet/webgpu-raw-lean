@@ -46,4 +46,14 @@ def Source.parse (text : String) : Except String Source := do
     pinnedBy := ← field "pinned-by"
   }
 
+/--
+The licence a copyright notice names by its SPDX identifier
+(`SPDX-License-Identifier: BSD-3-Clause`), as the spec's does, if any.
+-/
+def spdxLicense (copyright : String) : Option String :=
+  (copyright.splitOn "\n").findSome? fun line =>
+    match line.splitOn "SPDX-License-Identifier:" with
+    | [_, rest] => some rest.trimAscii.toString
+    | _         => none
+
 end WebGPUGen

@@ -1,0 +1,32 @@
+webgpu-raw-lean
+Copyright (c) 2026 Jonathan Merritt
+
+Licensed under either of the Apache License, Version 2.0 (LICENSE-APACHE) or
+the MIT license (LICENSE-MIT), at your option.
+
+Third-party components
+======================
+
+webgpu-headers (https://github.com/webgpu-native/webgpu-headers)
+  Copyright 2019-2023 WebGPU-Native developers
+  BSD 3-Clause License: vendor/webgpu-headers/LICENSE
+  Vendored in vendor/webgpu-headers/ (webgpu.yml, webgpu.h, articles/). The
+  generated bindings (WebGPU/Raw/*.lean, c/generated/) are generated from
+  webgpu.yml, and carry its documentation; each says so in its banner.
+
+wgpu-native (https://github.com/gfx-rs/wgpu-native)
+  MIT or Apache-2.0. Not part of this repository: vendor/wgpu-native/fetch.sh
+  downloads a release, which programs built natively link.
+
+SDL3 (https://libsdl.org)
+  Copyright (C) 1997-2026 Sam Lantinga
+  zlib License. Not part of this repository: vendor/sdl3/fetch.sh fetches a
+  release, which the window library (WebGPUWindow) links natively.
+
+Dawn, emdawnwebgpu (https://dawn.googlesource.com/dawn)
+  BSD 3-Clause License. Not part of this repository: Emscripten's port,
+  which the web build links.
+
+Lean 4 (https://github.com/leanprover/lean4) and libuv (https://libuv.org)
+  Apache-2.0 and MIT. Not part of this repository: the web build fetches their
+  sources (vendor/lean4/fetch.sh, vendor/libuv/fetch.sh) and compiles them.

@@ -4,7 +4,9 @@ open Lake DSL
 /-! Reads the WebGPU spec (vendor/webgpu-headers/webgpu.yml) and generates the
 raw bindings. A development tool: the bindings library does not depend on it. -/
 package WebGPUGen where
-  leanOptions := #[⟨`autoImplicit, false⟩]
+  leanOptions  := #[⟨`autoImplicit, false⟩]
+  license      := "Apache-2.0 OR MIT"
+  licenseFiles := #["../LICENSE-APACHE", "../LICENSE-MIT"]
 
 require L4YAML from git
   "https://github.com/nasa-jpl/L4YAML" @ "c558fda35b06e05a93078c6c12c18ea598b9ea47" -- v0.5.2

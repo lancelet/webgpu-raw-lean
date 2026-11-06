@@ -140,23 +140,27 @@ def docLines (indent : Nat) (doc : String) : List String :=
 /-- Where a generated file came from. -/
 structure Provenance where
   /-- The tool that wrote the file. -/
-  generator    : String
+  generator     : String
   /-- When, in UTC: `2026-11-02 17:05:12 UTC`. -/
-  time         : String
+  time          : String
   /-- The generator repository's commit, abbreviated. -/
-  commit       : String
+  commit        : String
   /-- Whether the generator repository had uncommitted changes. -/
-  dirty        : Bool
+  dirty         : Bool
   /-- The spec file the code was generated from. -/
-  source       : String
+  source        : String
   /-- The repository the spec file was fetched from. -/
-  sourceRepo   : String
+  sourceRepo    : String
   /-- The commit of that repository the spec file was fetched at. -/
-  sourceCommit : String
+  sourceCommit  : String
   /-- That commit's date. -/
-  sourceDate   : String
+  sourceDate    : String
   /-- The implementation release that pins that commit. -/
-  pinnedBy     : String
+  pinnedBy      : String
+  /-- The spec file's licence, which its documentation, copied, keeps. -/
+  sourceLicense : String := ""
+  /-- The generated file's licence: the generator repository's. -/
+  license       : String := ""
   deriving Repr, DecidableEq
 
 /--
@@ -167,7 +171,7 @@ then where the file came from, one field per line. The comment is Lean's,
 def banner (p : Provenance) (opening : String := "/-") (closing : String := "-/") :
     List String :=
   let rule := String.ofList (List.replicate width '=')
-  let fields := columns [
+  let fields := columns ([
     ["  Generator:",        p.generator],
     ["  Generator commit:", s!"{p.commit} ({if p.dirty then "dirty" else "clean"})"],
     ["  Generated:",        p.time],
@@ -176,7 +180,9 @@ def banner (p : Provenance) (opening : String := "/-") (closing : String := "-/"
     ["  Source commit:",    p.sourceCommit],
     ["  Source date:",      p.sourceDate],
     ["  Source pinned by:", p.pinnedBy]
-  ]
+  ] ++ (if p.sourceLicense.isEmpty then [] else
+    [["  Source license:", p.sourceLicense]])
+    ++ (if p.license.isEmpty then [] else [["  License:", p.license]]))
   [opening, rule, "  GENERATED FILE: DO NOT EDIT BY HAND", ""] ++ fields ++ [rule, closing]
 
 end WebGPUGen.Emit

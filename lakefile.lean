@@ -95,6 +95,8 @@ package WebGPURaw where
   leanOptions   := #[⟨`autoImplicit, false⟩]
   moreLinkArgs  := wgpuRpath ++ sharedLibArgs
   moreLeancArgs := #[checkPoke]
+  license       := "Apache-2.0 OR MIT"
+  licenseFiles  := #["LICENSE-APACHE", "LICENSE-MIT"]
 
 /--
 wgpu-native's shared library, from `fetch.sh`. Programs that link it are linked

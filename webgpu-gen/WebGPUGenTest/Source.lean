@@ -33,4 +33,9 @@ open WebGPUGen
   | .ok _          => false
   | .error message => message == "SOURCE has no commit line"
 
+-- The licence a copyright notice names, by its SPDX line; none without one.
+#guard spdxLicense "Copyright 2019 X\n\nSPDX-License-Identifier: BSD-3-Clause\n"
+  == some "BSD-3-Clause"
+#guard spdxLicense "Copyright 2019 X" == none
+
 end WebGPUGenTest.Source

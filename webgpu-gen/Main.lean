@@ -38,6 +38,13 @@ def run (dir : System.FilePath) (cmd : String) (args : Array String) : IO String
     throw (IO.userError s!"{cmd} {" ".intercalate args.toList} failed: {out.stderr}")
   return out.stdout.trimAscii.toString
 
+/-- Decode the vendored spec, or report where decoding failed. -/
+def parseSpec (root : System.FilePath) : IO Parsed.Spec := do
+  let node ← Yaml.parseFile (root / "vendor/webgpu-headers/webgpu.yml")
+  match (Parsed.Spec.codec.decode node).run with
+  | .ok parsed => pure parsed
+  | .error e   => throw (IO.userError (toString e))
+
 /--
 Where the generated files come from: this repository's commit, whether its
 tracked files have uncommitted changes, the time, and the spec's source.
@@ -59,14 +66,13 @@ def provenance (root : System.FilePath) : IO Emit.Provenance := do
     sourceCommit := source.commit
     sourceDate   := source.date
     pinnedBy     := source.pinnedBy
+    -- The spec's, by its notice: its documentation, copied, keeps it.
+    sourceLicense :=
+      match spdxLicense (← parseSpec root).copyright with
+      | some license => s!"{license} (vendor/webgpu-headers/LICENSE)"
+      | none         => "vendor/webgpu-headers/LICENSE"
+    license      := "Apache-2.0 OR MIT (LICENSE-APACHE, LICENSE-MIT)"
   }
-
-/-- Decode the vendored spec, or report where decoding failed. -/
-def parseSpec (root : System.FilePath) : IO Parsed.Spec := do
-  let node ← Yaml.parseFile (root / "vendor/webgpu-headers/webgpu.yml")
-  match (Parsed.Spec.codec.decode node).run with
-  | .ok parsed => pure parsed
-  | .error e   => throw (IO.userError (toString e))
 
 /--
 The functions each implementation leaves unimplemented: wgpu-native's stubs

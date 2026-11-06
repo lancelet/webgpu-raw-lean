@@ -6,7 +6,7 @@
 [![webgpu-headers][headers-badge]][headers]
 
 [ci]: https://github.com/lancelet/webgpu-raw-lean/actions/workflows/ci.yml
-[ci-badge]: https://img.shields.io/github/actions/workflow/status/lancelet/webgpu-raw-lean/ci.yml?branch=main&style=flat-square&logo=githubactions&logoColor=white&label=CI
+[ci-badge]: https://github.com/lancelet/webgpu-raw-lean/actions/workflows/ci.yml/badge.svg?branch=main
 [lean]: https://lean-lang.org
 [lean-badge]: https://img.shields.io/badge/Lean-v4.31.0-0073a3?style=flat-square
 [platforms-badge]: https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Web-555?style=flat-square
@@ -111,3 +111,17 @@ raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
 benchmark reports too.
 
 Status: WIP: approximately 98% complete.
+## License
+
+Licensed under either of
+
+- the Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE)), or
+- the MIT license ([LICENSE-MIT](LICENSE-MIT)),
+
+at your option. Unless you say otherwise, a contribution you submit for
+inclusion is licensed as above, with no further terms.
+
+The generated bindings carry documentation from webgpu-headers' `webgpu.yml`,
+under its BSD 3-Clause license (`vendor/webgpu-headers/LICENSE`), as each
+generated file's banner says. [NOTICE](NOTICE) lists the third-party
+components the build fetches or links, and their licenses.

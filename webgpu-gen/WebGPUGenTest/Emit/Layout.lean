@@ -134,15 +134,17 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
 
 #guard
   let input : Provenance := {
-    generator    := "webgpu-gen"
-    time         := "2026-11-02 17:05:12 UTC"
-    commit       := "3500dab"
-    dirty        := true
-    source       := "vendor/webgpu-headers/webgpu.yml"
-    sourceRepo   := "https://github.com/webgpu-native/webgpu-headers"
-    sourceCommit := "673658bc2bd70ec39fc55ebe6bb0173cf6d0a603"
-    sourceDate   := "2026-05-07"
-    pinnedBy     := "wgpu-native v29.0.1.1"
+    generator     := "webgpu-gen"
+    time          := "2026-11-02 17:05:12 UTC"
+    commit        := "3500dab"
+    dirty         := true
+    source        := "vendor/webgpu-headers/webgpu.yml"
+    sourceRepo    := "https://github.com/webgpu-native/webgpu-headers"
+    sourceCommit  := "673658bc2bd70ec39fc55ebe6bb0173cf6d0a603"
+    sourceDate    := "2026-05-07"
+    pinnedBy      := "wgpu-native v29.0.1.1"
+    license       := "Apache-2.0 OR MIT (LICENSE-APACHE, LICENSE-MIT)"
+    sourceLicense := "BSD-3-Clause (vendor/webgpu-headers/LICENSE)"
   }
   let expected := dedent "
     /-
@@ -157,6 +159,8 @@ def text (lines : List String) : String := "\n".intercalate lines ++ "\n"
       Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
       Source date:      2026-05-07
       Source pinned by: wgpu-native v29.0.1.1
+      Source license:   BSD-3-Clause (vendor/webgpu-headers/LICENSE)
+      License:          Apache-2.0 OR MIT (LICENSE-APACHE, LICENSE-MIT)
     ================================================================================
     -/
     "
