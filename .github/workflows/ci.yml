@@ -35,7 +35,7 @@ jobs:
       # Not a build step: checks the shell scripts the build uses.
       - name: Check the shell scripts
         if: runner.os == 'Linux'
-        run: shellcheck vendor/*/fetch.sh scripts/*.sh
+        run: shellcheck vendor/*/fetch.sh scripts/*.sh web/*.sh
 
       # On Linux, a GPU in software, Mesa's lavapipe, through the Vulkan loader:
       # CI's Linux runners have none.
@@ -45,21 +45,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y mesa-vulkan-drivers libvulkan1
 
-      # Fetch the prebuilt wgpu-native release for this platform, into
-      # vendor/wgpu-native/<platform>/.
-      - name: Fetch wgpu-native
-        run: vendor/wgpu-native/fetch.sh
-
       # On Windows, the C shims are compiled with MinGW's gcc (Lean's own
-      # compiler lacks the C library's headers; elsewhere the build uses cc),
-      # and programs find wgpu_native.dll through PATH (elsewhere the build
-      # records where the library is).
-      - name: Set up the C compiler and wgpu-native (Windows)
+      # compiler lacks the C library's headers; elsewhere the build uses cc).
+      # The build fetches wgpu-native itself, into
+      # vendor/wgpu-native/<platform>/, and copies its shared library beside
+      # the programs, which find it there.
+      - name: Set up the C compiler (Windows)
         if: runner.os == 'Windows'
-        run: |
-          echo "CC=gcc" >> "$GITHUB_ENV"
-          lib="$GITHUB_WORKSPACE\\vendor\\wgpu-native\\windows-x86_64\\lib"
-          echo "$lib" >> "$GITHUB_PATH"
+        run: echo "CC=gcc" >> "$GITHUB_ENV"
 
       # Lean's standard CI action. It installs elan (which installs the Lean
       # toolchain named in `lean-toolchain`), then runs, in webgpu-gen/:
@@ -153,21 +146,12 @@ jobs:
             libxkbcommon-dev libwayland-dev libegl-dev libdrm-dev libgbm-dev \
             xvfb
 
-      # Fetch SDL3 into vendor/sdl3/<platform>/: built from source on Linux
-      # and macOS (with cmake), MinGW's prebuilt release on Windows, whose
-      # SDL3.dll programs find through PATH.
-      - name: Fetch SDL3
-        run: |
-          vendor/sdl3/fetch.sh
-          if [ "$RUNNER_OS" = Windows ]; then
-            echo "$GITHUB_WORKSPACE\\vendor\\sdl3\\windows-x86_64\\bin" \
-              >> "$GITHUB_PATH"
-          fi
-
       # Build the window library and its test, and run it, a window
       # required: on Linux under a virtual display; on Windows on the
       # runner's desktop; on macOS, whose runner has no display, a headless
-      # window (a Metal layer of its own).
+      # window (a Metal layer of its own). The build fetches SDL3 into
+      # vendor/sdl3/<platform>/ first: built from source on Linux and macOS
+      # (with cmake), MinGW's prebuilt release on Windows.
       - name: Build and test the window library
         env:
           WEBGPU_RAW_REQUIRE_WINDOW: 1
@@ -190,6 +174,15 @@ jobs:
           elif [ "$RUNNER_OS" = Windows ]; then
             .lake/build/bin/triangle 3
           fi
+
+      # A package depending on the bindings (downstream/), as another
+      # repository would: its program, linked with the bindings and the window
+      # library, runs.
+      - name: Build and run a package depending on the bindings
+        working-directory: downstream
+        run: |
+          lake build downstream
+          .lake/build/bin/downstream
 
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
@@ -262,6 +255,16 @@ jobs:
 
       - name: Run the self-test under Node
         run: node .lake/web/site/webgpu-raw-web-test.js
+
+      # A package depending on the bindings (downstream/), built for the web
+      # as another repository would build its program: run from its root,
+      # with the bindings' build script (another repository's copy of the
+      # bindings is in .lake/packages/WebGPURaw/).
+      - name: Build a package depending on the bindings for the web
+        working-directory: downstream
+        run: |
+          ../web/build.sh --app Downstream --page web/index.html \
+            --out .lake/web/site
 
       # The page around it, in headless Chrome (installed on GitHub's runners),
       # whose software adapter (SwiftShader) the device checks require here.

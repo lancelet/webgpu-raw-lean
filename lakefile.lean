@@ -5,19 +5,20 @@ open Lake DSL System
 Raw Lean bindings to WebGPU (`webgpu.h`), generated from upstream's
 `webgpu.yml` by `webgpu-gen`, and linked against prebuilt wgpu-native.
 
-Run `vendor/wgpu-native/fetch.sh` once before building: it downloads the
-wgpu-native release for this platform into `vendor/wgpu-native/<platform>/`.
-The C shims need a C compiler with the C library's headers (`webgpu.h`
-includes `<math.h>`), which Lean's bundled compiler lacks: the build uses `cc`,
-or the compiler `CC` names. On Windows, use MinGW's: `CC=gcc`.
+The build fetches wgpu-native itself, the first time something needs it
+(`vendor/wgpu-native/fetch.sh`, which downloads this platform's release into
+`vendor/wgpu-native/<platform>/`). The C shims need a C compiler with the C
+library's headers (`webgpu.h` includes `<math.h>`), which Lean's bundled
+compiler lacks: the build uses `cc`, or the compiler `CC` names. On Windows,
+use MinGW's: `CC=gcc`.
 
 Every program that imports the bindings, in this package or one depending on
-it, is linked with the shims and wgpu-native. Programs built here find
-wgpu-native at run time by a path relative to themselves, so the checkout can
-move. Elsewhere, a program needs wgpu-native on its library path: on Linux and
-macOS, an rpath or `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH`; on Windows,
-`wgpu_native.dll` on `PATH` (for programs built here too:
-`vendor/wgpu-native/windows-<arch>/lib`).
+it, is linked with the shims and wgpu-native. The build copies wgpu-native's
+shared library (and SDL3's, for the window library) into the `bin` directory
+of the package being built, beside its programs, which find it there: on Linux
+and macOS by an rpath to their own directory, on Windows because a program's
+own directory is searched first. So programs need no library path, and the
+checkout can move.
 
 Nothing here records an absolute path: Lake keeps the configuration it
 elaborated from this file, and a path in it would go stale when the checkout
@@ -39,26 +40,51 @@ def wgpuDir (dir : FilePath) : FilePath :=
   dir / "vendor" / "wgpu-native" / wgpuPlatform
 
 /--
-Where programs built here (in `.lake/build/bin/`) find wgpu-native, and
-SDL3, at run time: an rpath relative to the program itself. (Windows has no
-rpath.)
+Run the fetch script at `path` in the package at `dir`. Each does nothing
+if what it fetches is already there.
 -/
-def wgpuRpath : Array String :=
-  let libs := #[s!"../../../vendor/wgpu-native/{wgpuPlatform}/lib",
-    s!"../../../vendor/sdl3/{wgpuPlatform}/lib"]
-  if System.Platform.isWindows then #[]
-  else if System.Platform.isOSX then
-    libs.map (s!"-Wl,-rpath,@executable_path/{·}")
-  else libs.map (s!"-Wl,-rpath,$ORIGIN/{·}")
+def runFetch (dir : FilePath) (path : String) : LogIO Unit :=
+  proc { cmd := "sh", args := #[(dir / path).toString] } (quiet := true)
 
 /--
-On Linux, let a shared library a program links refer to the C library's
-newer symbols: Lean links against its own, older, C library, but SDL3, built
-on the system, against the system's, which the program meets at run time.
+Copy the shared library `file` into `bin`, with the names it has by its
+version beside it: on Linux, `libSDL3.so.0`, which programs linked with
+`libSDL3.so` load; on macOS, `libSDL3.0.dylib`. Each is copied when missing
+or older than its source. Returns the copy of `file`.
 -/
-def sharedLibArgs : Array String :=
-  if System.Platform.isWindows || System.Platform.isOSX then #[]
-  else #["-Wl,--allow-shlib-undefined"]
+def copyShared (file bin : FilePath) : IO FilePath := do
+  let some dir  := file.parent   | return file
+  let some name := file.fileName | return file
+  let stem := file.fileStem.getD name
+  let shared (n : String) : Bool :=
+    if n == name then true
+    else if System.Platform.isWindows then false
+    else if System.Platform.isOSX then
+      n.startsWith s!"{stem}." && n.endsWith ".dylib"
+    else n.startsWith s!"{name}."
+  IO.FS.createDirAll bin
+  for entry in ← dir.readDir do
+    unless shared entry.fileName do continue
+    let copy := bin / entry.fileName
+    let fresh ← if ← copy.pathExists then
+        pure (compare (← copy.metadata).modified
+          (← entry.path.metadata).modified != .lt)
+      else pure false
+    unless fresh do
+      IO.FS.writeBinFile copy (← IO.FS.readBinFile entry.path)
+  return bin / name
+
+/--
+What a program linking the shared libraries needs, as one linker argument: on
+Linux and macOS, an rpath to its own directory, where the build copies them;
+on Linux also leave to refer to the C library's newer symbols (Lean links
+against its own, older, C library, but SDL3, built on the system, against the
+system's, which the program meets at run time). None on Windows.
+-/
+def runPathArg : Option String :=
+  if System.Platform.isWindows then none
+  else if System.Platform.isOSX then some "-Wl,-rpath,@executable_path"
+  else some "-Wl,-rpath,$ORIGIN,--allow-shlib-undefined"
 
 /-- The C compiler: `cc`, or the one `CC` names. -/
 def cCompiler : IO String := return (← IO.getEnv "CC").getD "cc"
@@ -93,21 +119,39 @@ def checkedArgs : Array String :=
 
 package WebGPURaw where
   leanOptions   := #[⟨`autoImplicit, false⟩]
-  moreLinkArgs  := wgpuRpath ++ sharedLibArgs
   moreLeancArgs := #[checkPoke]
   license       := "Apache-2.0 OR MIT"
   licenseFiles  := #["LICENSE-APACHE", "LICENSE-MIT"]
 
 /--
-wgpu-native's shared library, from `fetch.sh`. Programs that link it are linked
-again when it changes.
+`runPathArg`, as a link object: Lake passes a library's link objects on to
+every program that imports it, in any package, but a package's link
+arguments only to its own programs.
 -/
-target wgpuNative pkg : Dynlib := do
-  let dir := wgpuDir pkg.dir
+target runPath : FilePath := Job.async do
+  let some arg := runPathArg | error "no run-path argument on Windows"
+  addPureTrace arg "runPath"
+  return FilePath.mk arg
+
+/-- A library's link objects `objs`, with `runPath` where there is one. -/
+def withRunPath (objs : TargetArray FilePath) : TargetArray FilePath :=
+  if runPathArg.isSome then objs.push runPath else objs
+
+/-- wgpu-native, fetched if missing: its directory, once there. -/
+target wgpuFetch pkg : FilePath := Job.async do
+  runFetch pkg.dir "vendor/wgpu-native/fetch.sh"
+  return wgpuDir pkg.dir
+
+/--
+wgpu-native's shared library, copied into the `bin` directory of the package
+being built. Programs that link it are linked again when it changes.
+-/
+target wgpuNative : Dynlib := do
+  let dir ← (← wgpuFetch.fetch).await
+  let bin := (← getRootPackage).binDir
   let file := dir / "lib" / nameToSharedLib "wgpu_native"
-  unless ← file.pathExists do
-    error s!"no wgpu-native in {dir}: run vendor/wgpu-native/fetch.sh first"
-  return (← inputBinFile file).map fun path => { path, name := "wgpu_native" }
+  (← inputBinFile file).mapM fun file => do
+    return { path := ← copyShared file bin, name := "wgpu_native" }
 
 /--
 The C shims, generated into `c/generated/` by `webgpu-gen`, and the hand-written
@@ -118,10 +162,7 @@ any header in either or in wgpu-native's `include/webgpu/`, changes.
 target wgpuShim pkg : FilePath := do
   let handWritten := pkg.dir / "c"
   let sources := handWritten / "generated"
-  let wgpuInclude := wgpuDir pkg.dir / "include"
-  unless ← wgpuInclude.isDir do
-    error s!"no wgpu-native in {wgpuDir pkg.dir}: \
-      run vendor/wgpu-native/fetch.sh first"
+  let wgpuInclude := (← (← wgpuFetch.fetch).await) / "include"
   -- Sorted, since directory order varies, and the traces depend on the order.
   let paths (dir : FilePath) : IO (Array FilePath) := do
     return ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
@@ -154,7 +195,7 @@ that import the bindings are linked with the shims and wgpu-native.
 @[default_target]
 lean_lib WebGPURaw where
   roots        := #[`WebGPU.Raw]
-  moreLinkObjs := #[wgpuShim]
+  moreLinkObjs := withRunPath #[wgpuShim]
   moreLinkLibs := #[wgpuNative]
 
 /--
@@ -165,6 +206,7 @@ whether the page has WebGPU.
 -/
 target testHelpers pkg : FilePath := do
   let dir := pkg.dir / "WebGPURawTest" / "c"
+  let _ ← (← wgpuFetch.fetch).await
   -- Sorted, since directory order varies, and the traces depend on the order.
   let srcs := ((← dir.readDir).map (·.path)).qsort (·.toString < ·.toString)
     |>.filter (·.extension == some "c")
@@ -223,23 +265,32 @@ lean_lib WebGPURawWebTest where
 /-! ## The window library
 
 `WebGPUWindow`: a window, its events and a surface on it, natively on SDL3,
-which `vendor/sdl3/fetch.sh` fetches into `vendor/sdl3/<platform>/`. Not a
-default target: the bindings need no SDL. Programs built here find SDL3 at
-run time as they find wgpu-native (on Windows, `SDL3.dll` on `PATH`).
+which the build fetches into `vendor/sdl3/<platform>/` the first time it
+builds the window library (`vendor/sdl3/fetch.sh`: on Linux and macOS, it
+builds SDL3 from source, with cmake). Not a default target: the bindings need
+no SDL. Programs find SDL3 at run time as they find wgpu-native.
 -/
 
 /-- Where this platform's SDL3 is, in the package at `dir`. -/
 def sdlDir (dir : FilePath) : FilePath :=
   dir / "vendor" / "sdl3" / wgpuPlatform
 
-/-- SDL3's shared library, from `fetch.sh`. -/
-target sdl3 pkg : Dynlib := do
-  let dir := sdlDir pkg.dir
+/-- SDL3, fetched (or built) if missing: its directory, once there. -/
+target sdlFetch pkg : FilePath := Job.async do
+  runFetch pkg.dir "vendor/sdl3/fetch.sh"
+  return sdlDir pkg.dir
+
+/--
+SDL3's shared library, copied into the `bin` directory of the package being
+built.
+-/
+target sdl3 : Dynlib := do
+  let dir ← (← sdlFetch.fetch).await
+  let bin := (← getRootPackage).binDir
   let file := if System.Platform.isWindows then dir / "bin" / "SDL3.dll"
     else dir / "lib" / nameToSharedLib "SDL3"
-  unless ← file.pathExists do
-    error s!"no SDL3 in {dir}: run vendor/sdl3/fetch.sh first"
-  return (← inputBinFile file).map fun path => { path, name := "SDL3" }
+  (← inputBinFile file).mapM fun file => do
+    return { path := ← copyShared file bin, name := "SDL3" }
 
 /--
 The window library's C (`window/c/*.c`), compiled with the system C compiler
@@ -251,8 +302,8 @@ target windowShim pkg : FilePath := do
     |>.filter (·.extension == some "c")
   let includes := #[
     "-I", (← getLeanIncludeDir).toString,
-    "-I", (wgpuDir pkg.dir / "include").toString,
-    "-I", (sdlDir pkg.dir / "include").toString,
+    "-I", ((← (← wgpuFetch.fetch).await) / "include").toString,
+    "-I", ((← (← sdlFetch.fetch).await) / "include").toString,
     "-I", (pkg.dir / "c").toString
   ]
   let headers ← [
@@ -271,7 +322,7 @@ target windowShim pkg : FilePath := do
 
 /-- The window library (`WebGPUWindow.lean`). -/
 lean_lib WebGPUWindow where
-  moreLinkObjs := #[windowShim, wgpuShim]
+  moreLinkObjs := withRunPath #[windowShim, wgpuShim]
   moreLinkLibs := #[sdl3, wgpuNative]
 
 /--

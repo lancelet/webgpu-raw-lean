@@ -4,6 +4,8 @@
 # lib/ (on Windows, SDL3.dll in bin/ and its import library in lib/). On
 # Linux and macOS it is built from the release's source, with cmake; on
 # Windows, MinGW's prebuilt release is unpacked. The download is gitignored.
+# Lake runs this before building the window library; it does nothing if this
+# version is already there.
 #
 # On Linux, SDL needs the headers of the window systems it talks to at build
 # time (it loads their libraries at run time): X11's and Wayland's, as CI

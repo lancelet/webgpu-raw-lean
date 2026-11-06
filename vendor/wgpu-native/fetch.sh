@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
 # Fetch the prebuilt wgpu-native release for this platform into
 # vendor/wgpu-native/<platform>/ (include/ and lib/). The downloads are
-# gitignored; run this once before `lake build`.
+# gitignored. Lake runs this before building anything that needs wgpu-native;
+# it does nothing if that release is already there.
 #
 # Usage: fetch.sh [platform]
 #   platform: linux-x86_64 | linux-aarch64 | macos-x86_64 | macos-aarch64 |
@@ -44,6 +45,10 @@ esac
 releases=https://github.com/gfx-rs/wgpu-native/releases/download
 url="$releases/$WGPU_NATIVE_VERSION/$asset"
 out="$dir/$platform"
+if [ "$(cat "$out/VERSION" 2>/dev/null)" = "$WGPU_NATIVE_VERSION $asset" ]; then
+  echo "wgpu-native $WGPU_NATIVE_VERSION ($asset) already in $out"
+  exit 0
+fi
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
