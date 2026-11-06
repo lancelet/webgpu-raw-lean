@@ -30,6 +30,18 @@ URL) with `node web/serve.mjs`, then open http://localhost:8000/.
 later, for its WebSocket), and passes if it reports that all checks passed;
 CI runs both checks.
 
+A package depending on the bindings builds its own program with the same
+script, run from its root:
+
+    .lake/packages/WebGPURaw/web/build.sh \
+      --app App --page web/index.html --out .lake/web/site
+
+It runs `lake build App`, compiles the C of the modules `App.lean` and
+`App/**.lean` (one of which has `main`) with the bindings', the window
+library's and their shims, and links them into `index.js` and `index.wasm`,
+named after the page, which it copies beside them. The package must use the
+bindings' Lean version.
+
 ## What it does
 
 `build.sh` builds:

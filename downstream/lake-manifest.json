@@ -1,0 +1,13 @@
+{"version": "1.2.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "WebGPURaw",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "..",
+   "configFile": "lakefile.lean"}],
+ "name": "Downstream",
+ "lakeDir": ".lake",
+ "fixedToolchain": false}

@@ -21,14 +21,55 @@ support WebAssembly; the web build is a workaround whose lifespan is unknown
 
 A window to draw in comes with `WebGPUWindow`: a window, its events, a
 surface on it, and a frame loop, natively on SDL3, and on the web on the
-page's canvas. Natively, fetch SDL3 first (`vendor/sdl3/fetch.sh`), then
-`lake build WebGPUWindow`; its test, `lake exe webgpu-window-test`, draws a
-triangle in a window. The bindings themselves need no SDL.
+page's canvas: `lake build WebGPUWindow`; its test,
+`lake exe webgpu-window-test`, draws a triangle in a window. The bindings
+themselves need no SDL.
 
 The smallest program that draws, natively and in a browser alike, is
 `Examples/Triangle.lean`: `lake exe triangle`, or [in your browser][triangle].
 
 [triangle]: https://lancelet.github.io/webgpu-raw-lean/triangle.html
+
+## Building
+
+You need Lean through elan, a C compiler with the C library's headers (`cc`,
+or the one `CC` names; on Windows, MinGW's: `CC=gcc`), `curl` and `unzip`,
+and, for the window library on Linux and macOS, `cmake` (it builds SDL3 from
+source; on Linux, with the X11 and Wayland headers CI installs). Then:
+
+    lake build
+    lake test
+
+The build fetches wgpu-native the first time it needs it, and SDL3 the first
+time it builds the window library, into `vendor/`. It copies their shared
+libraries beside the programs it builds, which find them there, so programs
+run from `.lake/build/bin/` with no library path. For the web build, see
+[web/README.md](web/README.md).
+
+## Using the bindings in another package
+
+Require them in your `lakefile.lean`, at a release, with the same Lean
+version in your `lean-toolchain`:
+
+```lean
+require WebGPURaw from git
+  "https://github.com/lancelet/webgpu-raw-lean" @ "v0.1.0"
+```
+
+and import `WebGPU.Raw` (the bindings) or `WebGPUWindow` (a window too). Your
+programs are linked with what they need, and find the shared libraries beside
+them, as here: `lake build` is all. To build one for the web, from your
+package's root, with your program's modules under `App` (`App.lean`,
+`App/**.lean`; one of them has `main`) and your page `web/index.html`:
+
+    .lake/packages/WebGPURaw/web/build.sh \
+      --app App --page web/index.html --out .lake/web/site
+
+which writes the page, with its program beside it (`index.js` and
+`index.wasm`), into `.lake/web/site/`. `downstream/` is such a package, which
+CI builds both ways; [wgpu-raw-lean-reef-demo][reef] is a larger one.
+
+[reef]: https://github.com/lancelet/wgpu-raw-lean-reef-demo
 
 ## Proofs
 
@@ -110,7 +151,7 @@ Every shim also brackets its call into WebGPU, so that an error a callback
 raises in it is the call's (`docs/Safety.md`): under 2 ns a call, which the
 benchmark reports too.
 
-Status: WIP: approximately 98% complete.
+Status: WIP: approximately 99% complete.
 ## License
 
 Licensed under either of

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Build the web self-test for WebAssembly, with Emscripten (emcc, em++, emar
-# and emcmake on PATH, with cmake and make), into .lake/web/site/: the page,
-# and the program it runs.
+# Build Lean programs that use the bindings for WebAssembly, with Emscripten
+# (emcc, em++, emar and emcmake on PATH, with cmake and make): this
+# repository's self-test and examples, or, from a package depending on this
+# one, that package's program.
 #
 # Lean does not support WebAssembly (web/README.md), so this assembles what Lean
-# would otherwise ship, under .lake/web/<version>-<stamp>/:
+# would otherwise ship, under .lake/web/<version>-<stamp>/ in this repository
+# (in a dependent, its copy in .lake/packages/):
 #
 #   * Lean's runtime, compiled from Lean's source (vendor/lean4/fetch.sh);
 #   * Init, Lean's core library, as C: each module compiled again with
@@ -16,13 +18,58 @@
 # script, our config.h, Emscripten's version), so that nothing built one way is
 # linked with things built another.
 #
-# Then Lake compiles the bindings and the self-test to C, and this compiles
-# that C with the shims and links it all.
+# Then Lake compiles the bindings and the program to C, and this compiles that
+# C with the shims and links it all.
 #
-# Usage: web/build.sh
+# Usage:
+#
+#   web/build.sh
+#
+# builds this repository's self-test and examples into .lake/web/site/.
+#
+#   .lake/packages/WebGPURaw/web/build.sh --app ROOT --page PAGE --out DIR
+#
+# run from the root of a package depending on this one, builds its program:
+# `lake build ROOT`, then the modules ROOT.lean and ROOT/**.lean (one of which
+# has `main`), linked with the bindings, the window library and their C, into
+# DIR/NAME.js and DIR/NAME.wasm, where PAGE, copied into DIR, is NAME.html.
+# The package must use this one's Lean version.
 set -euo pipefail
-cd "$(dirname "$0")/.."
-root=$PWD
+root=$(cd "$(dirname "$0")/.." && pwd)
+
+usage() {
+  echo "usage: web/build.sh" >&2
+  echo "       web/build.sh --app ROOT --page PAGE --out DIR" >&2
+  exit 2
+}
+app_root=
+page=
+out=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --app)  [ $# -ge 2 ] || usage; app_root=$2; shift 2 ;;
+    --page) [ $# -ge 2 ] || usage; page=$2; shift 2 ;;
+    --out)  [ $# -ge 2 ] || usage; out=$2; shift 2 ;;
+    *) usage ;;
+  esac
+done
+if [ -n "$app_root$page$out" ]; then
+  [ -n "$app_root" ] && [ -n "$page" ] && [ -n "$out" ] || usage
+  if [ ! -f "$page" ]; then
+    echo "web/build.sh: no page $page" >&2
+    exit 1
+  fi
+  if ! cmp -s lean-toolchain "$root/lean-toolchain"; then
+    echo "web/build.sh: this package's lean-toolchain is not the bindings'" \
+      "($(cat "$root/lean-toolchain"))" >&2
+    exit 1
+  fi
+  page=$(cd "$(dirname "$page")" && pwd)/$(basename "$page")
+  mkdir -p "$out"
+  out=$(cd "$out" && pwd)
+else
+  cd "$root"
+fi
 
 for tool in emcc em++ emar emcmake cmake make lean lake; do
   if ! command -v "$tool" >/dev/null; then
@@ -33,29 +80,30 @@ done
 
 # CI builds with the Emscripten version in web/emscripten-version; another
 # probably works, but is not what CI checks.
-wanted=$(cat web/emscripten-version)
+wanted=$(cat "$root/web/emscripten-version")
 if ! emcc --version | head -n 1 | grep -q " $wanted"; then
   echo "web/build.sh: warning: Emscripten is not $wanted, which CI uses:" >&2
   emcc --version | head -n 1 >&2
 fi
 
-version=$(sed 's/.*://' lean-toolchain)
+version=$(sed 's/.*://' "$root/lean-toolchain")
 prefix=$(lean --print-prefix)
 jobs=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)
 web=$root/.lake/web
 stamp=$({
-  cat web/build.sh web/include/lean/config.h
+  cat "$root/web/build.sh" "$root/web/include/lean/config.h"
   emcc --version | head -n 1
 } | cksum | cut -d ' ' -f 1)
 cache=$web/$version-$stamp
-app=$web/app
-site=$web/site
+# Objects, in the package being built.
+app=$PWD/.lake/web/app
+site=${out:-$web/site}
 
 # Emscripten writes its cache, and builds its ports (emdawnwebgpu) there.
 export EM_CACHE=${EM_CACHE:-$web/emscripten-cache}
 
-vendor/lean4/fetch.sh
-vendor/libuv/fetch.sh
+"$root/vendor/lean4/fetch.sh"
+"$root/vendor/libuv/fetch.sh"
 lean_src=$root/vendor/lean4/$version
 libuv_src=$root/vendor/libuv/v1.48.0
 
@@ -91,7 +139,7 @@ archive() {
 
 # --- Lean's headers: its source's, with our config.h and its version ----------
 mkdir -p "$cache/include/lean" "$cache/lib"
-cp web/include/lean/config.h "$cache/include/lean/config.h"
+cp "$root/web/include/lean/config.h" "$cache/include/lean/config.h"
 cp "$prefix/include/lean/version.h" "$cache/include/lean/version.h"
 printf '#define LEAN_GITHASH "%s"\n' "$(lean --githash)" \
   > "$cache/include/githash.h"
@@ -180,9 +228,14 @@ if [ ! -f "$cache/lib/libInit.a" ]; then
   rm -rf "$cache/init-c" "$cache/init-o"
 fi
 
-# --- The bindings and the self-test -------------------------------------------
-echo "== the bindings and the self-test"
-lake build WebGPURawWebTest Examples >/dev/null
+# --- The program's C ----------------------------------------------------------
+if [ -n "$app_root" ]; then
+  echo "== $app_root"
+  lake build "$app_root" >/dev/null
+else
+  echo "== the bindings and the self-test"
+  lake build WebGPURawWebTest Examples >/dev/null
+fi
 rm -rf "$app"
 mkdir -p "$app" "$site"
 
@@ -202,11 +255,13 @@ else
 fi
 export check_poke
 
-# Compile one module's C, like `WebGPU/Raw/Enums`, from Lake's output.
+# Compile one module's C, like `WebGPU/Raw/Enums`, from the C Lake wrote into
+# $ir, its package's (which compile_modules sets).
 compile_module() {
-  local c=".lake/build/ir/$1.c"
+  # shellcheck disable=SC2154 # compile_modules sets ir
+  local c="$ir/$1.c"
   if [ ! -f "$c" ]; then
-    echo "no C for $1: does the self-test import it?" >&2
+    echo "no C for $1 in $ir: is it built?" >&2
     return 1
   fi
   read_flags
@@ -214,79 +269,111 @@ compile_module() {
 }
 export -f compile_module
 export app
+
+# Compile the modules named on standard input, one source path per line (like
+# `WebGPU/Raw/Enums.lean`), from the C Lake wrote into the package at $1.
+compile_modules() {
+  # shellcheck disable=SC2016 # the $1 is the inner bash's
+  sed 's/\.lean$//' \
+    | ir=$1/.lake/build/ir xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
+}
+
 # The modules in the sources, not every C file in .lake/build/ir, which may
-# hold C of modules since removed; and the native tests' modules the self-test
-# shares: the byte writers' differential test, and the encoding,
-# relocation and callback checks.
-# shellcheck disable=SC2016 # the $1 is the inner bash's
+# hold C of modules since removed: the bindings' and the window library's.
+(cd "$root" && { find WebGPU -name '*.lean'; echo WebGPUWindow.lean; }) \
+  | compile_modules "$root"
+
+# The shims, against emdawnwebgpu's webgpu.h. They are told they are built
+# against Dawn: those of functions wgpu-native leaves unimplemented then call
+# them, rather than raise an IO error. Each object is named by its source's
+# path, so that two sources of one name do not clash.
+port=--use-port=emdawnwebgpu
+compile_shims() {
+  read_flags
+  local f o
+  for f in "$@"; do
+    o=${f%.c}
+    emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN "${checked[@]}" \
+      -I "$root/c" -I "$root/c/generated" -c "$root/$f" \
+      -o "$app/shim_${o//\//_}.o"
+  done
+}
+(cd "$root" && compile_shims c/*.c c/generated/*.c window/c/*.c)
+
+# Link the objects after $2 into the program $1 (`name.js`, with
+# `name.wasm`), for the environments $2.
+link() {
+  local js=$1 environment=$2 log
+  shift 2
+  log=$app/$(basename "$js" .js).log
+  echo "== link $(basename "$js")"
+  em++ -o "$js" "$@" \
+    "$cache/lib/libInit.a" "$cache/lib/libleanrt.a" "$cache/lib/libuv.a" \
+    -O2 -fwasm-exceptions "$port" -sENVIRONMENT="$environment" \
+    -sEXIT_RUNTIME=1 -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608 2> "$log" \
+    || { cat "$log" >&2; exit 1; }
+  cat "$log" >&2
+  # A call to a function whose C type differs from how it is called traps on
+  # WebAssembly, so the linker's warning of one is an error here, except for
+  # the two Lean v4.31.0's runtime has (lean4#16089), which nothing here calls.
+  if grep "function signature mismatch" "$log" \
+      | grep -v -e lean_io_create_tempfile -e lean_io_create_tempdir; then
+    echo "web/build.sh: a function is called with the wrong C type" >&2
+    exit 1
+  fi
+}
+
+# What every program is linked with: the bindings, the window library and
+# their C.
+objects=("$app"/WebGPU_*.o "$app"/WebGPUWindow.o "$app"/shim_c_*.o
+  "$app"/shim_window_*.o)
+# Each program's own objects go into a directory of their own under it.
+objs=$app
+
+# --- A dependent's program ----------------------------------------------------
+if [ -n "$app_root" ]; then
+  mkdir -p "$objs/program"
+  app=$objs/program
+  { [ ! -f "$app_root.lean" ] || echo "$app_root.lean"
+    [ ! -d "$app_root" ] || find "$app_root" -name '*.lean'; } \
+    | compile_modules "$PWD"
+  name=$(basename "$page" .html)
+  link "$site/$name.js" web "${objects[@]}" "$app"/*.o
+  cp "$page" "$site/$name.html"
+  echo "Built $site"
+  exit 0
+fi
+
+# --- The self-test ------------------------------------------------------------
+# Its modules, and the native tests' modules it shares: the byte writers'
+# differential test, and the encoding, relocation and callback checks; and the
+# test helpers' C.
+mkdir -p "$objs/test"
+app=$objs/test
 {
-  find WebGPU WebGPURawWebTest -name '*.lean'
+  find WebGPURawWebTest -name '*.lean'
   echo WebGPURawWebTest.lean
-  echo WebGPUWindow.lean
   echo WebGPURawTest/Internal/Bytes.lean
   echo WebGPURawTest/Internal/Callback.lean
   echo WebGPURawTest/Internal/Device.lean
   echo WebGPURawTest/Internal/Family.lean
   echo WebGPURawTest/Internal/Encode.lean
   echo WebGPURawTest/Internal/Reloc.lean
-} \
-  | sed 's/\.lean$//' \
-  | xargs -P "$jobs" -n 1 bash -c 'compile_module "$1"' _
-
-# The shims and the test helpers, against emdawnwebgpu's webgpu.h. The shims
-# are told they are built against Dawn: those of functions wgpu-native leaves
-# unimplemented then call them, rather than raise an IO error. Each object is
-# named by its source's path, so that two sources of one name do not clash.
-port=--use-port=emdawnwebgpu
-read_flags
-for f in c/*.c c/generated/*.c window/c/*.c WebGPURawTest/c/*.c; do
-  o=${f%.c}
-  emcc "${flags[@]}" "$port" -DWEBGPU_RAW_DAWN "${checked[@]}" -I c \
-    -I c/generated -c "$f" \
-    -o "$app/shim_${o//\//_}.o"
-done
-
-echo "== link"
-em++ -o "$site/webgpu-raw-web-test.js" "$app"/*.o \
-  "$cache/lib/libInit.a" "$cache/lib/libleanrt.a" "$cache/lib/libuv.a" \
-  -O2 -fwasm-exceptions "$port" -sENVIRONMENT=web,node -sEXIT_RUNTIME=1 \
-  -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608 2> "$app/link.log" \
-  || { cat "$app/link.log" >&2; exit 1; }
-cat "$app/link.log" >&2
-# A call to a function whose C type differs from how it is called traps on
-# WebAssembly, so the linker's warning of one is an error here, except for the
-# two Lean v4.31.0's runtime has (lean4#16089), which nothing here calls.
-if grep "function signature mismatch" "$app/link.log" \
-    | grep -v -e lean_io_create_tempfile -e lean_io_create_tempdir; then
-  echo "web/build.sh: a function is called with the wrong C type" >&2
-  exit 1
-fi
+} | compile_modules "$root"
+compile_shims WebGPURawTest/c/*.c
+link "$site/webgpu-raw-web-test.js" web,node "${objects[@]}" "$app"/*.o
 cp web/index.html "$site/index.html"
 
-# The examples, each a program of its own: its module, linked with the
-# bindings, the window library and their C (not the tests', nor the
-# self-test's `main`), and its page.
-echo "== the examples"
-mkdir -p "$app/examples"
+# --- The examples -------------------------------------------------------------
+# Each a program of its own: its module, linked with what every program is
+# (not the tests', nor the self-test's `main`), and its page.
+mkdir -p "$objs/examples"
+app=$objs/examples
 # shellcheck disable=SC2043 # one example, so far
 for example in Examples/Triangle; do
   name=$(basename "$example" | tr '[:upper:]' '[:lower:]')
-  read_flags
-  emcc "${flags[@]}" -w "$check_poke" -c ".lake/build/ir/$example.c" \
-    -o "$app/examples/${example//\//_}.o"
-  objects=("$app"/WebGPU_*.o "$app"/WebGPUWindow.o "$app"/shim_c_*.o
-    "$app"/shim_window_*.o)
-  em++ -o "$site/$name.js" "${objects[@]}" "$app/examples/${example//\//_}.o" \
-    "$cache/lib/libInit.a" "$cache/lib/libleanrt.a" "$cache/lib/libuv.a" \
-    -O2 -fwasm-exceptions "$port" -sENVIRONMENT=web -sEXIT_RUNTIME=1 \
-    -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=8388608 2> "$app/examples/link.log" \
-    || { cat "$app/examples/link.log" >&2; exit 1; }
-  # As the self-test's: a function called with the wrong C type traps.
-  if grep "function signature mismatch" "$app/examples/link.log" \
-      | grep -v -e lean_io_create_tempfile -e lean_io_create_tempdir; then
-    echo "web/build.sh: a function is called with the wrong C type" >&2
-    exit 1
-  fi
+  echo "$example.lean" | compile_modules "$root"
+  link "$site/$name.js" web "${objects[@]}" "$app/${example//\//_}.o"
   cp "web/$name.html" "$site/$name.html"
 done
 echo "Built $site"

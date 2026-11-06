@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Downstream</title>
+</head>
+<body>
+  <pre id="out"></pre>
+<script>
+  // The program prints into the page; Emscripten's script declares `Module`.
+  var Module = (() => {
+    const out = document.getElementById("out");
+    const line = (text) => { out.textContent += text + "\n"; };
+    return { print: line, printErr: line };
+  })();
+</script>
+<script src="index.js"></script>
+</body>
+</html>
