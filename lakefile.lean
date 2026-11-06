@@ -10,7 +10,8 @@ The build fetches wgpu-native itself, the first time something needs it
 `vendor/wgpu-native/<platform>/`). The C shims need a C compiler with the C
 library's headers (`webgpu.h` includes `<math.h>`), which Lean's bundled
 compiler lacks: the build uses `cc`, or the compiler `CC` names. On Windows,
-use MinGW's: `CC=gcc`.
+use MinGW's: `CC=gcc`, with `sh` on `PATH` (Git Bash's), which runs the fetch
+scripts.
 
 Every program that imports the bindings, in this package or one depending on
 it, is linked with the shims and wgpu-native. The build copies wgpu-native's
@@ -47,12 +48,14 @@ def runFetch (dir : FilePath) (path : String) : LogIO Unit :=
   proc { cmd := "sh", args := #[(dir / path).toString] } (quiet := true)
 
 /--
-Copy the shared library `file` into `bin`, with the names it has by its
-version beside it: on Linux, `libSDL3.so.0`, which programs linked with
-`libSDL3.so` load; on macOS, `libSDL3.0.dylib`. Each is copied when missing
-or older than its source. Returns the copy of `file`.
+Copy the shared library `file` into each of `bins`, with the names it has by
+its version beside it: on Linux, `libSDL3.so.0`, which programs linked with
+`libSDL3.so` load; on macOS, `libSDL3.0.dylib`. Each is copied unless its
+copy has its contents already (not by timestamp: unzip gives an older
+release its own), to a temporary file renamed into place, so that nothing
+sees half a library. Returns the copy of `file` in the first of `bins`.
 -/
-def copyShared (file bin : FilePath) : IO FilePath := do
+def copyShared (file : FilePath) (bins : List FilePath) : IO FilePath := do
   let some dir  := file.parent   | return file
   let some name := file.fileName | return file
   let stem := file.fileStem.getD name
@@ -62,22 +65,23 @@ def copyShared (file bin : FilePath) : IO FilePath := do
     else if System.Platform.isOSX then
       n.startsWith s!"{stem}." && n.endsWith ".dylib"
     else n.startsWith s!"{name}."
-  IO.FS.createDirAll bin
   for entry in ← dir.readDir do
     unless shared entry.fileName do continue
-    let copy := bin / entry.fileName
-    let fresh ← if ← copy.pathExists then
-        pure (compare (← copy.metadata).modified
-          (← entry.path.metadata).modified != .lt)
-      else pure false
-    unless fresh do
-      IO.FS.writeBinFile copy (← IO.FS.readBinFile entry.path)
-  return bin / name
+    let bytes ← IO.FS.readBinFile entry.path
+    for bin in bins do
+      IO.FS.createDirAll bin
+      let copy := bin / entry.fileName
+      if ← copy.pathExists then
+        if (← IO.FS.readBinFile copy) == bytes then continue
+      let tmp := bin / s!"{entry.fileName}.tmp"
+      IO.FS.writeBinFile tmp bytes
+      IO.FS.rename tmp copy
+  return (bins.headD dir) / name
 
 /--
 What a program linking the shared libraries needs, as one linker argument: on
 Linux and macOS, an rpath to its own directory, where the build copies them;
-on Linux also leave to refer to the C library's newer symbols (Lean links
+on Linux, also let it refer to the C library's newer symbols (Lean links
 against its own, older, C library, but SDL3, built on the system, against the
 system's, which the program meets at run time). None on Windows.
 -/
@@ -133,7 +137,12 @@ target runPath : FilePath := Job.async do
   addPureTrace arg "runPath"
   return FilePath.mk arg
 
-/-- A library's link objects `objs`, with `runPath` where there is one. -/
+/--
+A library's link objects `objs`, with `runPath` where there is one. Lake
+gives link objects to a library's static and shared builds too, which do not
+want it: `lake build WebGPURaw:static` fails (`ar` finds no such file), and
+the shared libraries look beside themselves. Nothing here builds them.
+-/
 def withRunPath (objs : TargetArray FilePath) : TargetArray FilePath :=
   if runPathArg.isSome then objs.push runPath else objs
 
@@ -143,15 +152,17 @@ target wgpuFetch pkg : FilePath := Job.async do
   return wgpuDir pkg.dir
 
 /--
-wgpu-native's shared library, copied into the `bin` directory of the package
-being built. Programs that link it are linked again when it changes.
+wgpu-native's shared library, copied into the `bin` directories of the
+package being built and of this one, where their programs find it (a program
+of a third package between them, built from the first, would not). Programs
+that link it are linked again when it changes.
 -/
-target wgpuNative : Dynlib := do
+target wgpuNative pkg : Dynlib := do
   let dir ← (← wgpuFetch.fetch).await
-  let bin := (← getRootPackage).binDir
+  let bins := [(← getRootPackage).binDir, pkg.binDir].eraseDups
   let file := dir / "lib" / nameToSharedLib "wgpu_native"
   (← inputBinFile file).mapM fun file => do
-    return { path := ← copyShared file bin, name := "wgpu_native" }
+    return { path := ← copyShared file bins, name := "wgpu_native" }
 
 /--
 The C shims, generated into `c/generated/` by `webgpu-gen`, and the hand-written
@@ -281,16 +292,15 @@ target sdlFetch pkg : FilePath := Job.async do
   return sdlDir pkg.dir
 
 /--
-SDL3's shared library, copied into the `bin` directory of the package being
-built.
+SDL3's shared library, copied as wgpu-native's is.
 -/
-target sdl3 : Dynlib := do
+target sdl3 pkg : Dynlib := do
   let dir ← (← sdlFetch.fetch).await
-  let bin := (← getRootPackage).binDir
+  let bins := [(← getRootPackage).binDir, pkg.binDir].eraseDups
   let file := if System.Platform.isWindows then dir / "bin" / "SDL3.dll"
     else dir / "lib" / nameToSharedLib "SDL3"
   (← inputBinFile file).mapM fun file => do
-    return { path := ← copyShared file bin, name := "SDL3" }
+    return { path := ← copyShared file bins, name := "SDL3" }
 
 /--
 The window library's C (`window/c/*.c`), compiled with the system C compiler

@@ -55,6 +55,16 @@ while [ $# -gt 0 ]; do
 done
 if [ -n "$app_root$page$out" ]; then
   if [ -z "$app_root" ] || [ -z "$page" ] || [ -z "$out" ]; then usage; fi
+  if [ ! -f lean-toolchain ] \
+      || { [ ! -f lakefile.lean ] && [ ! -f lakefile.toml ]; }; then
+    echo "web/build.sh: run it from your package's root" >&2
+    exit 1
+  fi
+  if [ ! -f "$app_root.lean" ] && [ ! -d "$app_root" ]; then
+    echo "web/build.sh: no $app_root.lean nor $app_root/ here: --app names" \
+      "a top-level module" >&2
+    exit 1
+  fi
   if [ ! -f "$page" ]; then
     echo "web/build.sh: no page $page" >&2
     exit 1
@@ -231,7 +241,9 @@ fi
 # --- The program's C ----------------------------------------------------------
 if [ -n "$app_root" ]; then
   echo "== $app_root"
-  lake build "$app_root" >/dev/null
+  # And the window library, which every program is linked with, whether or
+  # not it imports it.
+  lake build "$app_root" WebGPUWindow >/dev/null
 else
   echo "== the bindings and the self-test"
   lake build WebGPURawWebTest Examples >/dev/null

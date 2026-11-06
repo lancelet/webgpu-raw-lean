@@ -54,13 +54,17 @@ trap 'rm -rf "$tmp"' EXIT
 
 echo "Downloading $url"
 curl -fsSL "$url" -o "$tmp/$asset"
-rm -rf "$out"
-mkdir -p "$out"
+# Unpacked beside $out, then moved into place whole: a second build fetching
+# at the same time never sees half a release (if one, briefly, none).
+new=$(mktemp -d "$out.new.XXXXXX")
+trap 'rm -rf "$tmp" "$new"' EXIT
 # Git Bash on Windows may lack unzip; its tar (bsdtar) reads zips.
 if command -v unzip >/dev/null; then
-  unzip -q "$tmp/$asset" -d "$out"
+  unzip -q "$tmp/$asset" -d "$new"
 else
-  tar -xf "$tmp/$asset" -C "$out"
+  tar -xf "$tmp/$asset" -C "$new"
 fi
-echo "$WGPU_NATIVE_VERSION $asset" > "$out/VERSION"
+echo "$WGPU_NATIVE_VERSION $asset" > "$new/VERSION"
+rm -rf "$out"
+mv "$new" "$out"
 echo "Fetched wgpu-native $WGPU_NATIVE_VERSION ($asset) into $out"
