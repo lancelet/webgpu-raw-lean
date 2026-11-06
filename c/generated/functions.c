@@ -3,13 +3,15 @@
   GENERATED FILE: DO NOT EDIT BY HAND
 
   Generator:        webgpu-gen
-  Generator commit: f0fb8e3 (clean)
-  Generated:        2026-11-05 13:41:16 UTC
+  Generator commit: 43e4461 (clean)
+  Generated:        2026-11-06 03:03:00 UTC
   Source:           vendor/webgpu-headers/webgpu.yml
   Source repo:      https://github.com/webgpu-native/webgpu-headers
   Source commit:    673658bc2bd70ec39fc55ebe6bb0173cf6d0a603
   Source date:      2026-05-07
   Source pinned by: wgpu-native v29.0.1.1
+  Source license:   BSD-3-Clause (vendor/webgpu-headers/LICENSE)
+  License:          Apache-2.0 OR MIT (LICENSE-APACHE, LICENSE-MIT)
 ================================================================================
 */
 
