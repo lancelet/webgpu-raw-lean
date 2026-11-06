@@ -9,7 +9,7 @@ on it, and a red triangle drawn on blue in every frame, till the window is
 closed. The surface is configured again when the window is resized, or the
 surface says it must be.
 
-Natively, `lake exe triangle` (after `vendor/sdl3/fetch.sh`); `lake exe
+Natively, `lake exe triangle`; `lake exe
 triangle 3` draws three frames, then ends. In a browser, `web/build.sh`
 builds `triangle.html`.
 

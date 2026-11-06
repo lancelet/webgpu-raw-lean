@@ -54,7 +54,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 if [ -n "$app_root$page$out" ]; then
-  [ -n "$app_root" ] && [ -n "$page" ] && [ -n "$out" ] || usage
+  if [ -z "$app_root" ] || [ -z "$page" ] || [ -z "$out" ]; then usage; fi
   if [ ! -f "$page" ]; then
     echo "web/build.sh: no page $page" >&2
     exit 1
