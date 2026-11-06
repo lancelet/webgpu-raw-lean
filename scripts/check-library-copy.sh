@@ -8,13 +8,13 @@ set -eu
 cd "$(dirname "$0")/.."
 lib=vendor/wgpu-native/linux-x86_64/lib/libwgpu_native.so
 copy=.lake/build/bin/libwgpu_native.so
-lake build triangle >/dev/null
+lake build webgpu-raw-test >/dev/null
 cp -p "$lib" "$lib.orig"
-trap 'mv "$lib.orig" "$lib"; lake build triangle >/dev/null' EXIT
+trap 'mv "$lib.orig" "$lib"; lake build webgpu-raw-test >/dev/null' EXIT
 echo "edited" >> "$lib"
 touch -d 2000-01-01 "$lib"
 # The edited library no longer links; only the copy matters here.
-lake build triangle >/dev/null 2>&1 || true
+lake build webgpu-raw-test >/dev/null 2>&1 || true
 if ! cmp -s "$lib" "$copy"; then
   echo "FAIL: $copy is not $lib after it changed" >&2
   exit 1
