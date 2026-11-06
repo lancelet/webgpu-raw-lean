@@ -1,9 +1,9 @@
-import WebGPUWindow
+import WebGPU.Raw
 
 /-!
-A program in a package depending on the bindings: it creates an instance,
-which needs no adapter, and so runs anywhere, natively and on the web. The
-window library is imported, so the program links with it and with SDL3.
+A program in a package depending on the bindings alone: it creates an
+instance, which needs no adapter, and so runs anywhere, natively and on the
+web.
 -/
 
 open WebGPU.Raw

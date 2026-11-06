@@ -33,9 +33,10 @@ The smallest program that draws, natively and in a browser alike, is
 ## Building
 
 You need Lean through elan, a C compiler with the C library's headers (`cc`,
-or the one `CC` names; on Windows, MinGW's: `CC=gcc`), `curl` and `unzip`,
-and, for the window library on Linux and macOS, `cmake` (it builds SDL3 from
-source; on Linux, with the X11 and Wayland headers CI installs). Then:
+or the one `CC` names; on Windows, MinGW's: `CC=gcc`), `sh` (on Windows, Git
+Bash's, on `PATH`) and `curl`, and, for the window library on Linux and
+macOS, `cmake` (it builds SDL3 from source; on Linux, with the X11 and
+Wayland headers CI installs). Then:
 
     lake build
     lake test

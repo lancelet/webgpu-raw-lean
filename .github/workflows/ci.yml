@@ -112,6 +112,12 @@ jobs:
         if: runner.os == 'Linux'
         run: scripts/check-shim-rebuild.sh
 
+      # Not a build step: checks that the copy of wgpu-native beside the
+      # programs follows the library when it changes.
+      - name: Check a changed library is copied
+        if: runner.os == 'Linux'
+        run: scripts/check-library-copy.sh
+
       # Not a build step: checks that every shim's C types agree with how Lean
       # calls it, against Lean's own declarations.
       - name: Check the shims agree with Lean's ABI
@@ -176,13 +182,14 @@ jobs:
           fi
 
       # A package depending on the bindings (downstream/), as another
-      # repository would: its program, linked with the bindings and the window
-      # library, runs.
+      # repository would: its programs, linked with the bindings alone and
+      # with the window library too, run.
       - name: Build and run a package depending on the bindings
         working-directory: downstream
         run: |
-          lake build downstream
+          lake build downstream downstream-window
           .lake/build/bin/downstream
+          .lake/build/bin/downstream-window
 
   # The web build: Lean, the bindings and the self-test as WebAssembly. To
   # build it yourself: install the Emscripten SDK at the version in
@@ -235,6 +242,17 @@ jobs:
             'web/emscripten-version', 'web/include/**',
             'vendor/lean4/fetch.sh', 'vendor/libuv/fetch.sh') }}
 
+      # A package depending on the bindings (downstream/), built for the web
+      # as another repository would build its program: run from its root,
+      # with the bindings' build script (another repository's copy of the
+      # bindings is in .lake/packages/WebGPURaw/). First, so that nothing
+      # else has built what it needs. Its program imports the bindings alone.
+      - name: Build a package depending on the bindings for the web
+        working-directory: downstream
+        run: |
+          ../web/build.sh --app Downstream --page web/index.html \
+            --out .lake/web/site
+
       # First in the build where each poke also checks its array is unshared
       # and its store fits, as natively: the tests only, not to publish.
       - name: Build for the web, with the pokes checked
@@ -255,16 +273,6 @@ jobs:
 
       - name: Run the self-test under Node
         run: node .lake/web/site/webgpu-raw-web-test.js
-
-      # A package depending on the bindings (downstream/), built for the web
-      # as another repository would build its program: run from its root,
-      # with the bindings' build script (another repository's copy of the
-      # bindings is in .lake/packages/WebGPURaw/).
-      - name: Build a package depending on the bindings for the web
-        working-directory: downstream
-        run: |
-          ../web/build.sh --app Downstream --page web/index.html \
-            --out .lake/web/site
 
       # The page around it, in headless Chrome (installed on GitHub's runners),
       # whose software adapter (SwiftShader) the device checks require here.
