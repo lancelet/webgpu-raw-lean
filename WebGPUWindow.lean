@@ -5,8 +5,9 @@ public import WebGPU.Raw
 /-!
 # A window to draw in
 
-A window, its events, its size in pixels, a WebGPU surface on it, and a
-frame loop: natively on SDL3 (`window/c/window_sdl.c`, fetched by
+A window, its events, its size in pixels, filling the screen or not, a
+WebGPU surface on it, a frame loop, and text drawn as pixels (to draw with
+WebGPU): natively on SDL3 (`window/c/window_sdl.c`, fetched by
 `vendor/sdl3/fetch.sh`), and on the web on the page's canvas
 (`window/c/window_web.c`). It is not part of the raw bindings: they bind
 WebGPU alone.
@@ -68,9 +69,67 @@ def Event.ofValues (v : Array Float) : Option Event :=
 A new window titled `title`, `width` by `height` (in the window system's
 units, which may be fewer than its pixels), which can be resized. On the web,
 the page's canvas, `width` by `height` pixels.
+
+With `fullscreen`, natively, it fills the screen, at the desktop's mode (no
+mode change), and is `width` by `height` when it leaves it. On the web, the
+canvas fills the page, its pixels following its size on the screen (with the
+device's pixel ratio), each change a `resized` event; a browser lets a page
+fill the screen itself only on a key press or a click (`setFullscreen`).
 -/
 @[extern "lean_wgpu_window_create"]
-opaque Window.create (title : @& String) (width height : UInt32) : IO Window
+opaque Window.create (title : @& String) (width height : UInt32)
+    (fullscreen : Bool := false) : IO Window
+
+/--
+Fill the screen with the window, or leave it. Natively, at once, at the
+desktop's mode. On the web, the canvas: a browser allows it only while it
+handles a key press or a click, so it waits till the next one (a key
+released, at the latest, of the press that asked for it); the browser leaves
+it on Escape. A headless window has no screen: nothing happens.
+-/
+@[extern "lean_wgpu_window_set_fullscreen"]
+opaque Window.setFullscreen (self : @& Window) (fullscreen : Bool) : IO Unit
+
+/-- Whether the window fills the screen. -/
+@[extern "lean_wgpu_window_is_fullscreen"]
+opaque Window.isFullscreen (self : @& Window) : IO Bool
+
+/-- The shim behind `onWeb`. -/
+@[extern "lean_wgpu_window_on_web"]
+opaque Internal.onWeb : Unit → Bool
+
+/--
+Whether the program runs in a browser, where the browser keeps some keys
+(Escape, to leave fullscreen), and a program never exits by itself.
+-/
+def onWeb : Bool := Internal.onWeb ()
+
+/-- Text as pixels, `width` by `height`, by `textImage`. -/
+structure TextImage where
+  width  : UInt32
+  height : UInt32
+  /--
+  Its pixels, row by row from the top, four bytes each, RGBA (not
+  premultiplied): white, the alpha the text's.
+  -/
+  pixels : ByteArray
+
+/-- The shim behind `textImage`: the width, and the pixels. -/
+@[extern "lean_wgpu_text_image"]
+opaque Internal.textImage (text : @& String) (size : UInt32) :
+    IO (UInt32 × ByteArray)
+
+/--
+`text` as pixels, a line for each of its lines, about `size` pixels high,
+as wide as the widest: to draw text with WebGPU, as a texture. Natively,
+SDL3's own font (`SDL_RenderDebugText`: 8 by 8 pixels, ASCII), at the
+whole multiple of its size that is at most `size` (at least 1), with a
+software renderer; on the web, a canvas's monospace font. Empty if `text` is.
+-/
+def textImage (text : String) (size : UInt32) : IO TextImage := do
+  let (width, pixels) ← Internal.textImage text size
+  let height := if width == 0 then 0 else pixels.size.toUInt32 / (4 * width)
+  return { width, height, pixels }
 
 /--
 A window with no window, `width` by `height` pixels, to draw in with no
