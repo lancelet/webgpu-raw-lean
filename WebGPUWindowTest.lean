@@ -7,7 +7,8 @@ import WebGPURawTest.Internal.Device
 A window, a surface on it, configured as its capabilities allow, and a
 triangle drawn in it, frame by frame, by `run` and `Surface.presentFrame`:
 the first frame read back, where the surface allows copying from its
-textures, red inside the triangle and blue outside. It needs a display, and
+textures, red inside the triangle and blue outside; and, first, text drawn
+as pixels (`textImage`). It needs a display, and
 an adapter: with neither it says so, and checks nothing, unless
 `WEBGPU_RAW_REQUIRE_WINDOW` is set (as in CI, on Linux, under a virtual
 display), or, for the adapter, `WEBGPU_RAW_REQUIRE_ADAPTER` (as in CI on
@@ -83,7 +84,28 @@ def frame (wgpu : Instance) (device : Device) (draw : RenderPipeline)
     unless ← mapNow wgpu buffer .read size do fail "the copy not mapped"
     some <$> buffer.readMapped 0 size
 
+/--
+Check `textImage`, which needs no display: SDL's font, 8 by 8 pixels, at
+twice its size for 16 pixels; two lines, as wide as the wider; white where
+there is text, nothing where there is none; and nothing for no text.
+-/
+def checkText : IO Unit := do
+  let image ← textImage "Hi\nA" 16
+  unless image.width == 32 && image.height == 32
+      && image.pixels.size == 32 * 32 * 4 do
+    fail s!"text: {image.width}x{image.height}, {image.pixels.size} bytes"
+  let texels := (List.range (32 * 32)).map fun k =>
+    (image.pixels.extract (4 * k) (4 * k + 4)).toList
+  unless texels.contains [255, 255, 255, 255] && texels.contains [0, 0, 0, 0]
+      && texels.all (fun t => t == [255, 255, 255, 255] || t.getD 3 0 == 0) do
+    fail "text: not white on nothing"
+  let empty ← textImage "" 16
+  unless empty.width == 0 && empty.height == 0 && empty.pixels.size == 0 do
+    fail s!"no text: {empty.width}x{empty.height}"
+  IO.println "Text drawn as pixels: 32x32."
+
 def main : IO UInt32 := do
+  checkText
   let required := (← IO.getEnv "WEBGPU_RAW_REQUIRE_WINDOW").isSome
   let skip (why : String) : IO UInt32 := do
     if required then fail s!"{why}, though a window is required"

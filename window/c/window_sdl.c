@@ -104,9 +104,11 @@ static lean_obj_res lean_wgpu_window_error(char const * message, int sdl) {
 }
 
 // A new window titled `title`, `width` by `height` (in the window system's
-// units), which can be resized.
+// units), which can be resized; filling the screen, at the desktop's mode,
+// if `fullscreen`.
 LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
-        b_lean_obj_arg title, uint32_t width, uint32_t height) {
+        b_lean_obj_arg title, uint32_t width, uint32_t height,
+        uint8_t fullscreen) {
     if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_Init(SDL_INIT_VIDEO)) {
         return lean_wgpu_window_error("Window.create: no video", 1);
     }
@@ -115,6 +117,9 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
             lean_wgpu_window_finalize, lean_wgpu_window_visit);
     }
     SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+    if (fullscreen) {
+        flags |= SDL_WINDOW_FULLSCREEN;
+    }
 #ifdef __APPLE__
     flags |= SDL_WINDOW_METAL;
 #endif
@@ -334,6 +339,115 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_surface(
     lean_wgpu_family_join(surface, family);
     lean_wgpu_family_release(family);
     return lean_wgpu_callbacks_leave(saved, lean_io_result_mk_ok(object));
+}
+
+// Fill the screen with the window, at the desktop's mode (none was set), or
+// leave it; a headless window has no screen, and nothing happens.
+LEAN_EXPORT lean_obj_res lean_wgpu_window_set_fullscreen(
+        b_lean_obj_arg window, uint8_t fullscreen) {
+    lean_wgpu_window * w = lean_wgpu_window_of(window);
+    if (w->window != NULL
+            && !SDL_SetWindowFullscreen(w->window, fullscreen != 0)) {
+        return lean_wgpu_window_error("Window.setFullscreen", 1);
+    }
+    return lean_io_result_mk_ok(lean_box(0));
+}
+
+// Whether the window fills the screen.
+LEAN_EXPORT lean_obj_res lean_wgpu_window_is_fullscreen(
+        b_lean_obj_arg window) {
+    lean_wgpu_window * w = lean_wgpu_window_of(window);
+    bool fullscreen = w->window != NULL
+        && (SDL_GetWindowFlags(w->window) & SDL_WINDOW_FULLSCREEN) != 0;
+    return lean_io_result_mk_ok(lean_box(fullscreen ? 1 : 0));
+}
+
+// Not in a browser.
+LEAN_EXPORT uint8_t lean_wgpu_window_on_web(lean_obj_arg unit) {
+    (void)unit;
+    return 0;
+}
+
+// `text` as pixels, RGBA, white on nothing: a line for each of its lines, in
+// SDL's own font (8 by 8 pixels a character, as UTF-8 counts them), at
+// `size / 8` times its size (at least once), drawn by a software renderer
+// into a surface. The width, and the pixels: none if the text is empty.
+LEAN_EXPORT lean_obj_res lean_wgpu_text_image(
+        b_lean_obj_arg text, uint32_t size) {
+    char const * s = lean_string_cstr(text);
+    size_t bytes = lean_string_size(text) - 1;
+    int scale = size / SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    if (scale < 1) {
+        scale = 1;
+    }
+    // The lines, as C strings, in a copy; the widest, in characters.
+    char * lines = malloc(bytes + 1);
+    if (lines == NULL) {
+        return lean_wgpu_window_error("textImage: out of memory", 0);
+    }
+    memcpy(lines, s, bytes + 1);
+    int rows = 1;
+    int columns = 0;
+    int column = 0;
+    for (size_t i = 0; i < bytes; i++) {
+        if (lines[i] == '\n') {
+            lines[i] = '\0';
+            rows++;
+            column = 0;
+        } else if (((unsigned char)lines[i] & 0xC0) != 0x80) {
+            column++;
+            if (column > columns) {
+                columns = column;
+            }
+        }
+    }
+    int cell = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * scale;
+    int width = columns * cell;
+    int height = rows * cell;
+    lean_object * pair = lean_alloc_ctor(0, 2, 0);
+    if (width == 0) {
+        free(lines);
+        lean_ctor_set(pair, 0, lean_box_uint32(0));
+        lean_ctor_set(pair, 1, lean_alloc_sarray(1, 0, 0));
+        return lean_io_result_mk_ok(pair);
+    }
+    SDL_Surface * surface =
+        SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
+    SDL_Renderer * renderer =
+        surface == NULL ? NULL : SDL_CreateSoftwareRenderer(surface);
+    if (renderer == NULL) {
+        free(lines);
+        lean_free_object(pair);
+        if (surface != NULL) {
+            SDL_DestroySurface(surface);
+        }
+        return lean_wgpu_window_error("textImage", 1);
+    }
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    SDL_RenderClear(renderer);
+    SDL_SetRenderScale(renderer, (float)scale, (float)scale);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    char const * line = lines;
+    for (int row = 0; row < rows; row++) {
+        SDL_RenderDebugText(renderer, 0,
+            (float)(row * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE), line);
+        line += strlen(line) + 1;
+    }
+    SDL_FlushRenderer(renderer);
+    size_t stride = (size_t)width * 4;
+    lean_object * pixels = lean_alloc_sarray(1, stride * height,
+        stride * height);
+    for (int y = 0; y < height; y++) {
+        memcpy(lean_sarray_cptr(pixels) + y * stride,
+            (unsigned char const *)surface->pixels + y * surface->pitch,
+            stride);
+    }
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroySurface(surface);
+    free(lines);
+    lean_ctor_set(pair, 0, lean_box_uint32((uint32_t)width));
+    lean_ctor_set(pair, 1, pixels);
+    return lean_io_result_mk_ok(pair);
 }
 
 // Run `frame` (borrowed), an `Float → IO Bool`, with the seconds since the
