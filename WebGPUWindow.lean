@@ -20,7 +20,12 @@ window outlives it.
 
 Natively, SDL wants its windows made, polled and destroyed on the main
 thread: so does this, which a window's finalizer, run where its last
-reference goes, may not be.
+reference goes, may not be. On macOS nothing of a window works on any other
+thread, and Lean's runtime (from 4.31) runs a program's `main` on a thread
+of its own unless `LEAN_MAIN_USE_THREAD` is `0` when the program starts: so
+the library sets it, as the program loads, before the runtime reads it,
+unless it is set already. On any other thread, `Window.create` fails,
+saying so.
 -/
 
 @[expose] public section
@@ -79,6 +84,14 @@ inductive Event where
   /-- A key pressed (perhaps repeating), or released: its code (`Key`). -/
   | key (code : UInt32) (pressed repeated : Bool) (mods : Modifiers)
   deriving Repr, Inhabited, BEq
+
+/--
+wgpu-native's status when a window is hidden, behind others or minimised:
+no texture, till it shows. `Surface.presentFrame` gives it as
+`.error occluded`, a code the standard has no name for. A program then
+draws nothing, and waits a little rather than spin.
+-/
+def occluded : UInt32 := 0x00030001
 
 /-- An event from its six values as C gives them, if of a kind known. -/
 def Event.ofValues (v : Array Float) : Option Event :=
