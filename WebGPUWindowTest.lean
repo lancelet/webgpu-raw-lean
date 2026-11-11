@@ -7,8 +7,9 @@ import WebGPURawTest.Internal.Device
 A window, a surface on it, configured as its capabilities allow, and a
 triangle drawn in it, frame by frame, by `run` and `Surface.presentFrame`:
 the first frame read back, where the surface allows copying from its
-textures, red inside the triangle and blue outside; and, first, text drawn
-as pixels (`textImage`). It needs a display, and
+textures, red inside the triangle and blue outside; and, first, events read
+from their values, and text drawn as pixels (`textImage`). It needs a
+display, and
 an adapter: with neither it says so, and checks nothing, unless
 `WEBGPU_RAW_REQUIRE_WINDOW` is set (as in CI, on Linux, under a virtual
 display), or, for the adapter, `WEBGPU_RAW_REQUIRE_ADAPTER` (as in CI on
@@ -104,7 +105,26 @@ def checkText : IO Unit := do
     fail s!"no text: {empty.width}x{empty.height}"
   IO.println "Text drawn as pixels: 32x32."
 
+/--
+Check events are read from their values as C gives them: a key with Shift
+and Ctrl held, the wheel with Command, and a kind unknown.
+-/
+def checkEvents : IO Unit := do
+  let shiftCtrl : Modifiers := { shift := true, ctrl := true }
+  unless Event.ofValues #[6, 102, 1, 0, 0, 3]
+      == some (.key 102 true false shiftCtrl) do
+    fail "events: a key with Shift and Ctrl"
+  unless Event.ofValues #[5, 0, -2.5, 0, 0, 8]
+      == some (.wheel 0 (-2.5) { cmd := true }) do
+    fail "events: the wheel with Command"
+  unless Event.ofValues #[9, 0, 0, 0, 0, 0] == none do
+    fail "events: an unknown kind"
+  unless Key.f 12 == 0x40000045 && Key.isShift Key.rightShift do
+    fail "events: the key codes"
+  IO.println "Events read from their values."
+
 def main : IO UInt32 := do
+  checkEvents
   checkText
   let required := (← IO.getEnv "WEBGPU_RAW_REQUIRE_WINDOW").isSome
   let skip (why : String) : IO UInt32 := do
