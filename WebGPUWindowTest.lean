@@ -164,6 +164,7 @@ def main : IO UInt32 := do
   }
   let draw ← pipeline device format
   let frames ← IO.mkRef 0
+  let hidden ← IO.mkRef 0
   let checked ← IO.mkRef (none : Option String)
   run fun _ => do
     let _ ← window.poll
@@ -180,10 +181,20 @@ def main : IO UInt32 := do
           unless inside == red && outside == blue do
             fail s!"drawn: inside {inside}, outside {outside}"
           checked.set (some s!"{repr format |>.pretty}, {width}x{height}")
-    if let some status := missing then
-      fail s!"no texture: {repr status |>.pretty}"
-    frames.modify (· + 1)
-    return (← frames.get) < 3
+    match missing with
+    | some (.error code) =>
+      -- Hidden, as where no window can show: nothing to draw in. Wait a
+      -- little, and give up after a while.
+      unless code == occluded do fail s!"no texture: {code}"
+      IO.sleep 16
+      hidden.modify (· + 1)
+      return (← hidden.get) < 60
+    | some status => fail s!"no texture: {repr status |>.pretty}"
+    | none =>
+      frames.modify (· + 1)
+      return (← frames.get) < 3
+  if (← frames.get) == 0 then
+    return ← skip s!"{kind} was hidden"
   match ← checked.get with
   | some what =>
     IO.println s!"{kind} drew a triangle, read back ({what})."

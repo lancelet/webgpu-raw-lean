@@ -112,6 +112,11 @@ def start (frames : Option Nat) (wgpu : Instance) (adapter : Adapter)
     | none => drawn.modify (· + 1)
     | some (.ok .outdated) | some (.ok .lost) => scene.configure
     | some (.ok .timeout) => pure ()
+    -- Hidden: nothing to draw in till it shows; wait a little.
+    | some (.error code) =>
+      unless code == occluded do
+        throw (IO.userError s!"no texture to draw in: {code}")
+      IO.sleep 16
     | some status =>
       throw (IO.userError s!"no texture to draw in: {repr status}")
     return frames.all ((← drawn.get) < ·)

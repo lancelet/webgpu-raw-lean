@@ -31,6 +31,18 @@ typedef struct {
 
 #ifdef __APPLE__
 #include <dlfcn.h>
+#include <pthread.h>
+#include <stdlib.h>
+
+// Cocoa works on the main thread alone, and Lean's runtime (from 4.31) runs
+// a program's `main` on a thread of its own, unless `LEAN_MAIN_USE_THREAD`
+// is 0 when the program starts. The loader runs this first, so a program
+// with the window library in it runs `main` on the main thread, unless the
+// variable is set already, which is left as it is.
+__attribute__((constructor))
+static void lean_wgpu_window_main_thread(void) {
+    setenv("LEAN_MAIN_USE_THREAD", "0", 0);
+}
 
 // The Objective-C runtime's functions, found where SDL has loaded them (it
 // links the runtime, and QuartzCore, whose CAMetalLayer this makes), so
@@ -109,6 +121,16 @@ static lean_obj_res lean_wgpu_window_error(char const * message, int sdl) {
 LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
         b_lean_obj_arg title, uint32_t width, uint32_t height,
         uint8_t fullscreen) {
+#ifdef __APPLE__
+    // SDL's Cocoa driver declines any other thread, and says only that no
+    // video device is available: say why, and what to do.
+    if (!pthread_main_np()) {
+        return lean_wgpu_window_error(
+            "Window.create: not on the main thread, which macOS needs: run "
+            "the program with LEAN_MAIN_USE_THREAD=0 (Lean's runtime "
+            "otherwise runs main on a thread of its own)", 0);
+    }
+#endif
     if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_Init(SDL_INIT_VIDEO)) {
         return lean_wgpu_window_error("Window.create: no video", 1);
     }
