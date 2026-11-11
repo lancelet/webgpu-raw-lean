@@ -178,19 +178,34 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_headless(
 #endif
 }
 
-// The events since the last poll, five floats each: a kind, then its values
-// (`WebGPUWindow.lean` reads them).
+// The modifier keys held, as the last key event said (exact, where
+// SDL's mouse events say nothing of them): as bits, Shift 1, Ctrl 2, Alt 4,
+// Meta (GUI) 8, for every event's last value.
+static SDL_Keymod lean_wgpu_mods = 0;
+static bool lean_wgpu_mods_known = false;
+
+static double lean_wgpu_mod_bits(SDL_Keymod mods) {
+    return ((mods & SDL_KMOD_SHIFT) ? 1 : 0) | ((mods & SDL_KMOD_CTRL) ? 2 : 0)
+        | ((mods & SDL_KMOD_ALT) ? 4 : 0) | ((mods & SDL_KMOD_GUI) ? 8 : 0);
+}
+
+// The events since the last poll, six floats each: a kind, its values, and
+// the modifiers held (`WebGPUWindow.lean` reads them).
 LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
     (void)window;
     size_t count = 0;
     size_t capacity = 16;
-    double * values = malloc(capacity * 5 * sizeof *values);
+    double * values = malloc(capacity * 6 * sizeof *values);
     SDL_Event event;
     // With no window made yet (a headless one only), SDL is not started,
     // and there are no events.
+    if (!lean_wgpu_mods_known && SDL_WasInit(SDL_INIT_VIDEO)) {
+        lean_wgpu_mods = SDL_GetModState();
+        lean_wgpu_mods_known = true;
+    }
     while (values != NULL && SDL_WasInit(SDL_INIT_VIDEO)
             && SDL_PollEvent(&event)) {
-        double v[5] = {0, 0, 0, 0, 0};
+        double v[6] = {0, 0, 0, 0, 0, 0};
         switch (event.type) {
         case SDL_EVENT_QUIT:
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -225,13 +240,15 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
             v[1] = event.key.key;
             v[2] = event.key.down ? 1 : 0;
             v[3] = event.key.repeat ? 1 : 0;
+            lean_wgpu_mods = event.key.mod;
             break;
         default:
             continue;
         }
+        v[5] = lean_wgpu_mod_bits(lean_wgpu_mods);
         if (count == capacity) {
             capacity *= 2;
-            double * grown = realloc(values, capacity * 5 * sizeof *values);
+            double * grown = realloc(values, capacity * 6 * sizeof *values);
             if (grown == NULL) {
                 free(values);
                 values = NULL;
@@ -239,15 +256,15 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
             }
             values = grown;
         }
-        memcpy(values + count * 5, v, sizeof v);
+        memcpy(values + count * 6, v, sizeof v);
         count++;
     }
     if (values == NULL) {
         return lean_wgpu_window_error("Window.poll: out of memory", 0);
     }
-    lean_object * array = lean_alloc_sarray(sizeof(double), count * 5,
-        count * 5);
-    memcpy(lean_float_array_cptr(array), values, count * 5 * sizeof(double));
+    lean_object * array = lean_alloc_sarray(sizeof(double), count * 6,
+        count * 6);
+    memcpy(lean_float_array_cptr(array), values, count * 6 * sizeof(double));
     free(values);
     return lean_io_result_mk_ok(array);
 }

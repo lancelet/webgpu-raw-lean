@@ -37,33 +37,114 @@ def Window : Type := NonemptyType.type Internal.WindowHandle
 
 instance : Nonempty Window := Subtype.property Internal.WindowHandle
 
-/-- What happens to a window, or in it. -/
+/-- The modifier keys held as something happened: an event's `mods`. -/
+structure Modifiers where
+  shift : Bool := false
+  ctrl  : Bool := false
+  alt   : Bool := false
+  /-- Command on macOS; the Windows key, elsewhere (the DOM's Meta). -/
+  cmd   : Bool := false
+  deriving Repr, Inhabited, BEq
+
+/-- The modifiers from their bits as C gives them: Shift 1, Ctrl 2, Alt 4,
+Command 8. -/
+def Modifiers.ofBits (bits : UInt32) : Modifiers := {
+  shift := bits &&& 1 != 0
+  ctrl  := bits &&& 2 != 0
+  alt   := bits &&& 4 != 0
+  cmd   := bits &&& 8 != 0
+}
+
+/--
+What happens to a window, or in it. Each of the mouse's and the keys' events
+says which modifier keys were held (`mods`): in a browser, that is how a
+pinch on a trackpad arrives, as the wheel with Ctrl.
+-/
 inductive Event where
   /-- Asked to close, or the program to quit. -/
   | quit
   /-- Resized: its size in pixels, now. -/
   | resized (width height : UInt32)
   /-- The mouse moved: where it is, in the window's units. -/
-  | mouseMoved (x y : Float)
-  /-- A mouse button pressed, or released: which, and where. -/
+  | mouseMoved (x y : Float) (mods : Modifiers)
+  /-- A mouse button pressed, or released: which (1 the main), and where. -/
   | mouseButton (button : UInt8) (pressed : Bool) (x y : Float)
-  /-- The wheel turned: by how much, across and down. -/
-  | wheel (x y : Float)
-  /-- A key pressed (perhaps repeating), or released: its key code. -/
-  | key (code : UInt32) (pressed repeated : Bool)
-  deriving Repr, Inhabited
+      (mods : Modifiers)
+  /--
+  The wheel turned, or two fingers moved on a trackpad: by how much, across
+  and up (down is negative), in the window system's units (natively, SDL's;
+  in a browser, the browser's, which differ between a wheel and a trackpad).
+  -/
+  | wheel (x y : Float) (mods : Modifiers)
+  /-- A key pressed (perhaps repeating), or released: its code (`Key`). -/
+  | key (code : UInt32) (pressed repeated : Bool) (mods : Modifiers)
+  deriving Repr, Inhabited, BEq
 
-/-- An event from its five values as C gives them, if of a kind known. -/
+/-- An event from its six values as C gives them, if of a kind known. -/
 def Event.ofValues (v : Array Float) : Option Event :=
   let at' (k : Nat) := v.getD k 0
+  let mods := Modifiers.ofBits (at' 5).toUInt32
   match (at' 0).toUInt8 with
   | 1 => some .quit
   | 2 => some (.resized (at' 1).toUInt32 (at' 2).toUInt32)
-  | 3 => some (.mouseMoved (at' 1) (at' 2))
-  | 4 => some (.mouseButton (at' 1).toUInt8 (at' 2 != 0) (at' 3) (at' 4))
-  | 5 => some (.wheel (at' 1) (at' 2))
-  | 6 => some (.key (at' 1).toUInt32 (at' 2 != 0) (at' 3 != 0))
+  | 3 => some (.mouseMoved (at' 1) (at' 2) mods)
+  | 4 => some (.mouseButton (at' 1).toUInt8 (at' 2 != 0) (at' 3) (at' 4) mods)
+  | 5 => some (.wheel (at' 1) (at' 2) mods)
+  | 6 => some (.key (at' 1).toUInt32 (at' 2 != 0) (at' 3 != 0) mods)
   | _ => none
+
+namespace Key
+
+/-!
+The keys' codes, the same natively and in a browser: SDL's. A key that one
+character names has that character's code point, a letter's in lower case
+whether or not Shift is held (the event's `mods` says): `'f'.toNat.toUInt32`
+is F. Other characters are as the keyboard's layout gives them. The keys
+that no character names have the codes here (SDL's, its scancodes marked);
+any other is 0.
+-/
+
+def backspace : UInt32 := 8
+def tab       : UInt32 := 9
+def enter     : UInt32 := 13
+def escape    : UInt32 := 27
+def space     : UInt32 := 32
+def delete    : UInt32 := 127
+
+/-- SDL's code of a key no character names: its scancode, marked. -/
+def scancode (n : UInt32) : UInt32 := 0x40000000 ||| n
+
+def capsLock   : UInt32 := scancode 0x39
+/-- F1 to F12: `f 1` to `f 12`. -/
+def f (n : Nat) : UInt32 := scancode (0x39 + n.toUInt32)
+def insert     : UInt32 := scancode 0x49
+def home       : UInt32 := scancode 0x4a
+def pageUp     : UInt32 := scancode 0x4b
+def «end»      : UInt32 := scancode 0x4d
+def pageDown   : UInt32 := scancode 0x4e
+def right      : UInt32 := scancode 0x4f
+def left       : UInt32 := scancode 0x50
+def down       : UInt32 := scancode 0x51
+def up         : UInt32 := scancode 0x52
+def leftCtrl   : UInt32 := scancode 0xe0
+def leftShift  : UInt32 := scancode 0xe1
+def leftAlt    : UInt32 := scancode 0xe2
+def leftCmd    : UInt32 := scancode 0xe3
+def rightCtrl  : UInt32 := scancode 0xe4
+def rightShift : UInt32 := scancode 0xe5
+def rightAlt   : UInt32 := scancode 0xe6
+def rightCmd   : UInt32 := scancode 0xe7
+
+/-- Whether `code` is a Shift key, left or right. -/
+def isShift (code : UInt32) : Bool := code == leftShift || code == rightShift
+/-- Whether `code` is a Ctrl key, left or right. -/
+def isCtrl (code : UInt32) : Bool := code == leftCtrl || code == rightCtrl
+/-- Whether `code` is an Alt key, left or right. -/
+def isAlt (code : UInt32) : Bool := code == leftAlt || code == rightAlt
+/-- Whether `code` is a Command (or Windows) key, left or right. -/
+def isCmd (code : UInt32) : Bool := code == leftCmd || code == rightCmd
+
+end Key
 
 /--
 A new window titled `title`, `width` by `height` (in the window system's
@@ -140,7 +221,7 @@ error.
 @[extern "lean_wgpu_window_create_headless"]
 opaque Window.createHeadless (width height : UInt32) : IO Window
 
-/-- The shim behind `Window.poll`: five values for each event. -/
+/-- The shim behind `Window.poll`: six values for each event. -/
 @[extern "lean_wgpu_window_poll"]
 opaque Internal.Window.poll (self : @& Window) : IO FloatArray
 
@@ -150,8 +231,8 @@ has (as SDL gives them), not this one's alone.
 -/
 def Window.poll (self : Window) : IO (Array Event) := do
   let values := (← Internal.Window.poll self).data
-  return (Array.range (values.size / 5)).filterMap fun k =>
-    Event.ofValues (values.extract (5 * k) (5 * k + 5))
+  return (Array.range (values.size / 6)).filterMap fun k =>
+    Event.ofValues (values.extract (6 * k) (6 * k + 6))
 
 /-- The window's size in pixels: what a surface on it is configured to. -/
 @[extern "lean_wgpu_window_size"]

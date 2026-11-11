@@ -42,7 +42,7 @@ static lean_obj_res lean_wgpu_window_error(char const * message) {
         lean_mk_io_user_error(lean_mk_string(message)));
 }
 
-// The events queued since the last poll, five values each, as natively.
+// The events queued since the last poll, six values each, as natively.
 static double * lean_wgpu_events = NULL;
 static size_t lean_wgpu_event_count = 0;
 static size_t lean_wgpu_event_capacity = 0;
@@ -50,7 +50,7 @@ static size_t lean_wgpu_event_capacity = 0;
 // Queue an event; dropped if out of memory, or if 65536 wait (as SDL caps
 // its queue), as when nothing polls.
 static void lean_wgpu_queue(double a, double b, double c, double d,
-        double e) {
+        double e, double mods) {
     if (lean_wgpu_event_count >= 65536) {
         return;
     }
@@ -58,19 +58,30 @@ static void lean_wgpu_queue(double a, double b, double c, double d,
         size_t capacity =
             lean_wgpu_event_capacity == 0 ? 16 : 2 * lean_wgpu_event_capacity;
         double * grown =
-            realloc(lean_wgpu_events, capacity * 5 * sizeof *grown);
+            realloc(lean_wgpu_events, capacity * 6 * sizeof *grown);
         if (grown == NULL) {
             return;
         }
         lean_wgpu_events = grown;
         lean_wgpu_event_capacity = capacity;
     }
-    double * v = lean_wgpu_events + 5 * lean_wgpu_event_count++;
+    double * v = lean_wgpu_events + 6 * lean_wgpu_event_count++;
     v[0] = a;
     v[1] = b;
     v[2] = c;
     v[3] = d;
     v[4] = e;
+    v[5] = mods;
+}
+
+// The modifier keys an event says were held, as bits, as natively: Shift 1,
+// Ctrl 2, Alt 4, Meta 8.
+static double lean_wgpu_mod_bits(bool shift, bool ctrl, bool alt, bool meta) {
+    return (shift ? 1 : 0) | (ctrl ? 2 : 0) | (alt ? 4 : 0) | (meta ? 8 : 0);
+}
+
+static double lean_wgpu_mouse_mods(EmscriptenMouseEvent const * e) {
+    return lean_wgpu_mod_bits(e->shiftKey, e->ctrlKey, e->altKey, e->metaKey);
 }
 
 // The mouse's events over the canvas, in its CSS pixels (as a stylesheet
@@ -81,12 +92,13 @@ static bool lean_wgpu_on_mouse(int type, EmscriptenMouseEvent const * e,
         void * data) {
     (void)data;
     if (type == EMSCRIPTEN_EVENT_MOUSEMOVE) {
-        lean_wgpu_queue(3, e->targetX, e->targetY, 0, 0);
+        lean_wgpu_queue(3, e->targetX, e->targetY, 0, 0,
+            lean_wgpu_mouse_mods(e));
     } else {
         // DOM buttons count from 0 (the main); SDL's, and so ours, from 1.
         lean_wgpu_queue(4, e->button + 1,
             type == EMSCRIPTEN_EVENT_MOUSEDOWN ? 1 : 0,
-            e->targetX, e->targetY);
+            e->targetX, e->targetY, lean_wgpu_mouse_mods(e));
     }
     return true;
 }
@@ -95,43 +107,85 @@ static bool lean_wgpu_on_wheel(int type, EmscriptenWheelEvent const * e,
         void * data) {
     (void)type;
     (void)data;
-    // The DOM's down is positive, SDL's negative: as SDL, natively.
-    lean_wgpu_queue(5, e->deltaX, -e->deltaY, 0, 0);
+    // The DOM's down is positive, SDL's negative: as SDL, natively. A pinch
+    // on a trackpad is the wheel with Ctrl, which the modifiers say.
+    lean_wgpu_queue(5, e->deltaX, -e->deltaY, 0, 0,
+        lean_wgpu_mouse_mods(&e->mouse));
     return true;
+}
+
+// SDL's code of a key no character names: its scancode, marked.
+#define LEAN_WGPU_SCANCODE(n) (0x40000000u | (n))
+
+// A key's code, as SDL's natively (`WebGPUWindow.lean`'s `Key`): its
+// character's code point, for a key one character names (`e->key`, in
+// UTF-8), a letter's in lower case, whether or not Shift is held (SDL's
+// are; the modifiers say); SDL's codes for the keys no character names
+// (modifiers, by their side; arrows; and the like); else 0.
+static uint32_t lean_wgpu_key_code(EmscriptenKeyboardEvent const * e) {
+    static struct { char const * name; uint32_t code; } const named[] = {
+        {"Enter", 13}, {"Escape", 27}, {"Backspace", 8}, {"Tab", 9},
+        {"Delete", 127},
+        {"CapsLock", LEAN_WGPU_SCANCODE(0x39)},
+        {"Insert", LEAN_WGPU_SCANCODE(0x49)},
+        {"Home", LEAN_WGPU_SCANCODE(0x4a)},
+        {"PageUp", LEAN_WGPU_SCANCODE(0x4b)},
+        {"End", LEAN_WGPU_SCANCODE(0x4d)},
+        {"PageDown", LEAN_WGPU_SCANCODE(0x4e)},
+        {"ArrowRight", LEAN_WGPU_SCANCODE(0x4f)},
+        {"ArrowLeft", LEAN_WGPU_SCANCODE(0x50)},
+        {"ArrowDown", LEAN_WGPU_SCANCODE(0x51)},
+        {"ArrowUp", LEAN_WGPU_SCANCODE(0x52)},
+    };
+    // The modifiers: left, or right, as the key's location says.
+    static struct { char const * name; uint32_t left; } const sided[] = {
+        {"Control", 0xe0}, {"Shift", 0xe1}, {"Alt", 0xe2}, {"Meta", 0xe3},
+        {"OS", 0xe3}
+    };
+    unsigned char const * k = (unsigned char const *)e->key;
+    size_t length = strlen(e->key);
+    if (length == 1 && k[0] < 0x80) {
+        return k[0] >= 'A' && k[0] <= 'Z' ? k[0] + ('a' - 'A') : k[0];
+    } else if (length == 2 && (k[0] & 0xE0) == 0xC0) {
+        return ((uint32_t)(k[0] & 0x1F) << 6) | (k[1] & 0x3F);
+    } else if (length == 3 && (k[0] & 0xF0) == 0xE0) {
+        return ((uint32_t)(k[0] & 0x0F) << 12) | ((k[1] & 0x3F) << 6)
+            | (k[2] & 0x3F);
+    } else if (length == 4 && (k[0] & 0xF8) == 0xF0) {
+        return ((uint32_t)(k[0] & 0x07) << 18) | ((k[1] & 0x3F) << 12)
+            | ((k[2] & 0x3F) << 6) | (k[3] & 0x3F);
+    }
+    for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
+        if (strcmp(e->key, named[i].name) == 0) {
+            return named[i].code;
+        }
+    }
+    for (size_t i = 0; i < sizeof sided / sizeof sided[0]; i++) {
+        if (strcmp(e->key, sided[i].name) == 0) {
+            return LEAN_WGPU_SCANCODE(sided[i].left
+                + (e->location == DOM_KEY_LOCATION_RIGHT ? 4 : 0));
+        }
+    }
+    // F1 to F12: SDL's F1 is 0x3a.
+    if (k[0] == 'F' && length >= 2 && length <= 3) {
+        uint32_t n = 0;
+        for (size_t i = 1; i < length; i++) {
+            if (k[i] < '0' || k[i] > '9') {
+                return 0;
+            }
+            n = n * 10 + (k[i] - '0');
+        }
+        return n >= 1 && n <= 12 ? LEAN_WGPU_SCANCODE(0x39 + n) : 0;
+    }
+    return 0;
 }
 
 static bool lean_wgpu_on_key(int type, EmscriptenKeyboardEvent const * e,
         void * data) {
     (void)data;
-    // A key's code, as SDL's: its character's code point, for a key one
-    // character names (`e->key`, in UTF-8); those of a few named keys; else
-    // 0 (arrows, function keys, modifiers and the like).
-    static struct { char const * name; uint32_t code; } const named[] = {
-        {"Enter", 13}, {"Escape", 27}, {"Backspace", 8}, {"Tab", 9},
-        {"Delete", 127}
-    };
-    uint32_t code = 0;
-    unsigned char const * k = (unsigned char const *)e->key;
-    size_t length = strlen(e->key);
-    if (length == 1 && k[0] < 0x80) {
-        code = k[0];
-    } else if (length == 2 && (k[0] & 0xE0) == 0xC0) {
-        code = ((uint32_t)(k[0] & 0x1F) << 6) | (k[1] & 0x3F);
-    } else if (length == 3 && (k[0] & 0xF0) == 0xE0) {
-        code = ((uint32_t)(k[0] & 0x0F) << 12) | ((k[1] & 0x3F) << 6)
-            | (k[2] & 0x3F);
-    } else if (length == 4 && (k[0] & 0xF8) == 0xF0) {
-        code = ((uint32_t)(k[0] & 0x07) << 18) | ((k[1] & 0x3F) << 12)
-            | ((k[2] & 0x3F) << 6) | (k[3] & 0x3F);
-    } else {
-        for (size_t i = 0; i < sizeof named / sizeof named[0]; i++) {
-            if (strcmp(e->key, named[i].name) == 0) {
-                code = named[i].code;
-            }
-        }
-    }
-    lean_wgpu_queue(6, code, type == EMSCRIPTEN_EVENT_KEYDOWN ? 1 : 0,
-        e->repeat ? 1 : 0, 0);
+    lean_wgpu_queue(6, lean_wgpu_key_code(e),
+        type == EMSCRIPTEN_EVENT_KEYDOWN ? 1 : 0, e->repeat ? 1 : 0, 0,
+        lean_wgpu_mod_bits(e->shiftKey, e->ctrlKey, e->altKey, e->metaKey));
     return false;
 }
 
@@ -173,7 +227,7 @@ static void lean_wgpu_fit(bool queue) {
     if (width != old_width || height != old_height) {
         emscripten_set_canvas_element_size(lean_wgpu_canvas, width, height);
         if (queue) {
-            lean_wgpu_queue(2, width, height, 0, 0);
+            lean_wgpu_queue(2, width, height, 0, 0, 0);
         }
     }
 }
@@ -225,12 +279,12 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create_headless(
     return lean_wgpu_window_error("Window.createHeadless: only on macOS");
 }
 
-// The events since the last poll, five values each: a `resized` last, if
+// The events since the last poll, six values each: a `resized` last, if
 // the canvas fills the page, and its size on the screen has changed.
 LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
     (void)window;
     lean_wgpu_fit(true);
-    size_t count = lean_wgpu_event_count * 5;
+    size_t count = lean_wgpu_event_count * 6;
     lean_object * array = lean_alloc_sarray(sizeof(double), count, count);
     if (count > 0) {
         memcpy(lean_float_array_cptr(array), lean_wgpu_events,
