@@ -17,7 +17,7 @@ set -eu
 version=3.4.18
 # The build's options' version, below: changed when they change, so that a
 # checkout builds SDL3 again.
-options=2
+options=3
 dir=$(cd "$(dirname "$0")" && pwd)
 
 case "$(uname -s)" in
@@ -57,9 +57,8 @@ else
   curl -fsSL --retry 3 "$url" -o "$tmp/sdl3.tar.gz"
   tar -xzf "$tmp/sdl3.tar.gz" -C "$tmp"
   # Only what a window needs: no audio, cameras, joysticks and the like,
-  # whose system libraries a program would otherwise need too; and the 2D
-  # renderer, for its software renderer alone (`textImage`), with none of
-  # its GPU backends.
+  # whose system libraries a program would otherwise need too; nor the 2D
+  # renderer (text is drawn by stb_truetype, not SDL).
   cmake -S "$tmp/SDL3-$version" -B "$tmp/build" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$out" \
@@ -68,8 +67,7 @@ else
     -DSDL_EXAMPLES=OFF -DSDL_TESTS=OFF \
     -DSDL_AUDIO=OFF -DSDL_CAMERA=OFF -DSDL_JOYSTICK=OFF -DSDL_HAPTIC=OFF \
     -DSDL_HIDAPI=OFF -DSDL_SENSOR=OFF -DSDL_POWER=OFF -DSDL_GPU=OFF \
-    -DSDL_RENDER=ON -DSDL_RENDER_GPU=OFF -DSDL_RENDER_VULKAN=OFF \
-    -DSDL_RENDER_METAL=OFF -DSDL_DIALOG=OFF -DSDL_TRAY=OFF
+    -DSDL_RENDER=OFF -DSDL_DIALOG=OFF -DSDL_TRAY=OFF
   cmake --build "$tmp/build" --parallel
   cmake --install "$tmp/build"
 fi

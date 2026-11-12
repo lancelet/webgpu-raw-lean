@@ -23,6 +23,18 @@ SDL3 (https://libsdl.org)
   zlib License. Not part of this repository: vendor/sdl3/fetch.sh fetches a
   release, which the window library (WebGPUWindow) links natively.
 
+stb_truetype (https://github.com/nothings/stb)
+  Copyright (c) 2017 Sean Barrett
+  Public domain, or the MIT License, at your option (the file's end).
+  Vendored in window/c/stb_truetype.h (v1.26), which the window library
+  compiles, natively and for the web, to draw text as pixels.
+
+JetBrains Mono (https://github.com/JetBrains/JetBrainsMono)
+  Copyright 2020 The JetBrains Mono Project Authors
+  SIL Open Font License, Version 1.1: window/test/OFL.txt. In this
+  repository as window/test/JetBrainsMono-Regular.ttf, which the window
+  library's test draws with; no program links it.
+
 Dawn, emdawnwebgpu (https://dawn.googlesource.com/dawn)
   BSD 3-Clause License. Not part of this repository: Emscripten's port,
   which the web build links.

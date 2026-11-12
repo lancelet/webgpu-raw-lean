@@ -86,24 +86,37 @@ def frame (wgpu : Instance) (device : Device) (draw : RenderPipeline)
     some <$> buffer.readMapped 0 size
 
 /--
-Check `textImage`, which needs no display: SDL's font, 8 by 8 pixels, at
-twice its size for 16 pixels; two lines, as wide as the wider; white where
-there is text, nothing where there is none; and nothing for no text.
+The test's font: JetBrains Mono (`window/test/`, under the SIL Open Font
+License), read from the repository's root, where the test runs.
+-/
+def fontPath : System.FilePath := "window" / "test" / "JetBrainsMono-Regular.ttf"
+
+/--
+Check `Font.ofBytes` and `textImage`, which need no display: bytes that are
+no font refused; two lines at 16 pixels, 32 high, as wide as the wider;
+white, the alpha the text's coverage, some full and some none; and nothing
+for no text.
 -/
 def checkText : IO Unit := do
-  let image ← textImage "Hi\nA" 16
-  unless image.width == 32 && image.height == 32
-      && image.pixels.size == 32 * 32 * 4 do
+  let font ← try Font.ofBytes (← IO.FS.readBinFile fontPath)
+    catch e => fail s!"the test's font ({fontPath}): {e}"
+  match ← (Font.ofBytes "not a font at all".toUTF8).toBaseIO with
+  | .ok _ => fail "bytes that are no font accepted"
+  | .error _ => pure ()
+  let image ← textImage font "Hi\nA" 16
+  unless image.height == 32 && image.width > 8 && image.width < 64
+      && image.pixels.size == 4 * image.width.toNat * 32 do
     fail s!"text: {image.width}x{image.height}, {image.pixels.size} bytes"
-  let texels := (List.range (32 * 32)).map fun k =>
+  let texels := (List.range (image.width.toNat * 32)).map fun k =>
     (image.pixels.extract (4 * k) (4 * k + 4)).toList
-  unless texels.contains [255, 255, 255, 255] && texels.contains [0, 0, 0, 0]
-      && texels.all (fun t => t == [255, 255, 255, 255] || t.getD 3 0 == 0) do
+  unless texels.all (fun t => t.take 3 == [255, 255, 255])
+      && texels.any (fun t => t.getD 3 0 >= 128)
+      && texels.contains [255, 255, 255, 0] do
     fail "text: not white on nothing"
-  let empty ← textImage "" 16
+  let empty ← textImage font "" 16
   unless empty.width == 0 && empty.height == 0 && empty.pixels.size == 0 do
     fail s!"no text: {empty.width}x{empty.height}"
-  IO.println "Text drawn as pixels: 32x32."
+  IO.println s!"Text drawn as pixels: {image.width}x{image.height}."
 
 /--
 Check events are read from their values as C gives them: a key with Shift

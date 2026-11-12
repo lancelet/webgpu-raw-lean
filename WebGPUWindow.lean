@@ -6,11 +6,12 @@ public import WebGPU.Raw
 # A window to draw in
 
 A window, its events, its size in pixels, filling the screen or not, a
-WebGPU surface on it, a frame loop, and text drawn as pixels (to draw with
-WebGPU): natively on SDL3 (`window/c/window_sdl.c`, fetched by
-`vendor/sdl3/fetch.sh`), and on the web on the page's canvas
-(`window/c/window_web.c`). It is not part of the raw bindings: they bind
-WebGPU alone.
+WebGPU surface on it, and a frame loop: natively on SDL3
+(`window/c/window_sdl.c`, fetched by `vendor/sdl3/fetch.sh`), and on the web
+on the page's canvas (`window/c/window_web.c`); and text drawn as pixels, in
+a font of the program's, to draw with WebGPU, the same on both
+(`window/c/text.c`, by stb_truetype). It is not part of the raw bindings:
+they bind WebGPU alone.
 
 A surface is made on a window here, in C, from the handles the window
 system gives of it, which never reach Lean (the raw bindings leave
@@ -198,30 +199,48 @@ Whether the program runs in a browser, where the browser keeps some keys
 -/
 def onWeb : Bool := Internal.onWeb ()
 
+/-- The handle that carries the type `Font`, not API. -/
+opaque Internal.FontHandle : NonemptyType
+
+/-- A font, from a TrueType file's bytes: what `textImage` draws with. -/
+def Font : Type := NonemptyType.type Internal.FontHandle
+
+instance : Nonempty Font := Subtype.property Internal.FontHandle
+
+/--
+A font from `bytes`, a TrueType file's (`.ttf`; an OpenType file with
+TrueType outlines too), copied: an `IO` error if they are not one, by their
+header. Past it they are not checked, so a font to trust, as one a program
+embeds. A program makes its font once, and keeps it.
+-/
+@[extern "lean_wgpu_font_create"]
+opaque Font.ofBytes (bytes : @& ByteArray) : IO Font
+
 /-- Text as pixels, `width` by `height`, by `textImage`. -/
 structure TextImage where
   width  : UInt32
   height : UInt32
   /--
   Its pixels, row by row from the top, four bytes each, RGBA (not
-  premultiplied): white, the alpha the text's.
+  premultiplied): white, the alpha the text's coverage, anti-aliased.
   -/
   pixels : ByteArray
 
 /-- The shim behind `textImage`: the width, and the pixels. -/
 @[extern "lean_wgpu_text_image"]
-opaque Internal.textImage (text : @& String) (size : UInt32) :
-    IO (UInt32 × ByteArray)
+opaque Internal.textImage (font : @& Font) (text : @& String)
+    (size : UInt32) : IO (UInt32 × ByteArray)
 
 /--
-`text` as pixels, a line for each of its lines, about `size` pixels high,
-as wide as the widest: to draw text with WebGPU, as a texture. Natively,
-SDL3's own font (`SDL_RenderDebugText`: 8 by 8 pixels, ASCII), at the
-whole multiple of its size that is at most `size` (at least 1), with a
-software renderer; on the web, a canvas's monospace font. Empty if `text` is.
+`text` as pixels in `font`, a line for each of its lines, `size` pixels a
+line (the font's ascent and descent fitted to it; at least 1), as wide as
+the widest, anti-aliased, with the font's kerning: to draw text with WebGPU,
+as a texture. The same natively and in a browser, pixel for pixel. Empty if
+`text` is.
 -/
-def textImage (text : String) (size : UInt32) : IO TextImage := do
-  let (width, pixels) ← Internal.textImage text size
+def textImage (font : Font) (text : String) (size : UInt32) :
+    IO TextImage := do
+  let (width, pixels) ← Internal.textImage font text size
   let height := if width == 0 then 0 else pixels.size.toUInt32 / (4 * width)
   return { width, height, pixels }
 
