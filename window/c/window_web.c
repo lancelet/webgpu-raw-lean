@@ -373,60 +373,6 @@ LEAN_EXPORT uint8_t lean_wgpu_window_on_web(lean_obj_arg unit) {
     return 1;
 }
 
-// Text as pixels, in a canvas's monospace font, a line `size` pixels high:
-// measured (its width, and its height into `height`), then drawn, white on
-// nothing, into `pixels`, RGBA, width by height. One canvas, off the page,
-// for all text.
-EM_JS_DEPS(lean_wgpu_text, "$UTF8ToString");
-
-EM_JS(int, lean_wgpu_text_measure,
-        (char const * text, int size, int * height), {
-    if (!Module.leanWgpuText) {
-        Module.leanWgpuText = new OffscreenCanvas(1, 1).getContext("2d");
-    }
-    const context = Module.leanWgpuText;
-    const lines = UTF8ToString(text).split("\n");
-    context.font = Math.round(size * 0.8) + "px monospace";
-    let width = 0;
-    for (const line of lines) {
-        width = Math.max(width, Math.ceil(context.measureText(line).width));
-    }
-    HEAP32[height >> 2] = width === 0 ? 0 : lines.length * size;
-    return width;
-});
-
-EM_JS(void, lean_wgpu_text_draw, (char const * text, int size, int width,
-        int height, unsigned char * pixels), {
-    const context = Module.leanWgpuText;
-    const lines = UTF8ToString(text).split("\n");
-    // Setting the size clears the canvas, and its state.
-    context.canvas.width = width;
-    context.canvas.height = height;
-    context.font = Math.round(size * 0.8) + "px monospace";
-    context.textBaseline = "middle";
-    context.fillStyle = "white";
-    lines.forEach((line, i) => context.fillText(line, 0, (i + 0.5) * size));
-    HEAPU8.set(context.getImageData(0, 0, width, height).data, pixels);
-});
-
-// `text` as pixels: the width, and the pixels, none if the text is empty.
-LEAN_EXPORT lean_obj_res lean_wgpu_text_image(
-        b_lean_obj_arg text, uint32_t size) {
-    int height = 0;
-    int width = lean_wgpu_text_measure(lean_string_cstr(text),
-        size < 1 ? 1 : (int)size, &height);
-    size_t bytes = (size_t)width * (size_t)height * 4;
-    lean_object * pixels = lean_alloc_sarray(1, bytes, bytes);
-    if (bytes > 0) {
-        lean_wgpu_text_draw(lean_string_cstr(text), size < 1 ? 1 : (int)size,
-            width, height, lean_sarray_cptr(pixels));
-    }
-    lean_object * pair = lean_alloc_ctor(0, 2, 0);
-    lean_ctor_set(pair, 0, lean_box_uint32(bytes > 0 ? (uint32_t)width : 0));
-    lean_ctor_set(pair, 1, pixels);
-    return lean_io_result_mk_ok(pair);
-}
-
 // An animation frame: apply the frame closure (`data`, held) to the seconds
 // since the first; go on while it returns true. An error it raises, from the
 // event loop, outside every call, ends the program (`c/callback.c`).

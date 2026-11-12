@@ -306,8 +306,9 @@ target sdl3 pkg : Dynlib := do
     return { path := ← copyShared file bins, name := "SDL3" }
 
 /--
-The window library's C (`window/c/*.c`), compiled with the system C compiler
-against SDL3, the bindings' headers and wgpu-native's.
+The window library's C (`window/c/*.c`, with `stb_truetype.h`, which draws
+text), compiled with the system C compiler against SDL3, the bindings'
+headers and wgpu-native's.
 -/
 target windowShim pkg : FilePath := do
   let dir := pkg.dir / "window" / "c"
@@ -322,7 +323,8 @@ target windowShim pkg : FilePath := do
   let headers ← [
     pkg.dir / "c" / "generated" / "objects.h",
     pkg.dir / "c" / "callback.h",
-    pkg.dir / "c" / "family.h"
+    pkg.dir / "c" / "family.h",
+    pkg.dir / "window" / "c" / "stb_truetype.h"
   ].mapM fun h => inputTextFile h
   let cc ← cCompiler
   let objs ← srcs.mapM fun src => do
