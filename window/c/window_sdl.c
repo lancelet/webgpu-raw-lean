@@ -8,6 +8,7 @@
 
 #ifndef __EMSCRIPTEN__
 
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <SDL3/SDL.h>
@@ -266,10 +267,22 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_poll(b_lean_obj_arg window) {
             v[3] = event.key.repeat ? 1 : 0;
             lean_wgpu_mods = event.key.mod;
             break;
+        case SDL_EVENT_PINCH_UPDATE:
+            // A pinch on a trackpad, as a browser gives it: the wheel with
+            // Ctrl, up (positive) for spreading, by the scale's logarithm
+            // in the browser's measure (100 pixels an e-fold), in SDL's
+            // units (a tenth of a pixel each).
+            v[0] = 5;
+            v[1] = 0;
+            v[2] = 10.0 * log(event.pinch.scale);
+            v[5] = (double)((int)lean_wgpu_mod_bits(lean_wgpu_mods) | 2);
+            break;
         default:
             continue;
         }
-        v[5] = lean_wgpu_mod_bits(lean_wgpu_mods);
+        if (event.type != SDL_EVENT_PINCH_UPDATE) {
+            v[5] = lean_wgpu_mod_bits(lean_wgpu_mods);
+        }
         if (count == capacity) {
             capacity *= 2;
             double * grown = realloc(values, capacity * 6 * sizeof *values);

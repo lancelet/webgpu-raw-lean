@@ -63,8 +63,8 @@ def Modifiers.ofBits (bits : UInt32) : Modifiers := {
 
 /--
 What happens to a window, or in it. Each of the mouse's and the keys' events
-says which modifier keys were held (`mods`): in a browser, that is how a
-pinch on a trackpad arrives, as the wheel with Ctrl.
+says which modifier keys were held (`mods`): a pinch on a trackpad arrives
+as the wheel with Ctrl, on both platforms.
 -/
 inductive Event where
   /-- Asked to close, or the program to quit. -/
@@ -78,8 +78,11 @@ inductive Event where
       (mods : Modifiers)
   /--
   The wheel turned, or two fingers moved on a trackpad: by how much, across
-  and up (down is negative), in the window system's units (natively, SDL's;
-  in a browser, the browser's, which differ between a wheel and a trackpad).
+  and up (down is negative), in the window system's units (natively, SDL's,
+  a tenth of a pixel; in a browser, the browser's, which differ between a
+  wheel and a trackpad). A pinch on a trackpad is the wheel with Ctrl, up
+  for spreading, on both: a browser gives it so, and natively SDL's pinch is
+  given so, by the scale's logarithm, 100 pixels an e-fold as a browser.
   -/
   | wheel (x y : Float) (mods : Modifiers)
   /-- A key pressed (perhaps repeating), or released: its code (`Key`). -/
