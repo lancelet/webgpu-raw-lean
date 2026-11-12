@@ -161,7 +161,9 @@ end Key
 
 /--
 A new window titled `title`, `width` by `height` (in the window system's
-units, which may be fewer than its pixels), which can be resized. On the web,
+units, which may be fewer than its pixels: on a high-density screen it has
+as many pixels as the screen does, which `Window.size` counts), which can be
+resized. On the web,
 the page's canvas, `width` by `height` pixels.
 
 With `fullscreen`, natively, it fills the screen, at the desktop's mode (no
