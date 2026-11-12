@@ -138,10 +138,13 @@ target runPath : FilePath := Job.async do
   return FilePath.mk arg
 
 /--
-A library's link objects `objs`, with `runPath` where there is one. Lake
-gives link objects to a library's static and shared builds too, which do not
-want it: `lake build WebGPURaw:static` fails (`ar` finds no such file), and
-the shared libraries look beside themselves. Nothing here builds them.
+A library's link objects `objs`, with `runPath` where there is one: for
+`WebGPURaw` alone, which every program with a window imports too, and Lake
+repeats a link object given twice (the linker then warns of the second
+rpath). Lake gives link objects to a library's static and shared builds too,
+which do not want it: `lake build WebGPURaw:static` fails (`ar` finds no
+such file), and the shared libraries look beside themselves. Nothing here
+builds them.
 -/
 def withRunPath (objs : TargetArray FilePath) : TargetArray FilePath :=
   if runPathArg.isSome then objs.push runPath else objs
@@ -332,7 +335,7 @@ target windowShim pkg : FilePath := do
 
 /-- The window library (`WebGPUWindow.lean`). -/
 lean_lib WebGPUWindow where
-  moreLinkObjs := withRunPath #[windowShim, wgpuShim]
+  moreLinkObjs := #[windowShim, wgpuShim]
   moreLinkLibs := #[sdl3, wgpuNative]
 
 /--

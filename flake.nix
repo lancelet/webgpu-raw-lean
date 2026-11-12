@@ -37,6 +37,14 @@
             pkgs.nodejs
             pkgs.git
           ];
+          # The macOS the build targets, compiling and linking (Lean's
+          # compiler and Nix's read it, as MACOSX_DEPLOYMENT_TARGET): the one
+          # Lean's own libraries are built for (its libgmp and libuv), above
+          # the shell's default, below which the linker warns of every object
+          # newer than it.
+          buildInputs = pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [
+            (pkgs.darwinMinVersionHook "15.0")
+          ];
         };
       });
 

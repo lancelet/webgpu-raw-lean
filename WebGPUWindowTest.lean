@@ -183,12 +183,12 @@ def main : IO UInt32 := do
           checked.set (some s!"{repr format |>.pretty}, {width}x{height}")
     match missing with
     | some (.error code) =>
-      -- Hidden, as where no window can show: nothing to draw in. Wait a
-      -- little, and give up after a while.
+      -- Hidden, as where no window can show, or not shown yet: nothing to
+      -- draw in. Wait a little, and give up after a few seconds.
       unless code == occluded do fail s!"no texture: {code}"
       IO.sleep 16
       hidden.modify (· + 1)
-      return (← hidden.get) < 60
+      return (← hidden.get) < 300
     | some status => fail s!"no texture: {repr status |>.pretty}"
     | none =>
       frames.modify (· + 1)
