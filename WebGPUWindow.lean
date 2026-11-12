@@ -80,9 +80,11 @@ inductive Event where
   The wheel turned, or two fingers moved on a trackpad: by how much, across
   and up (down is negative), in the window system's units (natively, SDL's,
   a tenth of a pixel; in a browser, the browser's, which differ between a
-  wheel and a trackpad). A pinch on a trackpad is the wheel with Ctrl, up
-  for spreading, on both: a browser gives it so, and natively SDL's pinch is
-  given so, by the scale's logarithm, 100 pixels an e-fold as a browser.
+  wheel and a trackpad). On macOS the events go on after the fingers lift,
+  with the scroll's momentum, natively as in a browser. A pinch on a
+  trackpad is the wheel with Ctrl, up for spreading, on both: a browser
+  gives it so, and natively SDL's pinch is given so, by the scale's
+  logarithm, 100 pixels an e-fold as a browser.
   -/
   | wheel (x y : Float) (mods : Modifiers)
   /-- A key pressed (perhaps repeating), or released: its code (`Key`). -/
