@@ -132,8 +132,13 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
             "otherwise runs main on a thread of its own)", 0);
     }
 #endif
-    if (!SDL_WasInit(SDL_INIT_VIDEO) && !SDL_Init(SDL_INIT_VIDEO)) {
-        return lean_wgpu_window_error("Window.create: no video", 1);
+    if (!SDL_WasInit(SDL_INIT_VIDEO)) {
+        // On macOS, the wheel's events after the fingers lift, the scroll's
+        // momentum, which SDL leaves out unless asked, and a browser gives.
+        SDL_SetHint(SDL_HINT_MAC_SCROLL_MOMENTUM, "1");
+        if (!SDL_Init(SDL_INIT_VIDEO)) {
+            return lean_wgpu_window_error("Window.create: no video", 1);
+        }
     }
     if (lean_wgpu_window_class == NULL) {
         lean_wgpu_window_class = lean_register_external_class(
