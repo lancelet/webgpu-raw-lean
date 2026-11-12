@@ -138,7 +138,9 @@ LEAN_EXPORT lean_obj_res lean_wgpu_window_create(
         lean_wgpu_window_class = lean_register_external_class(
             lean_wgpu_window_finalize, lean_wgpu_window_visit);
     }
-    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE;
+    // With as many pixels as the screen has where it is (on a Retina
+    // screen, more than its units), which `Window.size` counts.
+    SDL_WindowFlags flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (fullscreen) {
         flags |= SDL_WINDOW_FULLSCREEN;
     }
